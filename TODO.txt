@@ -1,0 +1,72 @@
+Time-stamp: <2022-01-11 14:06:03 gorbag>
+
+Migrating items that should be done generally to the TODO.txt file under support... 10/21/2021. Those items that appear
+on BOTH lists have a * mark.
+
+Next:   
+        
+Future: ooo     may need an expanded GC in user-space to GC memory as a result of the GC-Needed signal (??)  [I think
+                  the original chip never used this, just redirected to the microcode GC; keep in mind that as far as I
+                  can tell, the Scheme-79 chip was only tested with one function that is documented and possibly
+                  hand-compiled to S-code as it is present in the paper (hand-drawn)]
+        
+        ooo     implement/test externally asserted freeze cycles for memory access (Might want a FP option for
+                   driving single step using freeze as well as the load/store register commands in original chip!)
+                   
+        ooo     implement/test external interrupt (assertion of an interrupt vector IS working in test 0)
+        
+        ooo*    [starting post V0.2]: to facilitate future projects (e.g. scheme-86, lm3,...) segregate code as follows:
+         +         general library functions that can be reused easily in other projects (candidates for CL-LIB)
+         +         functions useful for emulating processors that will be implemented on FPGAs (i.e. library functions
+                      that appear to be a bit more specific to the purpose of emulating processors)
+         +/-       functions that are mostly attuned to the scheme-79 implementation but could be made more general,
+                      hopefully these, like the definition of defufn can be generified and are mostly declarative
+                      in nature [partially done as of 0.3]
+         o         general register and combinatoric functions that are not specific to scheme-79 (hopefully have
+                      simple translations into RTL or HDL)
+         +         declarative statements about the scheme-79 implementation (e.g. specific defufns, defchip-regs,
+                      etc.)
+         o         scheme-79 specific register functions (synchronous functions)
+         o         scheme-79 specific combinatoric functions (non-synchronous functions that generally run between
+                      clocks)
+         +/-       general compilation and assembler from microcode or nanocode to PLA (stuff that isn't needed for
+                      runtime, but is used to set up the on-board PLAs [partially done as of 0.3]
+
+        ooo*    The "original" nanocode used an OR structure that allowed the from/to parts to be implemented
+                   separately from the main instruction. I think that would eliminate a lot of the "special-register
+                   specific" instructions since the TO part would just activate the address and type fields, etc rather
+                   than requiring the nanoinstruction to have to do it. So changing how that works would simplify the
+                   code (would no longer need to have <instruction>-<register> kinds of nanocode, nor assemble the
+                   nanocode symbol using format/intern).
+
+                   [Note: this should be done generally for PLAs then adapted in the scheme-79 project]
+
+TODONE:
+      in scheme-79 release
+      
+        v0.2   Added a "diagnostic panel" with a list of nanoinstructions and microinstructions that are
+                   implemented and marked as they are run (including conditional arms) and allowing tester to mark as
+                   "working" or "non-working" (automated via a validation function!). 
+
+        v0.2   implemented power-on reset (at least as an option - may not make sense while debugging?)
+        
+        v0.2   Added column to s79-console to indicate the decoded TYPE of a register
+
+        v0.3   Implemented test: GC (per the original microcode) to set up initial memory pointers (test-1)
+
+        v0.3   Extended diagnostics for microinstructions that has conditional paths to have versions that depend
+                   on the sense line used and so we can match which path was taken (e.g. address=bus-t address=bus-nil)
+
+        v0.3   Added decoded type to the external bus display
+
+        v0.3.  Segregated more code into fpga-support, particularly high-level compiler/assembler, lower level PLA
+                   support, and support for registers and pads.
+
+
+OBE:
+        +++     implement double-write cycle (nanocode), this was referred to in the paper though it's not clear 
+                   where it would be used (the rplaca followed by rplacd in CONS at least could be simplified in
+                   terms of nanocycles)
+                [Note, nanocode that can take advantage of such a double read or write just sends one address then
+                   reads/writes the CAR or CDR, specialized nanocode for just these things aren't needed]
+

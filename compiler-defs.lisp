@@ -1,0 +1,425 @@
+(in-package :scheme-mach) ; pull into scheme-mach so all the defufn can see them
+
+(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 0
+                                      "Time-stamp: <2022-01-11 15:09:21 gorbag>"
+                                      "0.3 release!")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.1.12  1/ 7/22 moved method for compile-line here; toplevel is now
+;;                    in support files and this is the "interface" fn to
+;;                    the project (for now)
+
+;; 0.1.11  1/ 6/22 use opcode-fn instead of property, also other accessors
+
+;; 0.1.10 12/14/21 use new special-register-p fn
+
+;; 0.1.9  12/ 3/21 Move some variable definitions and functions to
+;;                   support/pla-support/compile-core-defs
+;;                 update scheme-79-mcr-i -> "" (if from
+;;                   microlisp-int or fpga-pla-build-tools)
+;;                 update scheme-79-mcr -> microlisp
+
+;; 0.1.8  11/30/21 generate-ucode now signals an error when an
+;;                   undefined nanoinstruction is used
+
+;; 0.1.7  11/23/21 fix defrplacop to simplify the cons reference (should
+;;                   be of form (fetch *register*)  )
+
+;; 0.1.6  11/17/21 specialize-instruction: pulls together code that had
+;;                   been in many defufn bodies.
+;;                from-direct-register-p so we know if our from
+;;                   field refers to a register directly (i.e. we're
+;;                   getting the operand from the register) or
+;;                   indirectly (i.e. we're getting what the register
+;;                   points to)
+;;                defrplacop because all the &rplac* forms are similar, 
+;;                   this macro makes generating them as easy as naming
+;;                   them and the appropriate nano-instructions they will
+;;                   map to.
+
+;; 0.1.5   9/27/21 scheme-79-mcr:progn, if, cond
+
+;; 0.1.4   9/14/21 Compile-parameter: detect if code already written (so
+;;                   return value supressed from function application)
+;;                   and if so, don't try to write the NIL to the
+;;                   upla-stream!
+
+;; 0.1.3   9/ 7/21 Encode the TO field using the FROM anaphor if the nanoop is a member of
+;;                   *from-to-nano-operations* (see s79-nanocode.lisp)
+
+;; 0.1.2   8/31/21 generate-ucode-with-constant: a variant of
+;;                   generate-ucode that stuffs a constant into the 
+;;                   from field
+
+;; 0.1.1   8/23/21 Add type-constant support to the microcontroller
+
+;; 0.1.0   8/20/21 "official" 0.2 release: test-0 passed!
+
+;; 0.0.8  8/18/21 compile-embedded-expression - so we can distinguish
+;;                  calling compile-parameter from the parsing process
+;;                  vs. a macro-like expansion via defufn (mainly for
+;;                  adding annotations)
+
+;; 0.0.7  3/ 2/21 move *function-being-compiled* here
+
+;; 0.0.6  2/27/21 translate aliased registers
+
+;; 0.0.5  2-24-21 generate-ucode - use '0' for from/to register if not
+;;                  used (instead of nil)
+
+;; 0.0.4  2-23-21 generate-conditional-ucode redone for assembler
+;;                  interface
+
+;; 0.0.3  2-20-21 add with-intermediate-argument
+
+;; 0.0.2  2-19-21 add compile-parameter-args-last
+
+;; 0.0.1          compile-parameter should respect typical :args-first
+;;                    precedence generate-conditional-ucode (new)
+
+;; 0.0.0          defvar's moved from ucode-compiler so we can load
+;;                    them earlier in the compilation process
+
+;; While this is inspired by the notes in AIM 559, it is not a
+;; faithful rendition of the original compiler as it is not adequately
+;; documented for that. However, I hope it does replicate the original
+;; "in spirit" and remains faithful to the underlying concepts.
+
+;; Note that the microcode is read in and from that some information
+;; is gathered that is used to create/compile the nanocode. The
+;; nanocode is compiled before the microcode is, so the appropriate
+;; integer bit representations for registers offsets into the nano
+;; array, etc. can be determined as AIM 559 says the original did. We
+;; also use thier field scheme:
+
+;; Nano-words are selected by state information from the micro control
+;; and any next state generated from the nano control. The micro
+;; control specifies to and from registers (as bits per above). The
+;; nano control generates pad and register controls (as well as the
+;; next nano state). Note that freeze may be asserted for multi-word
+;; nano sequences to prevent additional micro words from being
+;; decoded. Example multiple word nano instructions are given in the
+;; paper but are not exhaustive, and rely on microinstructions that
+;; differ from the documented microcode (so may be either output from
+;; the microword compiler based on that input, or are from a different
+;; version of the same - their intent is to communicate the flavor of
+;; thier implementation not document it for reproduction in the future
+;; after all, though one would really have some expectation of the
+;; latter as a matter of *science* - results should be reproducable!).
+
+;; (defnano (do-car)
+;;    ((from*) (ale))
+;;    ((to*) (read)))
+
+;; (defnano (do-cdr)
+;;    ((from*) (ale))
+;;    ((to*) (read cdr)))
+
+;; (defnano (do-restore)
+;;    (() (from-stack ale))
+;;    ((to*) (read))
+;;    (() (read cdr to-address-stack to-type-stack)))
+
+;; Here the from* and to* forms are meant to be taken as pronouns that
+;; refer to the values passed from the microcode, so "do-restore" can
+;; be seen to ignore the from* value.
+
+;; To translate the above into what (I think) actually happens, the
+;; first do-car instruction will take whatever is in the FROM field in
+;; the microcode and put it on the bus, and raise ALE (so it's
+;; transmitted to the external memory as an address). The second
+;; instruction reads the response from memory onto the bus and gates
+;; it into the TO register. So our job is to make sure we do this
+;; gating during the appropriate PH1 and PH2 (simulated) clock cycles,
+;; have the external memory respond to it, etc. in the hardware
+;; emulation, but for the work below it's just to capture our
+;; representations for registers that will be used for both the micro
+;; and nano code, and then to compile the "defnano" terms into the
+;; nanocontrol array generating a symbol table for linking the
+;; microcode to nanocontrolarray offsets (states).
+
+;; note in the AIM the lisp code is translated first from micro-lisp
+;; into a micro PLA specification that looks vaguely similar to the
+;; nanocode, e.g.
+
+;; 
+;;  *args* = *leader*; *display* = *node-pointer*
+;; (defpc mark-node
+;;  (assign *leader* (&car (fetch *node-pointer*)))
+;;  (cond ((and (&pointer? (fetch *leader*))
+
+;;
+;; MARK-NODE
+;; ((FROM *DISPLAY*) (TO *ARGS*) DO-CAR)
+;; ((FROM *ARGS*) (BRANCH TYPE=POINTER-BUS MARK-NODE-3 MARK-NODE-1))
+;;
+;; [??: MARK-NODE] -> GO-TO 250, DO-CAR, FROM 7 TO 15 (250 200 007 15)
+;; [250] -> GOTO 44, BRANCH, FROM 6 (044 307 006 00)
+;;
+;; [44: MARK-NODE-3] CONDITION-BIT CLEAR (even) - typically 'fail'
+;; [45: MARK-NODE-1] CONDITION-BIT SET (odd) - typically 'success'
+
+;; for the current release, compile-line is the primary interface to
+;; the project-specific code to compile the microlisp. The second
+;; interface is to the assembler passes. See ulisp-assembler.lisp and
+;; upla-assembler.lisp
+(defmethod compile-line (line)
+  (let* ((*from-register* nil)
+         (*to-register* nil)
+         (*line-opcode* (car line))
+         (opcode-fn (opcode-fn *line-opcode*))
+         (opcode-fn-type (ucode-precedence *line-opcode*)))
+    
+    (cl:cond
+      ((eql opcode-fn-type :args-first)
+       (write-generated-code *upla-stream* line
+                             ;; supress internal code generation 9/13/21 BWM
+                             (let ((*upla-stream* nil))
+                               (apply opcode-fn (mapcar #'(lambda (x) (compile-parameter *upla-stream* x)) (cdr line))))
+                             "compile-line"))
+      (t
+       (compile-parameter-args-last *upla-stream* *line-opcode* opcode-fn (cdr line))
+       ))))
+
+;; useful for calling compile-line interactively
+(defun debug-compile-line (line)
+  (let ((*upla-stream* cl:*standard-output*))
+    (compile-line line)))
+
+;; this is specific to Scheme-79 I think
+(defvar *intermediate-in-use* nil)
+
+(defmacro with-intermediate-argument (&body body)
+  "Make sure we don't accidentally recursively reuse the intermediate argument register"
+  `(cl:progn
+     (assert (not *intermediate-in-use*) () "Recursive reuse of *intermediate-argument*")
+     (let ((*intermediate-in-use* t))
+       ,@body)))
+
+(defun generate-ucode (nano-operation &optional (from *from-register*) (to *to-register*) (tag nil))
+  "looks up the code values for each parameter and generates a single n-bit microcode 'word'"
+  ; defvar comes in machine-defs which isn't loaded yet
+  (declare (special *nanocontrol-symtab* *from-to-nano-operations*)) 
+  ;; for the moment, return a list
+  (when (consp to)
+    (assert (endp (cdr to)) (to) "generate-ucode: can't currently deal with multiple TO registers")
+    (setq to (translate-alias (car to))))
+
+  (let ((nano-op (cdr (assoc nano-operation *nanocontrol-symtab*))))
+    (assert nano-op (nano-operation) "Nano operation not defined?")
+    (list
+     tag ;; will be next-ustate if this is a multi-u-instruction op
+     nano-op
+     (or (lookup-from-anaphor from) 0)
+     ;; currently only handle a singleton to register
+     (cl:cond
+      ((eql nano-operation 'microlisp-shared::sense-and-branch)
+       to) ; just use it - it's the sense bit(s)
+      ((member nano-operation *from-to-nano-operations*)
+       (or (lookup-from-anaphor to) 0))
+      (t
+       (or (lookup-to-anaphor to) 0))))))
+
+(defun generate-ucode-with-constant
+    (nano-operation constant &optional (to *to-register*) (tag nil))
+  "Similar to generate-ucode, but stuffs a constant into the FROM
+reference"
+  ;; defvar comes in machine-defs or s79-nanocode which isn't loaded yet
+  (declare (special *nanocontrol-symtab* *from-to-nano-operations*)) 
+  ;; for the moment, return a list
+
+  (when (consp to)
+    (assert (endp (cdr to)) (to)
+            "generate-ucode: can't currently deal with multiple TO registers")
+    (setq to (translate-alias (car to))))
+
+  ;; We assemble our own here (instead of using generate-ucode) to
+  ;; keep the constant from being interpreted as a register reference
+  (list
+   tag ;; will be next-ustate if this is a multi-u-instruction op
+   (cdr (assoc nano-operation *nanocontrol-symtab*))
+   constant
+   ;; currently only handle a singleton to register
+   (cl:if (member nano-operation *from-to-nano-operations*)
+          (or (lookup-from-anaphor to) 0)
+          (or (lookup-to-anaphor to) 0))))
+
+(defun generate-conditional-ucode (sense-bit fail-address
+                                   &optional (from *from-register*)
+                                     (original-branch-type 'microlisp-shared::branch))
+  "the offsets are the number of uinstructions being emitted to skip
+if we fail or succeed. Note that 0 should be used for completion (no
+more uinstructions needed) and 1 points to the instruction following
+this one."
+  (let ((nano-operation (cl:if (eql original-branch-type 'microlisp-shared::branch)
+                          'microlisp-shared::sense-and-branch
+                          'microlisp-shared::sense-type-and-branch)))
+  
+    (generate-ucode nano-operation ; nano
+                    from
+                    (get-sense-wire-encoding sense-bit) ; "to" (overloaded)
+                    ;; Note we only need the fail address here because
+                    ;; fail is an address whose low order bit is 0, and
+                    ;; success is same address whose low order bit is 1.
+                    fail-address)))
+
+(defun generate-conditional-ucode-with-constant (sense-bit constant fail-address original-branch-type)
+  (declare (special *nanocontrol-symtab*)) ; defvar comes in machine-defs which isn't loaded yet
+  (let ((nano-operation (cl:if (eql original-branch-type 'microlisp-shared::branch)
+                          'microlisp-shared::sense-and-branch-const
+                          'microlisp-shared::sense-type-and-branch-const)))
+    ;; We assemble our own here (instead of using generate-ucode) to
+    ;; keep the constant from being interpreted as a register
+    ;; reference
+    (list
+     fail-address ; tag
+     (cdr (assoc nano-operation *nanocontrol-symtab*)) ; nano
+     constant ; from (overloaded with the constant)
+     (get-sense-wire-encoding sense-bit)))) ;to (overloaded with condition)
+
+;; probably a better way to do this, but wait until I get things
+;; working then refactor! (i.e. make all work like &cons)
+(defun compile-parameter-args-last (stream opcode opcode-fn parameter-list)
+  (let ((line `(,opcode ,@parameter-list))) ; probably should just pass it...
+    (ecase opcode
+      ;; these do own compilation (may want to make adding to this
+      ;; list declaration-based)
+      ((&cons microlisp:progn microlisp:cond microlisp:if)
+       ;; may want to pass stream too... for now use the bound *upla-stream*
+       (apply opcode-fn parameter-list))
+      (save
+       ;; code gets generated recursively
+       (upla-write-comment "~s:" line) ; make sure the save itself gets into the log
+       (funcall opcode-fn (car parameter-list))) ; will generate the code
+      (assign
+       (funcall opcode-fn (car parameter-list) (cadr parameter-list)) ; sets up special vars
+       (let ((*enclosing-opcode* 'assign))
+         (write-generated-code stream line (compile-parameter stream (cadr parameter-list)) "cpal assign")))
+      ((&rplaca &rplacd
+        &rplaca-and-mark! &rplaca-and-unmark! 
+        &rplacd-and-mark-car-being-traced! &rplacd-and-mark-car-trace-over!)
+       ;; treat as :args-last so we can capture the arguments
+       (write-generated-code stream
+                             line
+                             (funcall opcode-fn
+                                      (car parameter-list)
+                                      (cadr parameter-list)))))))
+  
+(defun compile-parameter (stream arg &optional (check-args-first-p t))
+  "Similar to compile line, but while a 'line' is toplevel, an 'arg'
+is an argument to another opcode (but may itself be an function)"
+  (cl:cond
+    ((consp arg)
+     (let* ((opcode (car arg)) ; maintain the globals from compile-line
+            (opcode-fn (opcode-fn opcode))
+            (opcode-fn-type (ucode-precedence opcode))
+            (opcode-constituent-p (ucode-constituent opcode))
+            (*enclosing-opcode* (cl:cond
+                                  ;; ignore macro-fns like cond
+                                  ((member *enclosing-opcode* *defumac-macros*)
+                                   opcode)
+                                  ((not (null *enclosing-opcode*))
+                                   *enclosing-opcode*)
+                                  (t
+                                   *line-opcode*))))
+       (assert opcode-fn (arg) "compile-parameter: ~s is not a defined opcode!" opcode)
+       (assert opcode-fn-type (arg) "compile-parameter: ~s does not have a valid precence!" opcode)
+       (cl:cond
+         ((eql opcode-fn-type :args-first)
+          (let ((code (apply opcode-fn 
+                             (mapcar #'(lambda (x) (compile-parameter nil x))
+                                     (cdr arg)))))
+            ;; if we already generated the code, the result will be nil and we can go on
+            (when code
+              (write-generated-code
+               (cl:if opcode-constituent-p
+                 nil ; this will supress writing to the pass0 file if it is a constitutent - we're called recursively.
+                 stream)
+               arg
+               code
+               "cp"))))
+         (check-args-first-p
+          (error "compile-parameter: embedded args-last opcode?! ~s (fn: ~s line: ~s)"
+                 arg *function-being-compiled* *line-opcode*))
+         (t ; args-last
+          (let ((*enclosing-opcode* opcode))
+            (compile-parameter-args-last stream opcode opcode-fn (cdr arg)))))))
+    (t
+     arg)))
+
+(defun compile-embedded-expression (exp)
+  "this is the case where the defufn expands into more code (essentially a macro)"
+  (let ((opcode-constituent-p (ucode-constituent (car exp))))
+    (cl:cond
+      (opcode-constituent-p
+       (cl:cond
+         ((and *upla-stream*
+               (eql (car exp) 'microlisp:progn))
+          (upla-write-comment  "(PROGN):" exp) ;; minimum for annotation
+          (upla-write-comment  "~s---" exp)) ;; note trailing --- means it won't be used for annotation, just log
+         (*upla-stream*
+          (upla-write-comment  "~s:" exp))) ;; stuff like &cons is worth putting in annotation
+       (compile-parameter *upla-stream* exp nil)) ;pass stream so the members can be written
+      (t
+       (let ((retval (write-generated-code *upla-stream* exp (compile-parameter nil exp nil) "cee")))
+         (cl:if *upla-stream* nil retval)))))) ; we wrote it, don't rewrite it
+
+;; additional helpers for defufn
+(defun specialize-instruction (register test normal-instruction specialized-template)
+  "Won't be needed if we more closely follow AIM with OR memory in
+nanocontrol PLA, but this lets us emit specialized register-specific
+instructions when we have to compose fields" ;; TBD
+  (let ((test-result
+          (ecase test
+            (:to-address
+             (not (null (member 'to-address (valid-control-lines (translate-alias register))))))
+            (:special
+             (special-register-p (translate-alias register))))))
+              
+    (cl:if test-result
+           (intern (format nil specialized-template (strip-register-name (translate-alias register)))
+                   *ulang-shared-pkg*)
+           normal-instruction)))
+
+(defun from-direct-register-p (from-reference enclosing-opcode)
+  "Returns non-nil if the passed reference is to a register and not
+indirect on the register."
+  ;; collect some info about this call
+  (note-if *debug-compiler* "from-direct-register-p: from-reference: ~s" from-reference) 
+
+  ;; this is the slow way to do it
+  (let* ((*enclosing-opcode* enclosing-opcode)
+         (from-code (compile-parameter *upla-stream* from-reference nil)))
+    ;; what we did was compile the reference to see if we get a
+    ;; register back that's the most certain, but expensive way to do
+    ;; it.  Easier and cheaper is just to parse the from-reference to
+    ;; see if it's a simple fetch of a register or something like &car
+    ;; or &cdr of a register. (TBD)
+    (cl:if (register-p from-code)
+           from-code
+           nil)))
+
+(defmacro defrplacop (name (core-uop-symbol core-uop-template))
+  "&rplac* operations all are pretty much the same. Simplest to macroize them"
+  (let ((cons (gensym))
+        (value (gensym))
+        (instruction (gensym))
+        (value-ref (gensym)))
+    ;; the cons better look like (fetch <register-name>)
+    `(defufn ,name (,cons ,value :args-last t)
+       (assert (and (consp ,cons)
+                    (eql (car ,cons) 'fetch)) (,cons)
+                    "Passed cons reference didn't look like (fetch <register-name>)")
+       (let ((,instruction (specialize-instruction (cadr ,cons) :to-address ',core-uop-symbol ,core-uop-template))
+             (,value-ref (from-direct-register-p ,value ',name)))
+         (cl:if (not (null ,value-ref))
+                `(((from ,,value-ref) (to ,(cadr ,cons)) ,,instruction))
+                ;; value was complex, so use IA
+                (with-intermediate-argument
+                  (compile-embedded-expression
+                   `(microlisp:progn
+                      (assign *intermediate-argument* ,,value)
+                      (,',name ,,cons (fetch *intermediate-argument*))))))))))
