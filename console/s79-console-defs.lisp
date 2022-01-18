@@ -1,7 +1,7 @@
 (in-package :s79-console)
 
 (scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:10:40 gorbag>"
+                                      "Time-stamp: <2022-01-14 13:22:08 gorbag>"
                                       "0.3 release!")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -199,7 +199,7 @@
   (declare (ignore args))
   (values))
 
-(defvar *all-indicators* '(:frz :frz-i :rst :ale :rd :wr :cdr :int-rq :rdi :gcr :rd-state :ld-state)
+(defvar *all-indicators* '(:frz :nano :rst :ale :rd :wr :cdr :int-rq :rdi :gcr :rd-state :ld-state)
   "used for redraw")
 
 

@@ -1,8 +1,11 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine DSO" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:10:15 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine DSO" 0 3 1
+                                      "Time-stamp: <2022-01-13 14:24:22 gorbag>"
+                                      "internal-freeze -> run-nano")
+
+;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
+;;                    for consistancy with AIM
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -204,7 +207,7 @@ registers."
 (defparameter *all-pad-names-presentation-order*
   (union ; union with *all-pad-names* for any we left out. They will appear on the bottom (head of this list)
    ;; this is in the order of presentation - bottom to top
-   '(*reset* *ph2* *ph1* *internal-freeze* *cdr* *write* *read* *ale* 
+   '(*reset* *ph2* *ph1* *run-nano* *cdr* *write* *read* *ale* 
      *freeze* *read-interrupt* *interrupt-request* *gc-needed*)
    *all-pad-names*))
 

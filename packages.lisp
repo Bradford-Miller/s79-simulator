@@ -1,11 +1,14 @@
 (in-package :cl-user)
 (defvar *scheme-79-version-reporter-initializations* nil)
 
-(cl-lib:detailed-version-reporter "Scheme 79 defpackages" 0 3 0
-                                  "Time-stamp: <2022-01-11 15:16:34 gorbag>"
-                                  "0.3 release!"
+(cl-lib:detailed-version-reporter "Scheme 79 defpackages" 0 3 1
+                                  "Time-stamp: <2022-01-13 14:00:53 gorbag>"
+                                  "internal-freeze -> run-nano"
                                   :initialization-list-symbol
                                   *scheme-79-version-reporter-initializations*)
+
+;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
+;;                    for consistancy with AIM
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -327,7 +330,7 @@
    ;; all the registers pads & &forms should be automatically
    ;; exported, but sometimes there are ordering difficulties...
    #:*reset* #:*ale* #:*freeze* #:*read* #:*read-state* #:*load-state*
-   #:*interrupt-request* #:*internal-freeze* #:*write* #:*cdr*
+   #:*interrupt-request* #:*run-nano* #:*write* #:*cdr*
    #:*read-interrupt* #:*gc-needed*
 
    ;; names of the control and sense wires
@@ -404,7 +407,7 @@
    :scheme-79 :scheme-shared :cl-lib :common-lisp)
   (:import-from :scheme-mach #:*reset* #:*ale*
                 #:*freeze* #:*read* #:*read-state* #:*load-state* #:*interrupt-request*
-                #:*write* #:*cdr* #:*read-interrupt* #:*gc-needed* #:*internal-freeze*
+                #:*write* #:*cdr* #:*read-interrupt* #:*gc-needed* #:*run-nano*
                 
                 #:*input-pad-types* #:*output-pad-types*
 

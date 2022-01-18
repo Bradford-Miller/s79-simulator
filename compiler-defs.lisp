@@ -1,8 +1,12 @@
 (in-package :scheme-mach) ; pull into scheme-mach so all the defufn can see them
 
-(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:09:21 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 1
+                                      "Time-stamp: <2022-01-18 12:47:12 gorbag>"
+                                      "cleanup special register treatment")
+
+;; 0.3.1   1/18/22 cleanup obsolete code: removing special treatment of registers
+;;                    which required multiple control lines for TO as new covering
+;;                    set computation deals with it.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -367,23 +371,6 @@ is an argument to another opcode (but may itself be an function)"
        (let ((retval (write-generated-code *upla-stream* exp (compile-parameter nil exp nil) "cee")))
          (cl:if *upla-stream* nil retval)))))) ; we wrote it, don't rewrite it
 
-;; additional helpers for defufn
-(defun specialize-instruction (register test normal-instruction specialized-template)
-  "Won't be needed if we more closely follow AIM with OR memory in
-nanocontrol PLA, but this lets us emit specialized register-specific
-instructions when we have to compose fields" ;; TBD
-  (let ((test-result
-          (ecase test
-            (:to-address
-             (not (null (member 'to-address (valid-control-lines (translate-alias register))))))
-            (:special
-             (special-register-p (translate-alias register))))))
-              
-    (cl:if test-result
-           (intern (format nil specialized-template (strip-register-name (translate-alias register)))
-                   *ulang-shared-pkg*)
-           normal-instruction)))
-
 (defun from-direct-register-p (from-reference enclosing-opcode)
   "Returns non-nil if the passed reference is to a register and not
 indirect on the register."
@@ -402,21 +389,19 @@ indirect on the register."
            from-code
            nil)))
 
-(defmacro defrplacop (name (core-uop-symbol core-uop-template))
+(defmacro defrplacop (name (core-uop-symbol))
   "&rplac* operations all are pretty much the same. Simplest to macroize them"
   (let ((cons (gensym))
         (value (gensym))
-        (instruction (gensym))
         (value-ref (gensym)))
     ;; the cons better look like (fetch <register-name>)
     `(defufn ,name (,cons ,value :args-last t)
        (assert (and (consp ,cons)
                     (eql (car ,cons) 'fetch)) (,cons)
                     "Passed cons reference didn't look like (fetch <register-name>)")
-       (let ((,instruction (specialize-instruction (cadr ,cons) :to-address ',core-uop-symbol ,core-uop-template))
-             (,value-ref (from-direct-register-p ,value ',name)))
+       (let ((,value-ref (from-direct-register-p ,value ',name)))
          (cl:if (not (null ,value-ref))
-                `(((from ,,value-ref) (to ,(cadr ,cons)) ,,instruction))
+                `(((from ,,value-ref) (to ,(cadr ,cons)) ,',core-uop-symbol))
                 ;; value was complex, so use IA
                 (with-intermediate-argument
                   (compile-embedded-expression

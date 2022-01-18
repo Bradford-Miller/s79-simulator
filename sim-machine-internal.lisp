@@ -1,8 +1,15 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:23:49 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 3 2
+                                      "Time-stamp: <2022-01-18 12:29:40 gorbag>"
+                                      "cleanup special register treatment")
+
+;; 0.3.2   1/18/22 cleanup obsolete code: removing special treatment of registers
+;;                    which required multiple control lines for TO as new covering
+;;                    set computation deals with it.
+
+;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
+;;                    for consistancy with AIM
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -49,7 +56,7 @@
 
 ;; 0.0.10    7- 7-21   add *internal-freeze* psudo pad to distinguish from
 ;;                       externally driven freeze (i.e. we can clear
-;;                       it safely)
+;;                       it safely) [1/13/22 now run-nano]
 
 ;; 0.0.9     3- 1-21   restore should generate specialized instructions for 
 ;;                       *special-registers*
@@ -96,7 +103,7 @@
 
 ;; pseudo pad for the internal version of freeze. So we can distinguish between an internally
 ;; driven freeze (nanocode) and external (generally memory cycle delay)
-(defchip-pad *internal-freeze* :latched-io *run-nanocontroller-p1* :any 8) ; full clock cycle as we may reassert
+(defchip-pad *run-nano* :latched-io *run-nanocontroller-p1* :any 8) ; full clock cycle as we may reassert
 
 ;; bus conditions mark-bit type-not-pointer frame=0 displacement=0 address=0
 
@@ -239,13 +246,7 @@
   (ecase *enclosing-opcode*
     ((assign
       save) ; save set up the to register as the stack
-
-     (cl:if (special-register-p (translate-alias *to-register*))
-         ;; can't just use mover since that needs a TO control
-         `(((from ,from-register) (to ,*to-register*)
-            ,(intern (format nil "MOVE-TO-~A" (strip-register-name (translate-alias *to-register*)))
-                     *ulang-shared-pkg*)))
-         `(((from ,from-register) (to ,*to-register*) microlisp-shared::mover))))
+     `(((from ,from-register) (to ,*to-register*) microlisp-shared::mover)))
     ((&rplaca &rplaca-and-mark! &rplaca-and-unmark!
       &mark-in-use! &unmark!
 
@@ -259,10 +260,7 @@
 ;; restore
 (defufn restore (register)
   (let ((*to-register* register))
-    (cl:if (special-register-p (translate-alias register))
-           `(((to ,register) ,(intern (format nil "DO-RESTORE-~A" (strip-register-name (translate-alias register)))
-                                      *ulang-shared-pkg*)))
-           `(((to ,register) microlisp-shared::do-restore)))))
+    `(((to ,register) microlisp-shared::do-restore))))
 
 ;; save
 (defufn save (thingo :args-last t :expansion ((:from *stack*))) ; thingo should have already been evaluated

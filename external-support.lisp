@@ -1,8 +1,11 @@
 (in-package :external-chips)
 
-(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:13:39 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 1
+                                      "Time-stamp: <2022-01-14 15:06:20 gorbag>"
+                                      "have debug message for read report what was read")
+
+;; 0.3.1   1/14/22 have the debug message for memory read report what was read
+;;                    fix dump-memory to write final cdr (fencepost error)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -174,10 +177,10 @@
               (not (test-pad-immediate 'microlisp-shared:*freeze*))
               (test-pad-immediate 'microlisp-shared:*read*))
 
-         (note-if *debug-external-pads* "monitor-pads: external circuit reading the memory at address ~s" address)
-         
-         (external-memory-read address))
 
+         (progfoo (external-memory-read address)
+                  (note-if *debug-external-pads* "monitor-pads: external circuit read ~s at address ~s" foo address)))
+        
         ((and (eql current-clock *get-memory-content-from-pads*)
               (not (test-pad-immediate 'microlisp-shared:*freeze*))
               (test-pad-immediate 'microlisp-shared:*write*))
@@ -190,7 +193,9 @@
               (test-pad-immediate 'microlisp-shared:*read-interrupt*)) ; like a read but a special interrupt line from external systems.
          ;; (also used during the boot process to set the initial stack)
 
-         (note-if *debug-external-pads* "monitor-pads: external circuit sending an interrupt vector ~s" *interrupt-address*)
+         (note-if *debug-external-pads*
+                  "monitor-pads: external circuit sending an interrupt vector ~s"
+                  *interrupt-address*)
          
          (external-interrupt-vector *interrupt-address*))
         ))))
@@ -278,7 +283,7 @@
   (defun dump-memory-internal (start end print-fn row-leader-print-fn)
     (let ((row-count 0))
       (do ((i (* 2 start) (1+ i))) ; array offset
-          ((> i (* 2 (min scheme-mach:*maximum-memory-size* end))))
+          ((> i (1+ (* 2 (min scheme-mach:*maximum-memory-size* end)))))
         (when (= row-count 0)
           (funcall row-leader-print-fn i))
         (funcall print-fn i)

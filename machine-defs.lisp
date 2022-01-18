@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:14:17 gorbag>"
+                                      "Time-stamp: <2022-01-13 14:57:35 gorbag>"
                                       "0.3 release!")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -208,7 +208,17 @@ button.")
     '(address=bus type=bus =bus mark-bit not-mark-bit type-not-pointer
       type=pointer type=type frame=0 displacement=0 address=0))
 
-  (eval `(defflags register ,@*control-lines* ,@*sense-lines*)))
+  (eval `(defflags register ,@*control-lines* ,@*sense-lines*))
+
+  ;; note that many of these control lines define covering sets for
+  ;; others.  so if we want to write TO a register, but it only has
+  ;; TO-TYPE and TO-ADDRESS controls, we can use the latter to
+  ;; substitute for the former. Declare those relationships here.
+  (reset-covering-set-alist)
+  (declare-covering-set 'to 'to-type 'to-address) ; ignore mark-bit - handled separately regardless
+  
+  (declare-covering-set 'to-address 'to-displacement 'to-frame)
+  )
 
 ;; if we're recompiling this file, we need to reset the counter for nanocontrol bits, lest they get out of hand
 (eval-when (:compile-toplevel)

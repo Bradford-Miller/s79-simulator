@@ -1,8 +1,17 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Nano" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:14:49 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Nano" 0 3 3
+                                      "Time-stamp: <2022-01-18 11:58:35 gorbag>"
+                                      "cleanup special register treatment")
+
+;; 0.3.3   1/18/22 cleanup obsolete code: removing special treatment of registers
+;;                    which required multiple control lines for TO as new covering
+;;                    set computation deals with it.
+
+;; 0.3.2   1/14/22 flip order of symbols in nanocontrol constants for consistancy with AIM
+
+;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
+;;                    for consistancy with AIM
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -304,7 +313,7 @@
 ;; (This is hardware!)
 
 ;; so go back and "fix" defureg to add appropriate constants:
-;; +rr-<register-name>-<control-line>+ by bit starting with #o4.
+;; +rr-<control-line>-<register-name>+ by bit starting with #o4.
 
 ;; NB: if we add more predefined lines here, make sure to update
 ;; *nanocontrol-line-next-initial-value* in machine-predefs.lisp
@@ -341,9 +350,13 @@
 
 ;; note that these could (shild?) be created in a similar manner to
 ;; register controls via the defchip-pad macro, but since there aren't
-;; that many of them I'm doing it manually for now
+;; that many of them I'm doing it manually for now (TBD)
 
-(defconstant +pad-freeze+ #o1) ; this is *internal-freeze* a :latched-IO pseudo pad
+;; also while the particular bit vectors are project specific, we
+;; should make tools to generate/interpret them generic and move to
+;; fpga-support! (TBD)
+
+(defconstant +pad-run-nano+ #o1) ; this is *run-nano* a :latched-IO pseudo pad
 (defconstant +pad-ale+ #o2) ; output is content of *address*
 (defconstant +pad-read+ #o4) ; input is sent to *memory* and *bus*
 (defconstant +pad-write+ #o10) ; output is content of *memory*
@@ -357,7 +370,7 @@
 ;; set up an alist to allow us to associate the pad control line with
 ;; the appropriate (symbolic) functions
 (defvar *nanocontrol-pad-spec*
-  `((,+pad-freeze+ (:name *internal-freeze*))
+  `((,+pad-run-nano+ (:name *run-nano*))
     (,+pad-ale+ (:name *ale*))
     (,+pad-read+ (:name *read*))
     (,+pad-write+ (:name *write*))
@@ -366,6 +379,9 @@
     (,+pad-gc-needed+ (:name *gc-needed*))
     (,+pad-clear-gc+ (:name *gc-needed*))
     (,+pad-conditional+ (:name *conditional*))))
+
+(defun rr-value (sym)
+  (symbol-value (intern (format nil "+RR-~a+" (string sym)))))
 
 (defun parse-defnano (instructions)
   "Run at compile time to parse a defnano form into a bit vector we
@@ -392,7 +408,7 @@ can use to populate the nano control array."
                    (reduce #'logior register-spec 
                            :initial-value 0
                            :key #'(lambda (r) 
-                                    (symbol-value (intern (format nil "+RR-~a+" (string r)))))))))
+                                    (rr-value r))))))
           (cl:cond
             ((null control-spec)
              ;; must be a no-op
@@ -421,17 +437,17 @@ can use to populate the nano control array."
                     (code-pad (bit-pattern)
                       (ior-bit pad-bit-spec bit-pattern)))
                (dolist (spec control-spec)
-                 (ecase spec
+                 (case spec
                    (set-condition       ; special
                     (code-pad +pad-conditional+)) ; pseudo-pad to switch how u-pc is calculated
                    (ale
-                    (code-reg +rr-address-to+) ;; move what's on the bus to the address pseudo-register
+                    (code-reg +rr-to-address+) ;; move what's on the bus to the address pseudo-register
                     (code-pad +pad-ale+)) ; should trigger moving *address* to the pads
                    (read
                     (code-pad +pad-read+) ; should trigger moving the pads to *memory*
-                    (code-reg +rr-memory-from+)) ; and from there to the bus
+                    (code-reg +rr-from-memory+)) ; and from there to the bus
                    (write
-                    (code-reg +rr-memory-to+) ; move bus to *memory*
+                    (code-reg +rr-to-memory+) ; move bus to *memory*
                     (code-pad +pad-write+)) ; and signal it should be written
                    (cdr
                     (code-pad +pad-cdr+))
@@ -441,77 +457,9 @@ can use to populate the nano control array."
                     (code-pad +pad-gc-needed+)) ; should be latched
                    (clear-gc
                     (code-pad +pad-clear-gc+)) ; to clear the latch
-                   (from-stack
-                    (code-reg +rr-stack-from+))
-                   (to-address-stack
-                    (code-reg +rr-stack-to-address+))
-                   (to-type-stack
-                    (code-reg +rr-stack-to-type+))
-                   (from-interrupt
-                    (code-reg +rr-interrupt-from+))
-                   (to-intermediate-argument
-                    (code-reg +rr-intermediate-argument-to+))
-                   (from-intermediate-argument
-                    (code-reg +rr-intermediate-argument-from+))
-                   (from-newcell
-                    (code-reg +rr-newcell-from+))
-                   (from-incremented-newcell
-                    (code-reg +rr-newcell-from-incremented+))
-                   (to-address-newcell
-                    (code-reg +rr-newcell-to-address+))
-                   (to-type-newcell
-                    (code-reg +rr-newcell-to-type+))
-                   (from-type-const*
-                    (code-reg +rr-from-type-const*+)) ;should pull from bus
-                   (from-const*
-                    (code-reg +rr-from-const*+))
-                   (from-memtop
-                    (code-reg +rr-memtop-from+))
-                   (to-memtop
-                    (code-reg +rr-memtop-to+))
-                   (to-type-exp
-                    (code-reg +rr-exp-to-type+))
-                   (to-displacement-exp
-                    (code-reg +rr-exp-to-displacement+))
-                   (to-frame-exp
-                    (code-reg +rr-exp-to-frame+))
-                   (from-exp
-                    (code-reg +rr-exp-from+))
-                   (from-decremented-exp
-                    (code-reg +rr-exp-from-decremented+))
-                   (to-type-val
-                    (code-reg +rr-val-to-type+))
-                   (to-address-val
-                    (code-reg +rr-val-to-address+))
-                   (from-val
-                    (code-reg +rr-val-from+))
-                   (to-args
-                    (code-reg +rr-args-to+))
-                   (from-args
-                    (code-reg +rr-args-from+))
-                   (to-display
-                    (code-reg +rr-display-to+))
-                   (from-display
-                    (code-reg +rr-display-from+))
-                   (to-type-retpc-count-mark
-                    (code-reg +rr-retpc-count-mark-to-type+))
-                   (to-address-retpc-count-mark
-                    (code-reg +rr-retpc-count-mark-to-address+))
-                   (from-retpc-count-mark
-                    (code-reg +rr-retpc-count-mark-from+))
-                   (from-nil
-                    (code-reg +rr-nil-from+))
-                   (to-address
-                    (code-reg +rr-address-to+))
-                   (from-address
-                    (code-reg +rr-address-from+))
-                   (to-memory
-                    (code-reg +rr-memory-to+))
-                   (from-memory
-                    (code-reg +rr-memory-from+))
-                   (to-micro-pc
-                    (code-reg +rr-micro-pc-to+))
-                   )))))
+                   (t
+                    (code-reg (rr-value spec))))))))
+
           ;; don't convert to a bit-vector yet to make it easier to work with (TBD)
           (setq result (append result (list (list pad-bit-spec register-bit-spec nil)))))) 
       result)))
@@ -521,8 +469,8 @@ can use to populate the nano control array."
   (let ((result nil)
         (line (first whole-line))) ; right now line is a triple of integers, first one is the pad encoding
     ;; test each bit
-    (cl:if (plusp (logand line +pad-freeze+))
-           (push 'freeze result))
+    (cl:if (plusp (logand line +pad-run-nano+))
+           (push 'run-nano result))
     (cl:if (plusp (logand line +pad-ale+))
            (push 'ale result))
     (cl:if (plusp (logand line +pad-read+))
@@ -560,71 +508,71 @@ can use to populate the nano control array."
            (push 'from-type-const* result))
     (cl:if (plusp (logand line +rr-from-const*+))
            (push 'from-const* result))
-    (cl:if (plusp (logand line +rr-memtop-to+))
+    (cl:if (plusp (logand line +rr-to-memtop+))
         (push 'to-memtop result))
-    (cl:if (plusp (logand line +rr-memtop-from+))
+    (cl:if (plusp (logand line +rr-from-memtop+))
         (push 'from-memtop result))
-    (cl:if (plusp (logand line +rr-newcell-to-type+))
+    (cl:if (plusp (logand line +rr-to-type-newcell+))
         (push 'to-type-newcell result))
-    (cl:if (plusp (logand line +rr-newcell-to-address+))
+    (cl:if (plusp (logand line +rr-to-address-newcell+))
         (push 'to-address-newcell result))
-    (cl:if (plusp (logand line +rr-newcell-from+))
+    (cl:if (plusp (logand line +rr-from-newcell+))
         (push 'from-newcell result))
-    (cl:if (plusp (logand line +rr-newcell-from-incremented+))
+    (cl:if (plusp (logand line +rr-from-incremented-newcell+))
         (push 'from-incremented-newcell result)) 
-    (cl:if (plusp (logand line +rr-exp-to-type+))
+    (cl:if (plusp (logand line +rr-to-type-exp+))
         (push 'to-type-exp result))
-    (cl:if (plusp (logand line +rr-exp-to-displacement+))
+    (cl:if (plusp (logand line +rr-to-displacement-exp+))
         (push 'to-displacement-exp result))
-    (cl:if (plusp (logand line +rr-exp-to-frame+))
+    (cl:if (plusp (logand line +rr-to-frame-exp+))
         (push 'to-frame-exp result))
-    (cl:if (plusp (logand line +rr-exp-from+))
+    (cl:if (plusp (logand line +rr-from-exp+))
         (push 'from-exp result))
-    (cl:if (plusp (logand line +rr-exp-from-decremented+))
+    (cl:if (plusp (logand line +rr-from-decremented-exp+))
         (push 'from-decremented-exp result))
-    (cl:if (plusp (logand line +rr-val-to-type+))
+    (cl:if (plusp (logand line +rr-to-type-val+))
         (push 'to-type-val result))
-    (cl:if (plusp (logand line +rr-val-to-address+))
+    (cl:if (plusp (logand line +rr-to-address-val+))
         (push 'to-address-val result))
-    (cl:if (plusp (logand line +rr-val-from+))
+    (cl:if (plusp (logand line +rr-from-val+))
         (push 'from-val result))
-    (cl:if (plusp (logand line +rr-args-to+))
+    (cl:if (plusp (logand line +rr-to-args+))
         (push 'to-args result))
-    (cl:if (plusp (logand line +rr-args-from+))
+    (cl:if (plusp (logand line +rr-from-args+))
         (push 'from-args result))
-    (cl:if (plusp (logand line +rr-stack-to-type+))
+    (cl:if (plusp (logand line +rr-to-type-stack+))
         (push 'to-type-stack result))
-    (cl:if (plusp (logand line +rr-stack-to-address+))
+    (cl:if (plusp (logand line +rr-to-address-stack+))
         (push 'to-address-stack result))
-    (cl:if (plusp (logand line +rr-stack-from+))
+    (cl:if (plusp (logand line +rr-from-stack+))
         (push 'from-stack result))
-    (cl:if (plusp (logand line +rr-display-to+))
+    (cl:if (plusp (logand line +rr-to-display+))
         (push 'to-display result))
-    (cl:if (plusp (logand line +rr-display-from+))
+    (cl:if (plusp (logand line +rr-from-display+))
         (push 'from-display result))
-    (cl:if (plusp (logand line +rr-intermediate-argument-to+))
+    (cl:if (plusp (logand line +rr-to-intermediate-argument+))
         (push 'to-intermediate-argument result))
-    (cl:if (plusp (logand line +rr-intermediate-argument-from+))
+    (cl:if (plusp (logand line +rr-from-intermediate-argument+))
         (push 'from-intermediate-argument result))
-    (cl:if (plusp (logand line +rr-retpc-count-mark-to-type+))
+    (cl:if (plusp (logand line +rr-to-type-retpc-count-mark+))
         (push 'to-type-retpc-count-mark result))
-    (cl:if (plusp (logand line  +rr-retpc-count-mark-to-address+))
+    (cl:if (plusp (logand line  +rr-to-address-retpc-count-mark+))
         (push 'to-address-retpc-count-mark result))
-    (cl:if (plusp (logand line  +rr-retpc-count-mark-from+))
+    (cl:if (plusp (logand line  +rr-from-retpc-count-mark+))
         (push 'from-retpc-count-mark result))
-    (cl:if (plusp (logand line +rr-nil-from+))
+    (cl:if (plusp (logand line +rr-from-nil+))
         (push 'from-nil result))
-    (cl:if (plusp (logand line +rr-address-to+))
+    (cl:if (plusp (logand line +rr-to-address+))
         (push 'to-address result))
-    (cl:if (plusp (logand line +rr-address-from+))
+    (cl:if (plusp (logand line +rr-from-address+))
         (push 'from-address result))
-    (cl:if (plusp (logand line +rr-memory-to+))
+    (cl:if (plusp (logand line +rr-to-memory+))
         (push 'to-memory result))
-    (cl:if (plusp (logand line +rr-memory-from+))
+    (cl:if (plusp (logand line +rr-from-memory+))
            (push 'from-memory result))
-    (cl:if (plusp (logand line +rr-micro-pc-to+))
+    (cl:if (plusp (logand line +rr-to-micro-pc+))
            (push 'to-micro-pc result))
-    (cl:if (plusp (logand line +rr-interrupt-from+))
+    (cl:if (plusp (logand line +rr-from-interrupt+))
         (push 'from-interrupt result))
     result))
 
@@ -683,7 +631,7 @@ be used for one-line defnano"
     (cl:cond
       ((and match (not force-p))
        ;; just use that one - optionally print a diagnostic so we know what's going on
-       (note-if *debug-defnano* ";;debug-defnano: found match at offset ~d~%" posn)
+       (note-if *debug-defnano* ";;debug-defnano: found match at offset ~d" posn)
        posn)
       (t
        ;; no so just add all (?) the lines.
@@ -751,13 +699,13 @@ have been a duplicate so we can distinguish the uses"
     ;; this should keep the microcontroller from running while the subsequent nano operations can run
 
     (mapc #'(lambda (line)
-              (setf (first line) (logior (first line) +pad-freeze+)))
+              (setf (first line) (logior (first line) +pad-run-nano+)))
           (butlast array-lines-actual))
 
     `(eval-when (:compile-toplevel :load-toplevel :execute)
        (export-ulisp-symbol ',name)
        (let ((,array-lines ',array-lines-actual)) ; capture the expansion
-         (note-if *debug-defnano* ";;debug-defnano: defining ~A~%" ',name)
+         (note-if *debug-defnano* ";;debug-defnano: defining ~A" ',name)
          
          (update-alist ',name (update-nanocontrol ,array-lines ,force-add) *nanocontrol-symtab*)))))
 
@@ -822,7 +770,7 @@ linked list."
   (check-for-duplicate-nanocontrol-definitions)
   ;; make sure we don't blow our pc representation
   (assert (<= (fill-pointer *nanocontrol-array*) *nano-pc-max-address*) ()
-          "Nanocontrol is too large to be addressed by *nano-pc*. Increate *nano-pc-size* in machine-defs.lisp and recompile simulator.")
+          "Nanocontrol is too large to be addressed by *nano-pc*. Increase *nano-pc-size* in machine-defs.lisp and recompile simulator.")
   
   ;; (tbd) - need to turn into a binary array for download to FPGA
   
@@ -839,9 +787,9 @@ linked list."
 
 (defun run-deferred-nanocode ()
   (mapc #'(lambda (x)
-            (note-if *debug-nanocontroller* "debug-nanocontroller: running deferred action: ~s~%" (cadr x))
-            
-            (funcall (car x)))
+            (note-if *debug-nanocontroller* "debug-nanocontroller: running deferred action: ~s" (cadr x))
+            (funcall (car x))
+            (note-if *debug-nanocontroller* "debug-nanocontroller: post-deferred action; from-incremented: ~s" (register-from-incremented-p '*newcell*)))
         *nanocontroller-deferred*) ; generally turn off control lines from prior cycle
   (setq *nanocontroller-deferred* nil)) ; clear it
 
@@ -868,7 +816,7 @@ linked list."
 
       ;; do we already have a nano-pc?
       (unless (plusp (bit-vector->integer *nano-pc*))
-        (note-if *debug-nanocontroller* "debug-nanocontroller: setting nano-pc to #o~o~%" nop)
+        (note-if *debug-nanocontroller* "debug-nanocontroller: setting nano-pc to #o~o" nop)
         (copy-field (integer->bit-vector nop) *nano-pc*)) ; (tbd) should be stored as a bit vector
       (note-if *debug-nanocontroller*
                "*** executing nanoinstruction ~a at #o~o ***"
@@ -886,11 +834,16 @@ registers and update to the next nanoinstruction if needed"
    (destructuring-bind (pad-controls register-controls next-state) (elt *nanocontrol-array* (bit-vector->integer *nano-pc*))
      (declare (ignore pad-controls register-controls))
      (note-if *debug-nanocontroller*
-              "debug-nanocontroller-p2: setting nano-pc for next cycle to: #o~o~%"
+              "debug-nanocontroller-p2: setting nano-pc for next cycle to: #o~o"
               next-state)
   
      (copy-field (integer->bit-vector next-state) *nano-pc*))) ; (tbd) should be stored as a bit vector
-  
+
+(defvar *memoization-fns* nil)
+(defvar *cmemoization-fns* nil)
+
+;; this will need to be transformed into a hardware PLA based approach...
+;; but for simulation it's fine (TBD)
 (defun exec-nano-line (controller-entry from to)
   ;; lookup the state in the control table
   ;; again, using triples at this point.
@@ -902,75 +855,98 @@ registers and update to the next nanoinstruction if needed"
       ;; execute the current nanocontroller entry
 
       ;; treat from* and to* special as they are anaphors for using the reference in the microcode
-      (when (plusp (logand register-controls +rr-from*+))
-        (let* ((setter `(lambda (x)
-                          (cl:if (plusp ,from) ; if zero, then no control set so will be from the bus
-                            (setf (,(register-flag-accessor 'from) ',(from-code-to-anaphor from)) x))))
-               (csetter (compile nil setter)))
+      (when (and (plusp (logand register-controls +rr-from*+))
+                 (plusp from)) ; if zero, then no control set so will be from the bus
+        ;; do we have a saved version?
+        (let* ((anaphor (from-code-to-anaphor from))
+               (key (list 'from anaphor))
+               (setter (or (cdr (assoc key *memoization-fns* :test #'equal))
+                           (and (update-alist key (set-control-line-fn 'from anaphor) *memoization-fns* :test #'equal)
+                                (cdr (assoc key *memoization-fns* :test #'equal)))))
+               (csetter (or (cdr (assoc key *cmemoization-fns* :test #'equal))
+                            (and (update-alist key (compile nil setter) *cmemoization-fns* :test #'equal)
+                                 (cdr (assoc key *cmemoization-fns* :test #'equal))))))
           (note-if *debug-nanocontroller*
-                   "debug-nanocontroller: setting control line FROM for ~a~%"
-                   (from-code-to-anaphor from))
+                   "debug-nanocontroller: setting control line FROM for ~a"
+                   anaphor)
           (funcall csetter t)
           (defer-nanocode #'(lambda () (funcall csetter nil))
-              (format nil "Clear FROM control line for ~a" (from-code-to-anaphor from)))))
+              (format nil "Clear FROM control line for ~a" anaphor))))
 
-      (when (plusp (logand register-controls +rr-to*+))
-        (let* ((setter `(lambda (x) 
-                          ;; allow us to go "to" the bus, useful for testing conditionals
-                          (cl:if (plusp ,to) ; if zero, then no to control set so will be left on the bus
-                            (setf (,(register-flag-accessor 'to) ',(to-code-to-anaphor to)) x))))
-
-               (csetter (compile nil setter)))
+      (when (and (plusp (logand register-controls +rr-to*+))
+                 (plusp to))
+        (let* ((anaphor (to-code-to-anaphor to))
+               (key (list 'to anaphor))
+               (setter (or (cdr (assoc key *memoization-fns* :test #'equal))
+                           (and (update-alist key (set-control-line-fn 'to anaphor) *memoization-fns* :test #'equal)
+                                (cdr (assoc key *memoization-fns* :test #'equal)))))
+               (csetter (or (cdr (assoc key *cmemoization-fns* :test #'equal))
+                            (and (update-alist key (compile nil setter) *cmemoization-fns* :test #'equal)
+                                 (cdr (assoc key *cmemoization-fns* :test #'equal))))))
           (note-if *debug-nanocontroller*
-                   "debug-nanocontroller: setting control line TO for ~a~%"
-                   (to-code-to-anaphor to))
+                   "debug-nanocontroller: setting control line TO for ~a"
+                   anaphor)
           (funcall csetter t)
           (defer-nanocode #'(lambda () (funcall csetter nil))
-              (format nil "Clear TO control line for ~a" (to-code-to-anaphor to)))))
+              (format nil "Clear TO control line for ~a" anaphor))))
 
       ;; 9-7-21 modified to use the FROM anaphor table, with support in code generation!
-      (when (plusp (logand register-controls +rr-from-to*+))
+      (when (and (plusp (logand register-controls +rr-from-to*+))
+                 (plusp to))
         ;; hack for dealing with the (rare?) case where we use the TO
         ;; field in the microcode as a FROM address (e.g. for ALE)
-        (let* ((setter `(lambda (x)
-                          (cl:if (plusp ,to)
-                            (setf (,(register-flag-accessor 'from) ',(from-code-to-anaphor to)) x))))
-               (csetter (compile nil setter)))
+        (let* ((anaphor (from-code-to-anaphor to))
+               (key (list 'from-to anaphor))
+               (setter (or (cdr (assoc key *memoization-fns* :test #'equal))
+                           (and (update-alist key (set-control-line-fn 'from anaphor) *memoization-fns* :test #'equal)
+                                (cdr (assoc key *memoization-fns* :test #'equal)))))
+               (csetter (or (cdr (assoc key *cmemoization-fns* :test #'equal))
+                            (and (update-alist key (compile nil setter) *cmemoization-fns* :test #'equal)
+                                 (cdr (assoc key *cmemoization-fns* :test #'equal))))))
           (note-if *debug-nanocontroller*
-                   "debug-nanocontroller: setting control line FROM (via TO field) for ~a~%"
-                   (from-code-to-anaphor to))
+                   "debug-nanocontroller: setting control line FROM (via TO field) for ~a"
+                   anaphor)
           (funcall csetter t)
           (defer-nanocode #'(lambda () (funcall csetter nil))
-              (format nil "Clear FROM control line (via TO field) for ~a" (from-code-to-anaphor to)))))
+              (format nil "Clear FROM control line (via TO field) for ~a" anaphor))))
 
       ;; handle from*-type 10/21/21
-      (when (plusp (logand register-controls +rr-from*-type+))
+      (when (and (plusp (logand register-controls +rr-from*-type+))
+                 (plusp from))
         ;; the type field of the register named the FROM field should be placed onto the bus
-        (let* ((setter `(lambda (x)
-                          (cl:if (plusp ,from) ; if zero, then no control set so will be from the bus
-                            (setf (,(register-flag-accessor 'from-type) ',(from-code-to-anaphor from)) x))))
-               (csetter (compile nil setter)))
+        (let* ((anaphor (from-code-to-anaphor from))
+               (key (list 'from-type anaphor))
+               (setter (or (cdr (assoc key *memoization-fns* :test #'equal))
+                           (and (update-alist key (set-control-line-fn 'from-type anaphor) *memoization-fns* :test #'equal)
+                                (cdr (assoc key *memoization-fns* :test #'equal)))))
+               (csetter (or (cdr (assoc key *cmemoization-fns* :test #'equal))
+                            (and (update-alist key (compile nil setter) *cmemoization-fns* :test #'equal)
+                                 (cdr (assoc key *cmemoization-fns* :test #'equal))))))
           (note-if *debug-nanocontroller*
-                   "debug-nanocontroller: setting control line FROM-TYPE for ~a~%"
-                   (from-code-to-anaphor from))
+                   "debug-nanocontroller: setting control line FROM-TYPE for ~a (csetter ~s)"
+                   anaphor csetter)
           (funcall csetter t)
           (defer-nanocode #'(lambda () (funcall csetter nil))
-              (format nil "Clear FROM control line for ~a" (from-code-to-anaphor from)))))
+              (format nil "Clear FROM-TYPE control line for ~a (csetter ~s)" anaphor csetter))))
       
       ;; ok, now based on the other bits, get the specs and set the control bits on the appropriate registers
       (mapc #'(lambda (entry)
                 (when (plusp (logand (car entry) register-controls))
                   (let* ((setter (cadr (assoc :setter (cdr entry))))
-                         (csetter (compile nil setter))) ; force it into a form suitable for funcall (rather than eval)
+                         ;; force it into a form suitable for funcall (rather than eval)
+                         (csetter (or (cdr (assoc :csetter (cdr entry)))
+                                      (and (update-alist :csetter (compile nil setter) (cdr entry))
+                                           (cdr (assoc :csetter (cdr entry)))))))
                     (note-if *debug-nanocontroller*
-                             "debug-nanocontroller: setting control line ~a for ~a~%"
-                             (cadr (assoc :control (cdr entry))) (cadr (assoc :register (cdr entry))))
+                             "debug-nanocontroller: setting control line ~a for ~a (csetter: ~s)"
+                             (cadr (assoc :control (cdr entry))) (cadr (assoc :register (cdr entry))) csetter)
                     (funcall csetter t)
                     ;; clear the register bits before the next nanocycle starts
                     (defer-nanocode #'(lambda () (funcall csetter nil))
-                        (format nil "Clear control line ~a for ~a"
+                        (format nil "Clear control line ~a for ~a (csetter: ~s)"
                                 (cadr (assoc :control (cdr entry)))
-                                (cadr (assoc :register (cdr entry))))))))
+                                (cadr (assoc :register (cdr entry)))
+                                csetter)))))
             *nanocontrol-to-spec*)
       ;; now set pads. Presumably nanocode runs during :ph2? So some
       ;; things might have to be delayed until ph1 (which is also
@@ -983,15 +959,15 @@ registers and update to the next nanoinstruction if needed"
                     ((and (eql pad-bit +pad-clear-gc+) ; have to handle special for now, eventually we can do something more general
                           (plusp (logand pad-bit pad-controls)))
                      (note-if *debug-nanocontroller*
-                              "debug-nanocontroller: clearing pad ~a~%" pad-name)
+                              "debug-nanocontroller: clearing pad ~a" pad-name)
                      (clear-pad pad-name))
                     ((plusp (logand pad-bit pad-controls))
                      (note-if *debug-nanocontroller*
-                              "debug-nanocontroller: setting pad ~a~%" pad-name)
+                              "debug-nanocontroller: setting pad ~a" pad-name)
                      (set-pad pad-name))
-                    ((equal pad-type :latched-io) ; e.g. *internal-freeze*
+                    ((equal pad-type :latched-io) ; e.g. *run-nano*
                      ;; explicitly clear it since not setting it... but only if we set it.
-                     (cl:if (and (equal pad-name '*internal-freeze*) ; yes we set it, (OK this is currently the only one)
+                     (cl:if (and (equal pad-name '*run-nano*) ; yes we set it, (OK this is currently the only one)
                               (test-pad-immediate pad-name)) ; and it's actually set
                          (clear-pad pad-name))))))
             *nanocontrol-pad-spec*))))

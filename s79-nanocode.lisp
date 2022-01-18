@@ -1,8 +1,11 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme-79 Nanocode" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:17:41 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme-79 Nanocode" 0 3 1
+                                      "Time-stamp: <2022-01-18 12:28:23 gorbag>"
+                                      "fix symbols of form <reg>-to-<field>")
+
+;; 0.3.1   1/13/21 fix symbols of form <reg>-to-<field>; should be
+;;                     to-<field>-<reg> following TR
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -207,44 +210,46 @@
 ;; but they are unique control lines... [8/27/21 BWM seems like that
 ;; ORing concept isn't so bad since this kind of promiscuous use of
 ;; different nanocodes could be avoided... [TBD]]
-(defnano (microlisp-shared::move-to-stack)
-  ((from*) (to-address-stack to-type-stack)))
+;(defnano (microlisp-shared::move-to-stack)
+;  ((from*) (to-address-stack to-type-stack)))
 
-(defnano (microlisp-shared::move-to-newcell)
-  ((from*) (to-address-newcell to-type-newcell)))
+;(defnano (microlisp-shared::move-to-newcell)
+;  ((from*) (to-address-newcell to-type-newcell)))
 
-(defnano (microlisp-shared::move-to-exp)
-  ((from*) (to-type-exp to-frame-exp to-displacement-exp)))
+;(defnano (microlisp-shared::move-to-exp)
+;  ((from*) (to-type-exp to-frame-exp to-displacement-exp)))
 
-(defnano (microlisp-shared::move-to-val)
-  ((from*) (to-type-val to-address-val)))
+;(defnano (microlisp-shared::move-to-val)
+;  ((from*) (to-type-val to-address-val)))
 
-(defnano (microlisp-shared::move-to-retpc-count-mark)
-  ((from*) (to-type-retpc-count-mark to-address-retpc-count-mark)))
+;(defnano (microlisp-shared::move-to-retpc-count-mark)
+;  ((from*) (to-type-retpc-count-mark to-address-retpc-count-mark)))
 
 (defnano (microlisp-shared::do-car)
   ((from*) (ale))
   ((to*) (read)))
 
+#||
 (defnano (microlisp-shared::do-car-to-stack)
     ((from*) (ale))
-  ((stack-to-address stack-to-type) (read)))
+  ((to-address-stack to-type-stack) (read)))
 
 (defnano (microlisp-shared::do-car-to-retpc-count-mark)
     ((from*) (ale))    
-  ((retpc-count-mark-to-address retpc-count-mark-to-type) (read)))
+  ((to-address-retpc-count-mark to-type-retpc-count-mark) (read)))
 
 (defnano (microlisp-shared::do-car-to-val)
     ((from*) (ale))    
-  ((val-to-address val-to-type) (read)))
+  ((to-address-val to-type-val) (read)))
 
 (defnano (microlisp-shared::do-car-to-exp)
     ((from*) (ale))    
-  ((exp-to-frame exp-to-displacement exp-to-type) (read)))
+  ((to-frame-exp to-displacement-exp to-type-exp) (read)))
 
 (defnano (microlisp-shared::do-car-to-newcell)
     ((from*) (ale))    
-  ((newcell-to-address newcell-to-type) (read)))
+  ((to-address-newcell to-type-newcell) (read)))
+||#
 
 ;; should be able to automatically generate this within defnano (microlisp-shared::TBD)
 (defparameter *from-to-nano-operations* '(microlisp-shared::write-car
@@ -259,101 +264,108 @@
 
 (defnano (microlisp-shared::write-car)
   ((from-to*) (ale))
-  ((from* bus-unmark!) (write)))
+  ((from* unmark!-bus) (write)))
 
+#||
 (defnano (microlisp-shared::writei-car-of-stack)
-    ((stack-from) (ale))
-  ((from* bus-unmark!) (write)))
+    ((from-stack) (ale))
+  ((from* unmark!-bus) (write)))
 
 (defnano (microlisp-shared::writei-car-of-newcell)
-    ((newcell-from) (ale))
-  ((from* bus-unmark!) (write)))
+    ((from-newcell) (ale))
+  ((from* unmark!-bus) (write)))
 
 (defnano (microlisp-shared::writei-car-of-exp)
-    ((exp-from) (ale))
-  ((from* bus-unmark!) (write)))
+    ((from-exp) (ale))
+  ((from* unmark!-bus) (write)))
 
 (defnano (microlisp-shared::writei-car-of-val)
-    ((val-from) (ale))
-  ((from* bus-unmark!) (write)))
+    ((from-val) (ale))
+  ((from* unmark!-bus) (write)))
 
 (defnano (microlisp-shared::writei-car-of-retpc-count-mark)
-    ((retpc-count-mark-from) (ale))
-  ((from* bus-unmark!) (write)))
+    ((from-retpc-count-mark) (ale))
+  ((from* unmark!-bus) (write)))
+||#
 
 (defnano (microlisp-shared::write-and-mark-car)
   ((from-to*) (ale clear-gc)) ; setting mark means we can clear the gc-needed pad
-  ((from* bus-mark!) (write)))
+  ((from* mark!-bus) (write)))
 
+#||
 (defnano (microlisp-shared::writei-and-mark-car-of-newcell) ; going to generate these specialized versions on an as-needed basis now until I can automate
-  ((newcell-from) (ale))
-  ((from* bus-mark!) (write)))
-
+  ((from-newcell) (ale))
+  ((from* mark!-bus) (write)))
+||#
 (defnano (microlisp-shared::write-and-unmark-car :force-add t) ; technically not needed but distinguish for debugging
   ((from-to*) (ale))
-  ((from* bus-unmark!) (write)))
+  ((from* unmark!-bus) (write)))
 
 (defnano (microlisp-shared::write-and-mark-cdr) ; car in use
   ((from-to*) (ale clear-gc)) ; setting mark means we can clear the gc-needed pad
-  ((from* bus-mark!) (write cdr)))
+  ((from* mark!-bus) (write cdr)))
 
 (defnano (microlisp-shared::write-and-unmark-cdr)
   ((from-to*) (ale))
-  ((from* bus-unmark!) (write cdr)))
+  ((from* unmark!-bus) (write cdr)))
 
 (defnano (microlisp-shared::do-cdr)
    ((from*) (ale))    
   ((to*) (read cdr)))
 
+#||
 (defnano (microlisp-shared::do-cdr-to-stack)
     ((from*) (ale))    
-  ((stack-to-address stack-to-type) (read cdr)))
+  ((to-address-stack to-type-stack) (read cdr)))
 
 (defnano (microlisp-shared::do-cdr-to-retpc-count-mark)
     ((from*) (ale))    
-  ((retpc-count-mark-to-address retpc-count-mark-to-type) (read cdr)))
+  ((to-address-retpc-count-mark to-type-retpc-count-mark) (read cdr)))
 
 (defnano (microlisp-shared::do-cdr-to-val)
     ((from*) (ale))    
-  ((val-to-address val-to-type) (read cdr)))
+  ((to-address-val to-type-val) (read cdr)))
 
 (defnano (microlisp-shared::do-cdr-to-exp)
     ((from*) (ale))    
-  ((exp-to-frame exp-to-displacement exp-to-type) (read cdr)))
+  ((to-frame-exp to-displacement-exp to-type-exp) (read cdr)))
 
 (defnano (microlisp-shared::do-cdr-to-newcell)
     ((from*) (ale))    
-  ((newcell-to-address newcell-to-type) (read cdr)))
+  ((to-address-newcell to-type-newcell) (read cdr)))
+||#
 
 (defnano (microlisp-shared::write-cdr :force-add t) ; distinguish from write-and-unmark-cdr for debugging
     ((from-to*) (ale))
-  ((from* bus-unmark!) (write cdr)))
+  ((from* unmark!-bus) (write cdr)))
 
+#||
 (defnano (microlisp-shared::writei-cdr-of-stack)
-    ((stack-from) (ale))
+    ((from-stack) (ale))
   ((from*) (write cdr)))
 
 (defnano (microlisp-shared::writei-cdr-of-newcell)
-    ((newcell-from) (ale))
+    ((from-newcell) (ale))
   ((from*) (write cdr)))
 
 (defnano (microlisp-shared::writei-cdr-of-exp)
-    ((exp-from) (ale))
+    ((from-exp) (ale))
   ((from*) (write cdr)))
-
 (defnano (microlisp-shared::writei-cdr-of-val)
-    ((val-from) (ale))
+    ((from-val) (ale))
   ((from*) (write cdr)))
 
 (defnano (microlisp-shared::writei-cdr-of-retpc-count-mark)
-    ((retpc-count-mark-from) (ale))
+    ((from-retpc-count-mark) (ale))
   ((from*) (write cdr)))
+||#
 
 (defnano (microlisp-shared::do-restore) ; pop the stack
    (() (from-stack ale))
    ((to*) (read))
   (() (read cdr to-address-stack to-type-stack)))
 
+#||
 (defnano (microlisp-shared::do-restore-retpc-count-mark)
     (() (from-stack ale))
   (() (read to-address-retpc-count-mark to-type-retpc-count-mark))
@@ -373,6 +385,7 @@
     (() (from-stack ale))
   (() (read to-address-newcell to-type-newcell))
   (() (read cdr to-address-stack to-type-stack)))
+||#
 
 (defnano (microlisp-shared::do-set-type-exp)
     ((from*) (to-type-exp)))
@@ -403,7 +416,6 @@
 
 (defnano (microlisp-shared::do-set-typec-stack)
     (() (from-type-const* to-type-stack)))
-
 
 ;; note a push is harder (save) since it involves a cons so it's broken down in pseudo-microcode
 
@@ -439,7 +451,7 @@
 ;; I think this is the only specialized one we need BWM 8-11-21
 (defnano (microlisp-shared::get-interrupt-pointer-into-stack)
     (() (read-interrupt))
-  ((stack-to-address stack-to-type) (from-interrupt)))
+  ((to-address-stack to-type-stack) (from-interrupt)))
 
 ;; I wonder if we can do this with a single nanoinstruction if we buffer the increment register?
 ;; (that would keep it stable during the load of itself with the increment). Since the simulation

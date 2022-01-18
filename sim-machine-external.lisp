@@ -1,8 +1,12 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:23:39 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 3 1
+                                      "Time-stamp: <2022-01-18 11:57:51 gorbag>"
+                                      "cleanup special register treatment")
+
+;; 0.3.1   1/18/22 cleanup obsolete code: removing special treatment of registers
+;;                    which required multiple control lines for TO as new covering
+;;                    set computation deals with it.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -121,7 +125,8 @@
   ;; record initial content of memory
   (format hcl:*background-output* "~&~%Initial memory contents~%")
   (let ((*error-output* hcl:*background-output*))
-    (dump-memory))
+    ;; may have garbage in the registers, so set range to dump
+    (dump-memory 0 *initial-memtop*))
   
   (note "*micro-pc* set to boot-load: good luck!"))
 
@@ -132,11 +137,7 @@
 
   (ecase *enclosing-opcode*
     (assign ; better have a *to-register*...
-     (cl:if (special-register-p (translate-alias *to-register*))
-            `(((to ,*to-register*) ,(intern (format nil "GET-INTERRUPT-POINTER-INTO-~A"
-                                                    (strip-register-name (translate-alias *to-register*)))
-                                            *ulang-shared-pkg*)))
-        `(((to ,*to-register*) microlisp-shared::do-simple-get-interrupt-pointer))))))
+     `(((to ,*to-register*) microlisp-shared::do-simple-get-interrupt-pointer)))))
 
 ;; &read-from-pads
 

@@ -1,8 +1,11 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:14:31 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 3 1
+                                      "Time-stamp: <2022-01-13 13:57:08 gorbag>"
+                                      "internal-freeze -> run-nano")
+
+;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
+;;                    for consistancy with AIM
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -75,7 +78,7 @@
 
 ;; 0.0.13     7/19/21 set-micro-pc (to make it easier to trace updates)
 
-;; 0.0.12     7/ 7/21 Check *internal-freeze*
+;; 0.0.12     7/ 7/21 Check *internal-freeze* (now run-nano 1/13/22)
 
 ;; 0.0.11     6/27/21 Use test-pad-immediate on *freeze*; delay
 ;;                       run-microcontroller until :ph2-high so we can
@@ -449,7 +452,7 @@ a given offset. Currently does not directly handle conditionals (TBD)"
   (cl:cond
     ((and *nanocontroller-ran-p*
           (not (test-pad-immediate '*freeze*))
-          (not (test-pad-immediate '*internal-freeze*)))
+          (not (test-pad-immediate '*run-nano*)))
      (let ((new-upc (car (pla-read *microcontrol-array* *micro-pc*))))
        (setq *nanocontroller-ran-p* nil)
        (set-micro-pc new-upc)

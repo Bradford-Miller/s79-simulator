@@ -1,8 +1,19 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:15:05 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 3 3
+                                      "Time-stamp: <2022-01-18 12:39:32 gorbag>"
+                                      "delete obsolete code")
+
+;; 0.3.3   1/18/22 cleanup obsolete code: removing special treatment of registers
+;;                    which required multiple control lines for TO as new covering
+;;                    set computation deals with it.
+
+;; 0.3.2   1/14/22 flip order of symbols in nanocontrol constants for
+;;                     consistancy with AIM
+;;                 fix debug message for increment/decrement fields 
+;;                     to show value being placed on the bus
+
+;; 0.3.1   1/13/22 update alist of control and sense wires in defureg
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -262,15 +273,6 @@
 (defmacro pointer-bit (x)
   `(sbit ,x 1))
 
-;; kind of cheating, but bootstrapping something more robust (TBD)
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (setq *special-registers*
-        ;; Eventually we should be able to figure this out based on the
-        ;; microcode expansion into nanocode or declarations like
-        ;; defureg, but for now we'll help out (ok, cheat ;-) by
-        ;; declaring it separately.
-        '(*stack* *retpc-count-mark* *val* *exp* *newcell*)))
-
 (defvar *control-lines-needing-type-field* '(to-type))
 
 ;; address field is also the "data" field - consists of displacement
@@ -285,8 +287,8 @@
 (defun make-nanocontrol-line-symbol (register-name-symbol control-name-symbol)
   ;; the control name may include the field, e.g. to-type
   (intern (format nil "+RR-~A-~A+"
-                  (strip-register-name register-name-symbol)
-                  (string control-name-symbol))))
+                  (string control-name-symbol)
+                  (strip-register-name register-name-symbol))))
 
 (defparameter *nanocontrol-line-next-initial-value* #o100
   "Because we reset it in machine-defs")
@@ -311,7 +313,7 @@ data manipulations")
 (defvar *sense-controls* nil)
 
 ;; we also need to establish bits (lines) to be used by the
-;; nanocontroller of the form +rr-<register-name>-<control-line>+ so
+;; nanocontroller of the form +rr-<control-line>-<register-name>+ so
 ;; when that particular bit in the nanocontrol array is set the right
 ;; thing can happen. (Note that will be offset into it's appropriate
 ;; field in the horizontal nanocontrol encoding). See machine-nano.lisp
@@ -355,7 +357,9 @@ data manipulations")
   `(cl:progn
      (eval-when (:load-toplevel :execute)
        (setf (valid-control-lines ',register-name) ',control-lines)
+       (declare-register-control-wires ',register-name ',control-lines) ; put into alist as well
        (setf (valid-sense-lines ',register-name) ',sense-lines)
+       (declare-register-sense-wires ',register-name ',sense-lines) ; put into alist as well
        (setf (register-flags ',register-name) 0))
      ,@(when (intersection control-lines *control-lines-needing-type-field*)
         `((defvar ,(make-register-field-symbol register-name 'type)
@@ -489,14 +493,14 @@ data manipulations")
                                                normal-run-p)
                                       (note-if *debug-dataflow*
                                                "decremented register ~s placed on bus: ~s"
-                                               ',register-name ,register-name)
+                                               ',register-name (decrement-field ,register-name))
                                       (copy-field (decrement-field ,register-name) *bus*)))
                                   (from-incremented
                                    `(when (and (,accessor ',register-name)
                                                normal-run-p)
                                       (note-if *debug-dataflow*
                                                "incremented register ~s placed on bus: ~s"
-                                               ',register-name ,register-name)
+                                               ',register-name (increment-field ,register-name))
                                       (copy-field (increment-field ,register-name) *bus*)))
                                   (from-type
                                    (let ((field (make-register-field-symbol register-name 'type)))
@@ -563,5 +567,4 @@ data manipulations")
                             sense-lines))
               ()
               '*sense-controls*)))))
-
 

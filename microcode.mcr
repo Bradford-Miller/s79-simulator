@@ -4,13 +4,17 @@
 ;; (thought it might make sense to have some kind of version number
 ;; that can be accessed from the machine!)
 
-;;(scheme-79:scheme-79-version-reporter "S79 Microcode" 0 3 0
-                                        "Time-stamp: <2022-01-11 15:16:01 gorbag>"
-;;                                      "0.3 release!")
+;;(scheme-79:scheme-79-version-reporter "S79 Microcode" 0 3 1
+;;                                      "Time-stamp: <2022-01-17 14:36:47 gorbag>"
+;;                                      "*stack* from-type")
+
+;; 0.3.1 1/17/22 added from-type for type dispatch (new code paying
+;;                   more attention to declarations!
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; 0.1.1  9/20/21  update comments on defreg bus
 ;; 0.1.0  8/20/21  "official" 0.2 release: test-0 passed!
 ;;        2/22/21  fix typo in a comment
@@ -255,7 +259,7 @@
 
 (defreg *retpc-count-mark* (to-type to-address from) ())
 
-(defreg *stack* (to-type to-address from) ())
+(defreg *stack* (to-type to-address from from-type) ()) ; BWM added from-type for type dispatch
 
 (defreg *memtop* (to from) ())
 

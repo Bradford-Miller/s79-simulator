@@ -1,4 +1,4 @@
-;; Time-stamp: <2021-10-20 18:20:31 gorbag>
+;; Time-stamp: <2022-01-17 14:34:57 gorbag>
 
 ;; This test builds on the basic stuff (stack manipulation) we did in test-0. Now
 ;; we will play with the type fields of the pointers and implement the chip's GC 
@@ -96,7 +96,7 @@
 
 (defreg *retpc-count-mark* (to-type to-address from) ())
 
-(defreg *stack* (to-type to-address from) ())
+(defreg *stack* (to-type to-address from from-type) ()) ;; BWM added from-type for type-dispatch
 
 (defreg *memtop* (to from) ())
 

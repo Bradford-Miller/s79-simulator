@@ -1,8 +1,11 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Clock Trig" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:08:06 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Clock Trig" 0 3 1
+                                      "Time-stamp: <2022-01-13 13:56:10 gorbag>"
+                                      "internal-freeze -> run-nano")
+
+;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
+;;                    for consistancy with AIM
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -68,7 +71,7 @@
 ;; 7/20/21 BWM try ph1-falling so register control lines are valid
 ;;             during READ and WRITE this shouldn't screw up
 ;;             nanoncontroller-ph1 as it runs on ph2-rising, but may
-;;             need internal-freeze true to keep the microcode from
+;;             need run-nano true to keep the microcode from
 ;;             changing out from under us during ph1-rising (?) though
 ;;             nanocode should already have decoded it and set the
 ;;             right control lines so maybe not...

@@ -1,4 +1,4 @@
-;; Time-stamp: <2021-12-15 16:41:25 gorbag>
+;; Time-stamp: <2022-01-18 11:48:28 gorbag>
 
 ;; implement a test function that checks memory and some registers for correct values
 ;; set up *cold-boot-memory-array* so reset will setup external memory correctly for the test
@@ -44,7 +44,7 @@
   (setq *initial-memtop* (/ (+ 2 (length *cold-boot-memory-array*)) 2)) 
 
   (format *error-output*
-          ";;~%;; NB: warning about declared but undefined types are to be expected with this test~%
+          ";;~%;; NB: warning about declared but undefined types are to be expected with this test
 ;;     (in particular self-evaluating-pointer and self-evaluating-immediate).~%;;~%");~%")
   
   (setq *goal-memory-array* ; use defparameter so we can redefine in other test-n.lisp files

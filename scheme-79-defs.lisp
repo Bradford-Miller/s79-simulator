@@ -1,7 +1,7 @@
 (in-package :scheme-79)
 
 (scheme-79-version-reporter "Scheme-79 Dev Support" 0 3 0
-                            "Time-stamp: <2022-01-11 15:19:45 gorbag>"
+                            "Time-stamp: <2022-01-14 15:21:33 gorbag>"
                             "0.3 release!")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -141,6 +141,7 @@ will be ok (e.g. during boot when memtop has not been established)")
 
 (defun reset ()
   "Same as setting the reset-line on the chip for a clock cycle"
+  (note-if (or *debug-microcontroller* *debug-external-pads*) "Setting *reset* pad")
   (set-pad 'scheme-mach:*reset*))
 
 (defun power-on-reset ()

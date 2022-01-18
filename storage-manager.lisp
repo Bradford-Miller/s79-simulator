@@ -1,9 +1,13 @@
 ;; AIM-514 separates out the storage manager
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:24:09 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 1
+                                      "Time-stamp: <2022-01-18 12:18:49 gorbag>"
+                                      "cleanup obsolete code")
+
+;; 0.3.1   1/18/22 cleanup obsolete code: removing special treatment of registers
+;;                    which required multiple control lines for TO as new covering
+;;                    set computation deals with it.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -150,11 +154,7 @@
 
   (ecase *enclosing-opcode*
     (assign ; have a *to-register*
-     (let ((instruction (specialize-instruction *to-register*
-                                             :special
-                                             'microlisp-shared::do-car
-                                             "DO-CAR-TO-~A")))
-       `(((from ,*from-register*) (to ,*to-register*) ,instruction))))
+     `(((from ,*from-register*) (to ,*to-register*) microlisp-shared::do-car)))
     ((&rplaca &rplacd &rplaca-and-mark!) ; the *to-register* is a pointer to where we are really writing
      ;; all we should do is load the bus (or IA, no?)
      (with-intermediate-argument ; make sure we're not inside another IA use
@@ -167,11 +167,7 @@
 
   (ecase *enclosing-opcode*
     (assign ; have a *to-register*
-     (let ((instruction (specialize-instruction *to-register*
-                                             :special
-                                             'microlisp-shared::do-cdr
-                                             "DO-CDR-TO-~A")))
-       `(((from ,*from-register*) (to ,*to-register*) ,instruction))))
+     `(((from ,*from-register*) (to ,*to-register*) microlisp-shared::do-cdr)))
     ((&rplaca &rplacd &rplaca-and-mark!) ; the *to-register* is a pointer to where we are really writing
      ;; all we should do is load the bus (or IA, no?)
      (with-intermediate-argument
@@ -179,19 +175,19 @@
     ))
 
 ;; &rplaca
-(defrplacop &rplaca (microlisp-shared::write-car "WRITEI-CAR-OF-~A"))
+(defrplacop &rplaca (microlisp-shared::write-car))
 
 ;; &rplacd
-(defrplacop &rplacd (microlisp-shared::write-cdr "WRITEI-CDR-OF-~A"))
+(defrplacop &rplacd (microlisp-shared::write-cdr))
 
 ;; &rplaca-and-mark!
-(defrplacop &rplaca-and-mark! (microlisp-shared::write-and-mark-car "WRITEI-AND-MARK-CAR-OF-~A"))
+(defrplacop &rplaca-and-mark! (microlisp-shared::write-and-mark-car))
 
-(defrplacop &rplaca-and-unmark! (microlisp-shared::write-and-unmark-car "WRITEI-AND-UNMARK-CAR-OF-~A"))
+(defrplacop &rplaca-and-unmark! (microlisp-shared::write-and-unmark-car))
 
-(defrplacop &rplacd-and-mark-car-being-traced! (microlisp-shared::write-and-mark-cdr "WRITEI-AND-MARK-CDR-OF-~A"))
+(defrplacop &rplacd-and-mark-car-being-traced! (microlisp-shared::write-and-mark-cdr))
 
-(defrplacop &rplacd-and-mark-car-trace-over! (microlisp-shared::write-and-unmark-cdr "WRITEI-AND-UNMARK-CDR-OF-~A"))
+(defrplacop &rplacd-and-mark-car-trace-over! (microlisp-shared::write-and-unmark-cdr))
 
 ;; &mark-car-being-traced! ;; mark bit stored in cdr
 (defufn &mark-car-being-traced! (from-register :expansion ((:to *intermediate-argument*)

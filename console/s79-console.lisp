@@ -1,8 +1,13 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:12:04 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 3
+                                      "Time-stamp: <2022-01-13 14:26:31 gorbag>"
+                                      "handle display of non-standard registers")
+
+;; 0.3.2   1/17/22 handle display of non-standard registers
+
+;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
+;;                    for consistancy with AIM
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -265,23 +270,31 @@
 
 (defun describe-register (interface)
   (let*-non-null ((reg (focused-register interface))
-                  (value (symbol-value (register-symbol reg))))
+                  (value (symbol-value (register-symbol reg)))
+                  (reg-size (length value)))
     (when reg
-      (mlet (mark ptr type disp frame addr) (break-out-bits-as-integers value)
+      (if (eql reg-size *register-size*) ; normal register
+        (mlet (mark ptr type disp frame addr) (break-out-bits-as-integers value)
+          (update-register-description-pane
+           interface 
+           (format nil "~30a : mark: ~b ptr: ~b type: ~2,'0o disp: ~4,'0o frame: ~4,'0o~%~32t address: ~8,'0o~%~32t type: ~a~%~32t mem:-> ~a"
+                   (register-name reg)
+                   mark ptr type disp frame addr
+                   (int->type-name type)
+                   ;; might want to put this in it's own pane to allow poking around... (TBD)
+                   (if (zerop ptr)        ; it's a pointer
+                     (if (invalid-address-p addr)
+                       (format nil "-> ~s" (invalid-address-p addr))
+                       (let ((*warn-when-beyond-memtop* nil))
+                         (format nil "(~11,'0o . ~11,'0o)"
+                                 (read-address addr nil t) ; car
+                                 (read-address addr t t)))))))) ; cdr
+        ;; odd register (likely a PC)
         (update-register-description-pane
-         interface 
-         (format nil "~30a : mark: ~b ptr: ~b type: ~2,'0o disp: ~4,'0o frame: ~4,'0o~%~32t address: ~8,'0o~%~32t type: ~a~%~32t mem:-> ~a"
+         interface
+         (format nil "~30a : ~o"
                  (register-name reg)
-                 mark ptr type disp frame addr
-                 (int->type-name type)
-                 ;; might want to put this in it's own pane to allow poking around... (TBD)
-                 (if (zerop ptr)        ; it's a pointer
-                   (if (invalid-address-p addr)
-                     (format nil "-> ~s" (invalid-address-p addr))
-                     (let ((*warn-when-beyond-memtop* nil))
-                       (format nil "(~11,'0o . ~11,'0o)"
-                               (read-address addr nil t) ; car
-                               (read-address addr t t))))))))))) ; cdr
+                 (bit-vector->integer value)))))))
 
 (defun set-register-value (row column on)
   (when on 
@@ -811,7 +824,7 @@ been run (if any) and check if it was successful (if such an evaluation function
       (setq *test-suite* nil)) ; so we don't keep doing this unless we rerun the test
     t))  ; we should halt
 
-;;    :PH1   :PH2 :FRZ :FRZ-I :ALE    :RD :WR :CDR :RDI :int-rq :GCR :RST :RD-State :LD-State
+;;    :PH1   :PH2 :FRZ :NANO :ALE    :RD :WR :CDR :RDI :int-rq :GCR :RST :RD-State :LD-State
 ;;    :Step  :Run :Run-until :Stop :Freeze :RD-State :LD-State :INT-RQ
 
 (defun get-breakpoint-input-internal (pane)
@@ -1063,8 +1076,8 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
                                                     (if (test-pad-immediate 'microlisp-shared:*freeze*)
                                                         "External Freeze! "
                                                         "")
-                                                    (if (test-pad-immediate 'microlisp-shared:*internal-freeze*)
-                                                        "Internal Freeze!"
+                                                    (if (test-pad-immediate 'microlisp-shared:*run-nano*)
+                                                        "Nanocontrol Running! "
                                                         "")
                                                     )))
     (gp:invalidate-rectangle ucode-state-panel)
@@ -1174,9 +1187,9 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
     :print-function 'capitalize-if-symbol
     :enabled nil)
 
-   (frz-i
+   (nano
     capi:check-button
-    :data :frz-i
+    :data :nano
     :print-function 'capitalize-if-symbol
     :enabled nil)
 
@@ -1253,7 +1266,7 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
   (:layouts
    (indicator-panel
     capi:row-layout
-    '(ph1 ph2 frz frz-i ale rd wr cdr rdi int-rq gcr rst rd-state ld-state))
+    '(ph1 ph2 frz nano ale rd wr cdr rdi int-rq gcr rst rd-state ld-state))
    (internal-status
     capi:row-layout
     '(ucode-general-state ncode-general-state))
@@ -1330,8 +1343,8 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
   (case pad-name
     ('microlisp-shared:*freeze*
      :frz)
-    ('microlisp-shared:*internal-freeze*
-     :frz-i)
+    ('microlisp-shared:*run-nano*
+     :nano)
     ('microlisp-shared:*read-state*
      :rd-state)
     ('microlisp-shared:*load-state*
@@ -1366,7 +1379,7 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
 (add-initialization "update-pad settings"
                     '(when *console*
                       (check-pad 'microlisp-shared:*freeze*)
-                      (check-pad 'microlisp-shared:*internal-freeze*)
+                      (check-pad 'microlisp-shared:*run-nano*)
                       (check-pad 'microlisp-shared:*ale*)
                       (check-pad 'microlisp-shared:*read*)
                       (check-pad 'microlisp-shared:*write*)
