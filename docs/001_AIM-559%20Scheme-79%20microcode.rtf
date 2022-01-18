@@ -1,0 +1,753 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2636
+\cocoascreenfonts1\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww13440\viewh7800\viewkind0
+\deftab1120
+\pard\pardeftab1120\pardirnatural\partightenfactor0
+
+\f0\fs22 \cf0 Appemlix - The SCHEME-79 Micrpcodc\
+\
+\
+  lo this appendix we present a complete listing of the microcode for the SCHEME-79 chip. in this listing, \
+symbols surrounded by single asterisks (e.g. *n i 1"9 are names or aliases of machine registers. Symbols begin- \
+ning with ampersand (&) arc the names of hardware operations. The S-code (macro) opcodes are (some of) the \
+data types. These are given specific numerical values. When a DEFFYPE is used to define the microcode that is \
+used when that type is executed, 1 usually place a comment showing how that data type is expected to be used \
+in a piece of S-code. Some data types are pointer types (meaning that the garbage collector must mark the thing \
+pointed at by the address part) and others are immediate data (hence terminal to the garbage collector). The \
+folowing ac the data types with preassigned numerical values:\
+\
+(dofschip **pointer-types**\
+    '((self-evaluating-pointer 0) \
+    (symbol 1)\
+    (global 2)\
+    (set-global 3)\
+    (conditional 4)\
+    (procedure 5)\
+    (first-argument 6)\
+    (next-argument 7)\
+    (last-argument 10)\
+    (apply-no-args 11)\
+    (apply-i-arg 12)\
+    (primitive-apply-1 13)\
+    (primitive-apply-2 14)\
+    (sequence 15)\
+    (spread--argument 16)\
+    (closure 17)\
+    (get-control-point 20)\
+    (control-point 21)\
+    (interrupt-point 22)\
+    (self-evaluating-pointer-1 23) \
+    (self-evaluating-pointer-2 24) \
+    (self-evaluating-pointer-3 25) \
+    (self-evaluating-pointer-4 26)\
+\
+\
+(defschip **non-pointer-types** \
+   '((self-evaluating-immediate 100)\
+    (local 101)\
+    (tail-local 102)\
+    (set-local 103)\
+    (set-tail-local 104) \
+    (set-only-tail-local 105)\
+    (primitive-car 106) ;Built-in operators\
+    (primitive"cdr 107) \
+    (primitive-cons 110) \
+    (primitive-rplaca 111) \
+    (primitive-rplacd 112) \
+    (primitive-eq 113)\
+    (primitive-type? 114) \
+    (primitive-typel 115) \
+    (gc-special-type 116) ;Never appears except during gc\
+\
+\
+\
+\
+                         29\
+\page \
+          (self7evaTuating:immediate-1 117) \
+          (self-ovaluating-immodiate-2 120) \
+          (self\'95evaluating-immediato-3 121) \
+          (self-evaluRting-immediate-4 122) \
+          (mark 123)\
+          (done 124)\
+          (primitive-addl 125)\
+          (primitive:-sub :l126)\
+          (prirnitivo-cerap :127)\
+          (primitive-displacemont-addl 130) \
+          (primitive-not-atom 131)\
+          (boot-load 775)                     ;micro-address forced by RESET\
+          (process-interrupt 777)             ;micro-address forced by EXT INT RQ\
+          ))\
+    Pointer data is indicated by the 100 bit being off in the data type.\
+(defschip **pointer** 100)                    ;100 bit means non-pointer.\
+    Next we find the definitions of the registers. The following registers are used by EVAL: *val*, \
+*exp* , *aro s*, *di sp 1 ay* , *stack*, in addition, *nevice 1 1* contains the pointer to the beginning \
+of free storage. it is changed by CONS ping or saving something on the stack. Whenever *newcel 1* is \
+changed, it is compared with *rnemtop* which contains the (user set) memory limit. When these are equal \
+an interrupt is signalled, setting the one bit register *gc- n ode indicating need fbr garbage-collection. \
+*N i 1* is a dummy register, it cannot be set, and its value is nil. The garbage collector uses the following \
+registers: *stack-top*, *node-pointer*, *1 eador* are used by Ole CC mark phase only. *Scan-\
+up * *s c an down* and *meirit op* are used by the GC sweep phase. *Re1 -t em- 1* ral - tom- 2* are\
+temporaries used in CC relocate phase only. *Int ermedi a te-a rg   t* is used by microcode corupiler\
+for storing anonymous temporaries and *rotpc-coun Hirlark* is used in increment operations to store inter-. \
+mediate values because our registers are not dual rank. ft is also used for storing microcode return addresses \
+for use. in microcode subroutines. There is overlap in the use of the registers, for example, *scan-up* is the \
+*n ewc 1* pointer when in EVAL. Thus the abOVe names are really aliases for the real Underlying physical \
+registers. The mapPing is made below:\
+(defschip **machine-registers** \
+       '((*nil*)\
+          (*memtop*)\
+          (*newcell*)\
+          (*scan-up* *newcell*) \
+          (*exp*)\
+          (*scan-down* *exp*) \
+          (*val*)\
+          (*rel-tem-2* *val * ) \
+          (*stack-top* *val*) \
+          (*args*)\
+          (*leader* *args*) \
+          (*rel-tem-1* *arcs*) \
+          (*display*)\
+         (`node-pointer* *display*)\
+         (*stack*)\
+          (*retpc-count-mark*) \
+          (*intermediate-argument*)))\
+\
+\
+\
+                                                30\
+\page \
+      :Fach physical registet has certain capabilities which are controlled by particular control wires which go \
+ into it Thus the to-di spl acernen t; wire on the *exp* register will, if raised, allow the displacement ficld \
+ of the register to be set from the corresponding field of the his. The registers also develop certain conditions \
+ which are reflected by the states of sense wires. So, for example, the type.,f s wire coining out of the *v al * \
+ register indicates if the type field of the register is equal to time corresponding field on the bus. The following \
+ expressions define the control lines and sense wires on the registers,\
+\
+ (derreg *exp* (to-type to-displacement to-frame from from-docr,meoted) ())\
+\
+ (defrog *nowcell* (to-type to-address from from-incremented) (address-bus))\
+ (defrog *v-al*\
+            (to-type to-address from)\
+            (type-bus address=bus. .bus))               ;,---bus is AND of type, address=bus\
+ (defrog *retpc-count-mark* (to-type to-address from) ())\
+ (dotrcg *stack* (to-type to-address from) ()) \
+ (defreg *momtop* (to from) ())\
+ (defreg *args* (to from) ())\
+ (defreg *display* (to from) ())\
+ (defreg *intermediate-argument* (to from) ()) \
+ (defreg *nil* (from) ())\
+     Additionally, the bus is sensitive to several conditions:\
+\
+ (defreg bus() (mark-bit type-not-pointer frame=0 di spl acement-O address.0))\
+     A register has two basic operations which can be done to it. Its contents can be fetched, and its contents \
+can be assigned from some source. In addition, for the LISP simulator we define two additional operations \
+which are used for stacks:\
+\
+(defmacro save (quantity)\
+               (assign *stack* (&cons ,quantity (fetch *stack*))))\
+(defmacro restore (register)\
+               (progn (assign ,register (&car (fetch *stack*))) \
+                        (assign *stack* (&cdr (fetch *stack*)))))\
+     At this point we begin to look at the microcode proper. Bobt - 1 bad is the place where the chip is initial- \
+ized to run. The first thing it does is initialize the memory limit register and then it picks 'tip (as an interrupt \
+address) a pointer to the expression to begin executing. It stashes this away in the stack and goes off' to MARK \
+to get memory organized and set up a reasonable value for *scan-up* (*newce11*). The (micro) return \
+address is stored as the type of the stack pointer. Thus all micro return addresses must be pointer types - \
+something the compiler must know about!\
+\
+\
+\
+\
+                                                        31\
+\page \
+(daftype boot-load\
+        (assign *scan-up* (fetch *nil*))\
+        (gincrement-scan-up)                               to location 1\
+        (assign *momtop* (&car (fetch*scan-up*)))\
+        (assign *scan-up* (fetch *memtop*))\
+        (assign *stack* (&get-interrupt-routine-pointer)) ;from pads\
+        (z/set-type *stack* boot-load-return)\
+        (go-to mark))\
+((lc:fret rn hoot-load-return\
+        (assign *exp* (&car (fetch *stack*))) \
+        (assign *stack* (fetch *nil*))\
+        (8,set-type *stack* done)\
+        (dispatch-on-exp-allowing-interrupts))\
+   When there is nothing more to do the machine halts.\
+(deftype done\
+        (go-to done))\
+   The next section of the microcode is the SCI1EME-79 chip storage allocator and garbage collector. Mark \
+is the garbage-collector entry point. It is a user function with no arguments which returns Nil, when it is done. \
+We use the PeutSch-Schorr-Waite mark algorithM. There are 3 registers containing pointer data: *s tack- \
+t op*, *node-poi nter*, *1 eade r*. A datum may be a pointer or a terminal datum; this may he tested \
+by !':poi nter? Objects have 2 data parts which can fit a pointer - the CAR and CDR. These are accessed \
+by &Car and &cdr functions of the pointer to the object.. They are clobbered by &rpl aca and &rp 1 acd \
+functions of a pointer to the object and the rephicement datum. Objects also have two mark bits, the in-- \
+use and car-t race- i n-prog ress bit. The i n -use bits stored in the CAR of the node and the car- \
+t race- i n-pr ogress bit is stored in the CDR of the node. They are accessed by &i n--use? and &car- \
+bei ng-traced? of a pointer to the object. They arc set and cleared by &mark-in-use &mark-car-- \
+being-traced!, &mark-car-trace-7over! and &It nina rk ! of the pointer to the object. In addition, \
+any &rpl aca or '&01 acd of eration will clear the associated mark bit. This requires the introduction of \
+&rp 1 ac a -an d -ma r k ! to change the CAR pointer while setting the -IA - u s e bit.\
+(dortype mark                       ;MARK(?)\
+      (&rplaca (fetch *nil'") (fetch *stack*)) \
+      (assign *node-pointer* (fetch *nil*)) \
+      (assign *stack-top* (fetch *nil*)) \
+      (fcset-type *stack-top* gc-special-type) \
+      (go--to mark-node))\
+(defpc mark-node\
+      (assign *leader* (&car (fetch *node-pointer*)))\
+      (cond ((and (gpointer? (fetch *leader*))\
+                 (not (gin-use? (fetch *leader*))))\
+            (gmark-car-bein.g-tracedi (fetch *node-pointer*))\
+            Oirplaca-and-markl (fetch *node-pointer*) (fetch *stack-top*)) \
+            (go-to down-trace))\
+           (t\
+            (Mark-in-use! (fetch *node-pointer*))\
+            (go-to trace-cdr))))\
+\
+\
+\
+\
+                                     32\
+\page \
+ (defpc down-trace\
+       (assign *stack-top* (fetch *node-pointers)) \
+       (assign *node-pointer* (fetch *leader*)) \
+       (go-to mark-node))\
+ (defpc traco-cdr\
+       (assign *leaders (240dr (fetch *node-pointer*)))\
+       (cond ((and (&pointer? (fetch *leader')) (not (&in-use? (fetch sleader*)))) \
+            (&rplacd (fetch *node-pointers) (fetch *stack-tops))\
+            (go-to down-trace))\
+            (t (go-to up-trace))))\
+ (defpc up-trace\
+       (cond ((&-type? (fetch *stack-top-) gc special-type) \
+            (go-to sweep))\
+           (t (assign *leader* (fetch *stack-top*))\
+              (cond ((&car-being-traced? (fetch *leaders)) \
+                   (&mark-car-trace-overt (fetch *leaders)) \
+                   (assign *stack-top* (&car (fetch *leader*))) \
+                   (&rplaca-and-rnarkt (fetch *leaders)\
+                                  (fetch *node_paintor*)) \
+                   (assign *node-pointers (fetch *leaders)) \
+                   (go-to trace-cdr))\
+                   (t (assign *stack-tens (&cdr (fetch *leaders))) \
+                     (&rplacd (fetch *leaders) (fetch snode-pointer*)) \
+                     (assign *node-pointers (fetch *leaders))\
+                     (go-to up-trace))))))\
+    The SWCOp algorithm for this gzArbage collector is the simple two finger am!pading method. The two \
+ "fingers" are: *scan-up* and *scan- clown* . Remember, *scan -up is the ncwcell register for corns. \
+ Thus, because mark does not. disturb it, initially, *scan-up* points at the last successfully Completed cons.\
+ (defpc sweep\
+      (&i ncrcment-scan-up)\
+      (assign *scan-down* (fetch *scan-ups))  ;initialization\
+      (assign *scan-up* (fetch *nits))        ;make address = 0\
+      (&set-type *scan-up* gc-Special-type)\
+      (&clear-gc-needed)\
+      (go-to scan-down-for-thing))\
+ (defpc scan-down-for-thing\
+      (&decrement-scan-down)\
+      (cond ((&scan-up-scan-down?) (go-to relocate-pointers)) \
+           ((&in-use? (fetch *scan-down*)) (go-to scan-up-for-hole)) \
+           (t (go-to scan-down-for-thing))))\
+ (defpc scan-up-for-hole\
+      (cond ((&in-use? (fetch *scan-ups))\
+            (&increment-scan-up)\
+            (cond ((&scan-up=scan-down?) (go-to relodate-pointers)) \
+                 (t (go-to scan-up-for-hole))))\
+           (t (go-to swap-thing-and-hole))))\
+   The following code is rather tricky. The last rp1 ac a operation performs several important operations at \
+ once. Since the type of *scan-up* is g c - spec i al -type, the eel] pointed at by *scan-down* (which is \
+above the eventual *scan-up* and thus will be free storage) is 'naked as a "broken heart" pointing at where\
+\
+\
+\
+\
+                                  33\
+\page \
+its contents has gone. This will be looked at later by the relocation Phase. This freeTcell-to-be is also unmarked \
+by this operation.\
+\
+(defpc swap-thing-and-hole\
+       c&rplaca-and-markt (fetch *scan-up*) (&car (fetch 4:sea -down*))) \
+       (2,rplaed (fetch *scan-up*) (&cdr (fetch *semi-down*)))\
+       (&rplaca (fetch *scen-down*) (fetch *scan-up*))_\
+       (go-to scan-down-for-thing))\
+   The- relocation phase now adjusts all live pointers which point at object which have been moved, leaving \
+behind broken hearts. At the entry to relocate-pointers, *scan-up* = *scan-down* and they point \
+at the highest occupied location in memory. *Sc,an -up* is left there to become the future *novice.] 1* and \
+*s can -down* is used to count down until we get to the bottom of memory.\
+\
+(defpc relocate-pointers\
+       (assign *rel-tem-t* (&car (fetch *scan-down*)))\
+       (cond ((&pointer? (fetch *rel-tem-1*))\
+             (assign *rel-tem-2'-' (&car (fetch *rel-tem-1*)))\
+             (cond (Wtype? (fetch *rel-tem-2*) gc-special-type) \
+                   Wet-type *rel-tell-2* (fetch *rel-tern-1*))\
+                   (&rplaca (fetch *scan-down*) (fetch *rel-tem-2*)))))) \
+       (assign *rel-tem\'951* (8ccir (fetch *scan-down*)))\
+       (cond ((&pointer? (fetch *rel-tern-1*))\
+             (assign *rel\'95tem-2* (&rar (fetch *rel-t-em\'951*)))\
+             (cond ((&-typey (fetch *rel-tem-2*) gcTspocial-type) \
+                   (&set-type *rel-tem-2* (fetch *rel-tem-1*))\
+                   (&rplacd (fetch *scan-down*) (fetch *rel-tem-2*)))))) \
+       (&unmarkl (Fetch *scan down*))\
+       (cond ((&scali-down4i?)\
+             (&set-type *scan-up* self-evaluating-pointer)\
+             (assign *stack* (&car (fetch *nil*))) ;might have been relocated\
+             (&rplaca (fetch *nil*) (fetch *nil*))\
+             (assign *val* (fetch *nil*))\
+             (dispatch-on-stack))\
+            (t (&decrement-scan-down)\
+               (go-to relocate-pointers))))\
+   Congratulations, you have just survived the garbage collector! We now proceed to examine the evaluator \
+proper. The first part of the evaluatOr is the \'95stuff for dealing with variable references. The opcodes which take \
+a lexical-address as their data field decode that field into a frame number and a displacement number in the \
+*exp* register. f.exical access of local variables uses I oo k up-ex p to get a locative to the value. The CAR of \
+the locative is the value cell for that variable. Mic r o is a microcode macro operation which stashes the \
+(micro code) return address specified by its second argument in the type field of *re t pc-count -mar k* and \
+then goes to the micro-code address specified by its first argument. Mi cro-return is used to dispatch on this \
+saved type field.\
+\
+(def type local              ;LOCAL(loxical -address)\
+        (micro-call lookup-exp local--return))\
+\
+\
+\
+\
+                                      34\
+\page \
+ (defpc local-return\
+       (assign *val* (6:Ca'r (fetch *display*))) \
+       (dispatch-on-stack))\
+   Tail local variables give SCHEME an LSUBI? option. That is, a procedure may be passed the list of \
+evaluated arguments as the value of a variable rather than having an explicit local variable for each value \
+passed. For example: in ( (lambda x (foe x) ) 1 2 3), x is a tail variable which is bound to the list (1 \
+2 3). additionally, this is extended to give the power of rest variables as follows: in (1 amb ( x y . z)\
+   -) x and y are bound to the first two arguments while z is a tail variable which is bound to the remaining \
+arguments.\
+(deftype tail-local          ;TAIL-LOCAL(lexical-address)\
+         (micro-call 1 ookup-oxp tail-local-return))\
+(defpc tai l -local -return\
+      (assign *val* (fetch *display*))\
+      (dispatch-on-stack))\
+   Global variables are stored in the value cell of a symbol. The value cell is assutned to be in the CAR of \
+the symbol The CDR may be used for other purPoses (such as property lists). Thus the global type may be \
+thought of as an alias for CAR.\
+(deftype global              ;GLOBAL(symbol)\
+      (assign *val*          ;global-value=&car\
+              (&global-.valbe (fetCh *exp*))) \
+      (dispatch-On-stack))\
+   The following Stuff is for assignment to variables. These t\'91 -)es are to be used as part of a sequence w. lose \
+provides entry develops a value in *val* which will he the value stuffed into the variable's value locative.\
+(deftype set-local           ;SET-LOCAL(lexical-address)\
+        (micro-call lookup-exp set-local-return))\
+(defpc set-local-return\
+      (&rplaca (fetch *display*) (fetch *val*)) \
+      (dispatch-oh-Stack))\
+(deftype set-tail-local      ;SET-TAIL-LOCAL(lexical-address)\
+        (micro-call lookup-exp set-tail-local-return))\
+(defpc set-tail-local-return\
+      (&eplacd (fetch *display*) (fetch *val*)) \
+      (dispatch-on-stack))\
+   The following is a tricky little critter. It is needed because if we have a tail only variable (e.g. (lambda x \
+---)) we need to be able to get at the header of the sublist of the display referred to by the tail variable.\
+(deftype set-only-tail-local ;SET-ONLY-TAIL-LOCAL(lexical-address)\
+        (if (&frame.:07)\
+           (progn (&rplaca (fetch *display*) (fetch *val*)) \
+                  (dispatch-on-stack))\
+           (progn (assign *display* (&cdr (fetch *display*))) \
+                  (&decrement-frame)\
+                  (go-to set-only-tail-local))))\
+\
+\
+\
+\
+                                     35\
+\page \
+;&set-globel-value = &rplaca\
+(deftype set"global           :SET-CLOBAL(symbol)\
+         (8,set-global-value (fetch *oxp*) (retch *val*)) \
+         (dispatch-on-stack))\
+(defpc lookup-exp\
+       (if (&framo4?)\
+          (peogn (assign *display* (&car (fetch *display*))) \
+                 (go-to count-dispacoment))\
+          (progn (&decrement-frame)\
+                 (assign *display* (&cdr (retch *display*))) \
+                 (go-to lookup-oxp))))\
+(defpc count-displacement\
+       (if (&displacoinent-0?)\
+          (micro' return)\
+          (progn (&decroment-displacoment)\
+                 (assign *display* (&cdr (fetch *display*))) \
+                 (go-to count-displacement))))\
+    Next come all of the various types of self-evaluating data. There arc two di event Glasses -- pointer data and \
+immediate data. A symbol is pointer data. We provide several unspecified varieties of such self-evaluating data \
+for the .,iser to assign to things like fixed numbers and floating numhers.\
+(deftype self-evaluating-immediate   ;SELF-EVALUATMG-IMMEDIATE(frob)\
+        (assign *val* (fetch *exp*))\
+        (dispatch-en-stack))\
+(deftypo self-evaluating-imMediate-1 ;SELF-EVALUAT tiG-VMEDIATE-1 frob) \
+        (assign *val* (fetch *exp*)) \
+        (dispatch-on-stack))\
+(deftype self-evaluating-immediate-2 ;SEL--EVALUATING-IMMEUTATE-2(freb) \
+        (assign *val* (fetch *exp*)) \
+        (dispatch-on-stack))\
+(deftype self-evaluating-immediate-3 ;SELF-EVALUAT NG-IMMEDIATE-3(frob) \
+        (assign *val* (fetch *exp*)) \
+        (dispatch-on-stack))\
+(deftype self-evaluating-immediate-4 SELF-EVALUATING-If MEHATE-4(frob)\
+        (assign *val* (fetch *exp*)) \
+        (dispatch-on-stack))\
+(deftype symbol                      ;SYMBOL(frob)\
+        (assign *val* (fetch *exp*))\
+        (dispatch-on-stack))\
+-(deftype self-evaluating-pointer    SELF-EVALUATING-POINTER(frob)\
+        (assign *val* (fetch *exp*))\
+        (dispatch-on-stack))\
+(deftype self-evaluating-pointer-1   SELF7EVALUATING-POINTER-1(frob)\
+        (assign *val* (fetch *exp*))\
+        (dispatch-en-stack))\
+\
+\
+\
+\
+                                      36\
+\page \
+  (daftypa self-evaluating-pointer--2(assign *ye ,                                   ;SELF-EVALUATING-P0 NTER.=gfrob) \
+                                           1* (fetch 'exp*))\
+                     (dispatch-on-stack))\
+ (deftype self-evaluating-pointer-3                                                  ;SELF-EVALUATING-POIAITER-a(frob) \
+                    (assign *val* (fetch *exp*)) \
+                    (dispatch-on-stack))\
+ (deftype self-evaluating-pointer-4                                                  ;SELF-EVALUATING-POINTEIT\'954(frob)\
+                    (assign *val* (fetch *exp*)) \
+                    (dispatch-on-stack))\
+         A lambda expression in the original SCHEME code turns into a procedure in the S-code. When \
+ executed, a procedure constructs and returns a closure. Procedures may be documented with a \
+ description of the original variable names and the context they were compiled in (perhaps even a direct pointer \
+ to the source code) thus providing for debugging tools.\
+\
+ (deftype procedure                                                :PROCEDURE((script                         documentation))\
+                    (assign *val* (&cons (fetch *exp*) (fetch *display*))) \
+                    (&set-type *val* closure)\
+                    (dispatch-on-stack))\
+        An if expression in the SCHEME source code turns into a sequence which evaluates the predicate part \
+of the i f and then falls into a cond itional to choose between the consequent and alternative expressions on \
+the basis or the value of the *v al* register.\
+\
+(deftype conditional                                               ;CONDITIONAL((consequent                               alternative))\
+                    (if (&eq-val (fetch *nil*))\
+                           (assign *exp* (&cdr (fetch *exp*)))\
+                           (assign *exp* War (fetch *exp*)))) \
+                    (dispatch-on-exp-allowing-interrupts))\
+        The following macro definition defines a common sequence in the rest of the microcode. This sequence \
+will be the standard way to attack a compound expression. The (micro) return address is stashed in *retpc- \
+coun t -ma rk* so that it can be used as the type \'b0fa stack cell. The top of the stack had better be standard- \
+retu rn which knoWs how to undo this mess.\
+\
+(defmicromacro save-cdr-and-eval-car (return-tag)\
+                       (progn (&set-type *ratpc-count-mark* ,return-tag) \
+                                     (go-to standard-oval)))\
+(defpc standard-eval\
+              (save (fetch *display*))\
+              (&set-type *stack* (fetch *retpc-count-mark*)) \
+              (save (&cdr (fetch *exp*)))\
+              (&sat-type *stack* standard-return)\
+              (assign *exp* War (fetch *exp*)))\
+              (dispatch-on-exp-allowing-interrupts))\
+\
+\
+\
+\
+                                                                                       37\
+\page \
+    (defreturn standard7return\
+                        (restore *exp*)\
+                        (assign *retpc-count-mark* (fetch *stack*)) \
+                        (restore *display*)\
+                        (dispatch (fetch *retpt-count-mark*)))\
+\
+             The sequence construct is very important in the S-code language. Not only is it used to implement \
+  PROGN but also, it is used to develop values in the *val * register to be used by later parts of the sequence \
+  such as conditionals or variable assignors.\
+\
+  (deftype sequence                                                                                                      ;SEQUENCF((exprossion                                               rest))\
+                             (assign *val* (fetch *nil*))                                                                ;for gc\
+                             (save-cdr--and-eval-car sequence-return))\
+  (defreturn sequence-return\
+                                   (dispatch-on-exp-allowing-interrupts))\
+\
+             Control points arc used to implement the general "catch tagS" used in constructing non-standard control \
+  structures. It is useful for error exits, and multiproccss sorts of work. It is only to be used with extreme \
+  caution since it is easy to screw oneself with constructs such as this which violate the expression structure of the \
+  language.\
+\
+  (deftype get-control-point (assign *Val* (&cons (fetth *s-tack*) (fetch *nil*)))              ;GET-CONTROL-POINT((variable-setter                                                                           rest)).\
+                             (&set-type *val* control-point)\
+                             (save-cdr-and-eval-.car sequence-return))\
+\
+           To evaluate a form with more than one arguinent one starts with a poinLer of type -first- argument \
+  which is used to in iti'Lilize the : args* register which 'xi ll be u,,ed to accumitlate the ,I,rgunic.nts. 'Pie evaluation \
+  of the first argument is to be continued with an mduation of each successive ill t Eirgurbent until the last \
+  argument is encountered which should fall into the execution of the body of the procodure being called.\
+\
+  (deftype first-argument                                                                                              ;FIRST-ARGUMENT((argl . rest))\
+                             (save-Cdr-and-eval-tar first-argument-return))\
+\
+  (defreturn first-Argument-return\
+                                 (asSign *args* Wens (fetch *val*) (fetch nii*)))\
+                                 (save (fetch *args*)) \
+                                 (dispatch-on-exp-allewing-interrupts))\
+\
+           Next argument just accumulates the value of an argument and continues the evaluation of the form.\
+\
+  (deftype next-argument                                                                                               ;NEXT-ARGUMENT((arg , rest))\
+                             (save (fetch *args*))\
+                             (save-cdr-and-eval-car next-argument-return))\
+  (defreturn next-argument-return\
+                                 (restore *args*)\
+                                 (&rplacd (fetch *args*) (&cons (fetch *val*) (fetch *nil*))) \
+                                 (assign *args* (&cdr (fetch *args*)))\
+                                 (dispatch-on-exp-allowing-interrupts))\
+\
+           Finally we get to the evaluation of the last argument. At this time the continuation is an expression which \
+should evaluate to a closure which is to be applied.\
+\
+\
+\
+\
+\
+\
+                                                                                                                           38\
+\page \
+ (deftype last-argument               ;LAST-ARGWIffgarg   fun\
+          (save (fetch *args*))\
+          (save-cdr-and-oval-car last-argument-return))\
+ (defreturn last-argument-return\
+           (restore *args*)\
+            (PeplaCd (fetch *args*)\
+                    (&cons (fetch *veil (fetch *nil*)))\
+           (eval-exp-popj-to internal\'95apply)) ;Amazilgl Where did retpc go?\
+     Procedures with zero or one argument are handled specially For efficiency reasons. \
+ (deftype apply-i-arg                 ;APPLY-1-ARG((arg . fn))\
+          (seveL-cdr-and-eval-car apply-l--erg-return))\
+ (defreturn apply-l-erg-return\
+           (assign *ergs* (&cons (fetch *val*) (fetch *nil*))) \
+           (save (fetch *args*))\
+           (eval-exp-popj-to internal-apply))\
+ (deftype apply-no-args               ;APPLY-NO-ARGS((fn . ?))\
+         (assign *exp* (gcar (fetch *exp*)))\
+         (save (fetch *nil*))         ;ugh! need a place for retpc.\
+         (aval-exp-popj-to internal-apply))\
+    Spread argument is apply . It evaluates an argument, takes it as the set of arguments to be passed to the \
+ procedure specified by the continuation.\
+-'(deftype spread-argument            ;SPREAD-ARGUMENT((arg . fun))\
+         (save-cdr-and-eval-car spread-argument-return))\
+ (defreturn spread-argument-return\
+           (save (fetch *val*))\
+           (eval-exp-popi-to internal-apply))\
+ (defreturn internal-apply            ;function is in *val*.\
+           (restore *args*)\
+           (assign *exp* (fetch *val*))\
+           (dispatch-on-exp-allowing-interrupts))\
+    \'95F very user procedure is a closure . The closures are produced by evaluating p roc e du res. A closure \
+ has a script which is the body of the procedure to be executed and a display which is the environment which \
+ the closure was manufactured in. Notice that there two CAR operations required to get the actual body of the \
+ procedure. This is necessary to bypass the documentation packaged in the procedure definition.\
+ (deftype closure                     ;CLOSURE((script . display))\
+         (assign *display*\
+                 (&cons (fetch *args*) (&cdr (fetch *exp*)))) \
+         (assign *exp* (&car (&car (fetch *exp*)))) \
+         (dispatch-on-exp-allowing-interrupts))\
+    When a control point (non-standard continuation) is executed it is interpreted as a procedure with one \
+ argument which returns that argument to the constructor of the control point.\
+\
+\
+\
+\
+                                        39\
+\page \
+(deftype control-point             1CONTR L--POINT(state)\
+        (assign val (&car (fetch *arcs*)))\
+        (assign *stack* (&car (fetch *exp*)))\
+        (dispatch-on-stack))\
+   An interrupt point is similar to a control point except that the *d i s p 1 ay* and *v a1 * registers un.bt be \
+msto red.\
+(deftypo interrupt-point           ;INTERRUPT-POINT(state)\
+        (assign *stack* (fetch *axp*))\
+        (restore *val*)\
+        (restore *display*)\
+        (go-to restore-exp-args-dispatch))\
+(deftypo primitive-apply-1         ;PRIMITIVE--APPLY-1((arg . primp))\
+        (save (&cd\'95 (fetch *exp*)))\
+        (assign *exe (Secar (fetch *oxp*)))\
+        (aval-exp-popj-to primitive-apply-1--return))\
+(deireturn primitive-apply--l-return\
+          (restore *exp*)\
+          (dispatch-on-exp-allowing-interrupts))\
+\
+   The primitive operators included on the SCHEME279 chip arc implemented in the following microcode.\
+(deftypo primitive-car             ;PRIMITIVE-CAR(?)\
+        (assign *val* (&car (fetch *val*)))\
+        (dispatch-on-stack))\
+(doftype primitive-cdr             ;PRIMITIVE7C R(?)\
+        (assign *val* (g4cdr (fetch *val*)))\
+        (dispatch-on-stack))\
+(deftype primitive-type?           ;PRIMITIVE-TYPE?(?)\
+        (assign *exp* (fetch *val'')) \
+        (assign *val* (fetch *nil*)) \
+        (&set-type *val* (fetch *exp*)) ;build prototype.\
+        (dispatch-on-stack))\
+                              ;PRIMITIVE-NOT-ATOM(?)\
+(deftype primitive-not-atom\
+        (if (&pointer? (fetch *val*))\
+           (progn (assign *val* (fetch *nil*))\
+                 (&sot-type *val* self-evaluating-immediate)) ;T\
+           (assign *val* (fetch *nil*)))\
+        (dispatch-on-stack))\
+(deftype primitive-zerop           ;PRIMITIVE-ZEROP(?)\
+        (if (&val4?)\
+           (progn (assign *val* (retch *nil*))\
+                 (Met-type *val* self-evaluating-immediate))  ;T\
+           (assign *val* (fetch *nil*)))\
+        (dispatch-on-stack))\
+(deftype primitive-subl            ;PRIMITIVE-501(?)\
+        (assign *scan-down* (fetch *val*))\
+        (&decrement-scan-down-to-val)\
+        (dispatch-on-stack))\
+\
+\
+\
+\
+                                    40\
+\page \
+(deftype primitive7addl              ;PRIM 'TVE-ADD1(?)\
+         (assign *exp* (fetch *scan-up*)) \
+         (assign *scan-up* (fetch *val*)) \
+         (Uncrement-scan-up-to-val) \
+         (assign *scan-up* (latch *exp*))\
+         (dispatch-on-stack))\
+(deftype primitive-displacement-addl ;PRIM TIVE-DISPLACEMNT-A1 D1(?)\
+         (assign *exp* (fetch *nil*))\
+         (&docrement-frame)          ;make -1 in frame part\
+         (&val-displacement-to-exp-displacement)\
+         (assign *args* (fetch *scan-up*)) \
+         (assign *scan-up* (fetch *exp*)) \
+         (Aincrement-scan-p)\
+         (assign *oxp* (fetch *scan-up*)) \
+         (&val-frame-to-exp-framo)\
+         (assign *val* (fetch *exp*)) \
+         (dispatch--on-stack))\
+   Thus cons ----- list*.\
+(deftype primitive-apply-2          ;PRIMITIVE-APPLY-2((arg primop))\
+         (save (fetch *args*))\
+         (save (&cdr (fetch *exp*)))\
+         (assign *exp* (&car (fetch *exp*)))\
+         (oval-exp-popj-to restore-exp-args-dispatch))\
+(defrcturn restoro-exp-args-dispatch\
+          (restore *exp*)\
+          (restore *args*)\
+          (dispatch-on-exp-allowing-interrupts))\
+(deftype primitive-cons             ;PRIMITIVE-CONS(?)\
+         (&rplacd (fetch *args*) (fetch *val*))\
+         (restore *val*)\
+         (dispatch-on-stack))\
+(deftype primitive-eq               ;PRIMITIVE-EQ(?)\
+         (restore *args*)\
+         (assign *args* (&cer (fetch *args*)))\
+         (if (&eq-val (fetch *args*))\
+            (progn (assign *val* (fetch *nil*))\
+                  (&set-type *val* self-evaluating-immediate)) \
+            (assign *val* (fetch *nil*)))\
+         (dispatch-on-stack))\
+(deftype primitive-rplaca           ;PRIMITIVE-RPLACA(?)\
+        (restore *args*)\
+        (assign *val* (&rplaca (&car (fetch *args*)) (fetch *val*))) \
+        (dispatch-on-stack))\
+(deftype primitive-rplacd           ;PRIMITIVE-RPLACD(7)\
+        (restore *args*)\
+        (assign *val* (&rplacd (&car (fetch *args*)) (fetch *val*))) \
+        (dispatch-on-stack))\
+\
+\
+\
+\
+                                      41\
+\page \
+(deftype primitive-type!               ;PRIMITIVE-TYPfl(?)\
+         (restore *args*)\
+         (assign *exp* *val*)\
+         (assign *val* (&car (fetch *args*)))\
+         (&set-type *val* (fetch *exp*))\
+         (dispateh-on-staCk))\
+\
+   When an interrupt is requested and the machine is allowing interrupts, the microcode continues from the \
+following place:\
+(deftype process-interrupt \
+       (save (fetch ,'args*)) \
+       (save (fetch *exp*)) \
+       (save (fetch *display*)) \
+       (save (fetch *val*))\
+       (clset-type *stack* interrupt-point)\
+       (assign *args* (fetch *stack*))\
+       (assign *exp* (&car (&get-interrupt-routine-pointer))) ;from pads\
+       (dispatch-on-exp-allowing-interrupts))\
+\
+   The following routines are used to let the user get at the internal storage allocator registers (00D help\
+\
+\
+(defpc get-memtop\
+       (assign *val* (fetch *mcmtop*)) \
+       (dispatch-on-stack))\
+(defpc sot-rnemtop\
+       (assign *memtop* (fetch *val*)) \
+       (dispatch-on-stack))\
+(defpc get-scan-up\
+       (assign *val* (fetch *scan-up*)) \
+       (dispatch-on-stack))\
+(defpc set-scan-up\
+       (assign *scan-up* (fetch *val*))\
+       (81set-type *scan-up* self-evaluating-pointer) \
+       (dispatch-on-stack))\
+\
+   The following code is put in for debugging purposes. By setting the state f the machine to the appropriate \
+value we can read out or set any of the internal machine registers.\
+ defpc debug-routine\
+       (&write-to-pads (fetch *exp*)) \
+       (&write-to-pads (fetch *val*)) \
+      (&write-to-pads (fetch *args*)) \
+      (&write-to-pads (fetch *display*)) \
+      (&write-to-pads (fetch *stack*)) \
+      (&write-to-pads (fetch *newcell*)) \
+      (&write-to-pads (fetch *memtop*)) \
+      (&write-to-pads (fetch *retpc-count-mark*))\
+      (tWrite-to-pads (fetch *intermediate-argument*))\
+      (&read-from-pads *exp*)\
+      (&read-from-pads *val*)\
+      (&read-from-pads *args*)\
+      (&read-from-pads *display*)\
+\
+\
+\
+\
+                                        42\
+\
+\
+\
+\
+                                                                                           4K.\
+\page \
+Wead-from-oads *staCkl\
+(&read-From-pads *newcell*) \
+(&read-from-pads *memtop*)\
+(&read-from-pads *retpc-count-mark*) \
+(&read-from-pads *intermediate-argument*) \
+(go-to debug-routine))\
+\page \
+}
