@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme-79 Nanocode" 0 3 1
-                                      "Time-stamp: <2022-01-18 12:28:23 gorbag>"
+                                      "Time-stamp: <2022-01-19 12:13:41 gorbag>"
                                       "fix symbols of form <reg>-to-<field>")
 
 ;; 0.3.1   1/13/21 fix symbols of form <reg>-to-<field>; should be
@@ -205,51 +205,9 @@
 (defnano (microlisp-shared::mover) ; move between registers (specified by the microcode)
     ((from* to*) ()))
 
-;; specialized versions (can't use to* because they don't support a TO
-;; control).  presumably I can figure out how to simplify these later,
-;; but they are unique control lines... [8/27/21 BWM seems like that
-;; ORing concept isn't so bad since this kind of promiscuous use of
-;; different nanocodes could be avoided... [TBD]]
-;(defnano (microlisp-shared::move-to-stack)
-;  ((from*) (to-address-stack to-type-stack)))
-
-;(defnano (microlisp-shared::move-to-newcell)
-;  ((from*) (to-address-newcell to-type-newcell)))
-
-;(defnano (microlisp-shared::move-to-exp)
-;  ((from*) (to-type-exp to-frame-exp to-displacement-exp)))
-
-;(defnano (microlisp-shared::move-to-val)
-;  ((from*) (to-type-val to-address-val)))
-
-;(defnano (microlisp-shared::move-to-retpc-count-mark)
-;  ((from*) (to-type-retpc-count-mark to-address-retpc-count-mark)))
-
 (defnano (microlisp-shared::do-car)
   ((from*) (ale))
   ((to*) (read)))
-
-#||
-(defnano (microlisp-shared::do-car-to-stack)
-    ((from*) (ale))
-  ((to-address-stack to-type-stack) (read)))
-
-(defnano (microlisp-shared::do-car-to-retpc-count-mark)
-    ((from*) (ale))    
-  ((to-address-retpc-count-mark to-type-retpc-count-mark) (read)))
-
-(defnano (microlisp-shared::do-car-to-val)
-    ((from*) (ale))    
-  ((to-address-val to-type-val) (read)))
-
-(defnano (microlisp-shared::do-car-to-exp)
-    ((from*) (ale))    
-  ((to-frame-exp to-displacement-exp to-type-exp) (read)))
-
-(defnano (microlisp-shared::do-car-to-newcell)
-    ((from*) (ale))    
-  ((to-address-newcell to-type-newcell) (read)))
-||#
 
 ;; should be able to automatically generate this within defnano (microlisp-shared::TBD)
 (defparameter *from-to-nano-operations* '(microlisp-shared::write-car
@@ -266,37 +224,10 @@
   ((from-to*) (ale))
   ((from* unmark!-bus) (write)))
 
-#||
-(defnano (microlisp-shared::writei-car-of-stack)
-    ((from-stack) (ale))
-  ((from* unmark!-bus) (write)))
-
-(defnano (microlisp-shared::writei-car-of-newcell)
-    ((from-newcell) (ale))
-  ((from* unmark!-bus) (write)))
-
-(defnano (microlisp-shared::writei-car-of-exp)
-    ((from-exp) (ale))
-  ((from* unmark!-bus) (write)))
-
-(defnano (microlisp-shared::writei-car-of-val)
-    ((from-val) (ale))
-  ((from* unmark!-bus) (write)))
-
-(defnano (microlisp-shared::writei-car-of-retpc-count-mark)
-    ((from-retpc-count-mark) (ale))
-  ((from* unmark!-bus) (write)))
-||#
-
 (defnano (microlisp-shared::write-and-mark-car)
   ((from-to*) (ale clear-gc)) ; setting mark means we can clear the gc-needed pad
   ((from* mark!-bus) (write)))
 
-#||
-(defnano (microlisp-shared::writei-and-mark-car-of-newcell) ; going to generate these specialized versions on an as-needed basis now until I can automate
-  ((from-newcell) (ale))
-  ((from* mark!-bus) (write)))
-||#
 (defnano (microlisp-shared::write-and-unmark-car :force-add t) ; technically not needed but distinguish for debugging
   ((from-to*) (ale))
   ((from* unmark!-bus) (write)))
@@ -313,79 +244,17 @@
    ((from*) (ale))    
   ((to*) (read cdr)))
 
-#||
-(defnano (microlisp-shared::do-cdr-to-stack)
-    ((from*) (ale))    
-  ((to-address-stack to-type-stack) (read cdr)))
-
-(defnano (microlisp-shared::do-cdr-to-retpc-count-mark)
-    ((from*) (ale))    
-  ((to-address-retpc-count-mark to-type-retpc-count-mark) (read cdr)))
-
-(defnano (microlisp-shared::do-cdr-to-val)
-    ((from*) (ale))    
-  ((to-address-val to-type-val) (read cdr)))
-
-(defnano (microlisp-shared::do-cdr-to-exp)
-    ((from*) (ale))    
-  ((to-frame-exp to-displacement-exp to-type-exp) (read cdr)))
-
-(defnano (microlisp-shared::do-cdr-to-newcell)
-    ((from*) (ale))    
-  ((to-address-newcell to-type-newcell) (read cdr)))
-||#
-
 (defnano (microlisp-shared::write-cdr :force-add t) ; distinguish from write-and-unmark-cdr for debugging
     ((from-to*) (ale))
   ((from* unmark!-bus) (write cdr)))
-
-#||
-(defnano (microlisp-shared::writei-cdr-of-stack)
-    ((from-stack) (ale))
-  ((from*) (write cdr)))
-
-(defnano (microlisp-shared::writei-cdr-of-newcell)
-    ((from-newcell) (ale))
-  ((from*) (write cdr)))
-
-(defnano (microlisp-shared::writei-cdr-of-exp)
-    ((from-exp) (ale))
-  ((from*) (write cdr)))
-(defnano (microlisp-shared::writei-cdr-of-val)
-    ((from-val) (ale))
-  ((from*) (write cdr)))
-
-(defnano (microlisp-shared::writei-cdr-of-retpc-count-mark)
-    ((from-retpc-count-mark) (ale))
-  ((from*) (write cdr)))
-||#
 
 (defnano (microlisp-shared::do-restore) ; pop the stack
    (() (from-stack ale))
    ((to*) (read))
   (() (read cdr to-address-stack to-type-stack)))
 
-#||
-(defnano (microlisp-shared::do-restore-retpc-count-mark)
-    (() (from-stack ale))
-  (() (read to-address-retpc-count-mark to-type-retpc-count-mark))
-  (() (read cdr to-address-stack to-type-stack)))
-
-(defnano (microlisp-shared::do-restore-val)
-    (() (from-stack ale))
-  (() (read to-address-val to-type-val))
-  (() (read cdr to-address-stack to-type-stack)))
-
-(defnano (microlisp-shared::do-restore-exp)
-    (() (from-stack ale))
-  (() (read to-displacement-exp to-frame-exp to-type-exp))
-  (() (read cdr to-address-stack to-type-stack)))
-
-(defnano (microlisp-shared::do-restore-newcell)
-    (() (from-stack ale))
-  (() (read to-address-newcell to-type-newcell))
-  (() (read cdr to-address-stack to-type-stack)))
-||#
+;; note these are destination specific; we probably should add
+;; mechanism to allow them to be handled via to* destination. (TBD)
 
 (defnano (microlisp-shared::do-set-type-exp)
     ((from*) (to-type-exp)))
@@ -467,6 +336,8 @@
 
 (defnano (microlisp-shared::do-decrement-scan-down)
     (() (from-decremented-exp to-frame-exp to-type-exp to-displacement-exp))) ; scan-down is alias for exp
+
+;; I believe Scheme-79 had a PADS source/destination so read would have PADS in the from field
 
 (defnano (microlisp-shared::do-read-from-pads)
   ((to*) (read))) ; no address - the pads are loaded by external circuitry for debugging

@@ -1,8 +1,10 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 3 1
-                                      "Time-stamp: <2022-01-13 13:57:08 gorbag>"
+                                      "Time-stamp: <2022-01-19 13:36:48 gorbag>"
                                       "internal-freeze -> run-nano")
+
+;; xxxxx   1/19/22 remove some TBDs in the comments (they were done already)
 
 ;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
 ;;                    for consistancy with AIM
@@ -35,7 +37,7 @@
 ;; 0.1.8  10/ 7/21 add support for breakpoints (based on uaddresses)
 
 ;; 0.1.7  10/ 5/21 since we don't have actual continuous update until a
-;;                     latch operation (TBD??)  some actions have to
+;;                     latch operation, some actions have to
 ;;                     be rerun on phase changes or other events to
 ;;                     correctly reflect their state. In this case we
 ;;                     add a run-sense-controls immediately before
@@ -337,7 +339,6 @@ a given offset. Currently does not directly handle conditionals (TBD)"
          )
        (nreverse result)))))
 
-
 (defun get-condition (pc)
   (declare (bit-vector pc))
   ;; pc points to a BRANCH instruction, determine the condition function
@@ -408,7 +409,7 @@ a given offset. Currently does not directly handle conditionals (TBD)"
        (copy-field
         ;; now that we've changed our representation to bit-vector, it
         ;; should be easier to just deal with the low order bit, no?
-        ;; That's how the FPGA will do it!! (TBD)
+        ;; That's how the FPGA will do it!!
         (integer->bit-vector 
          (cl:cond
            (condition-holds-p

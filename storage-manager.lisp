@@ -2,7 +2,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 1
-                                      "Time-stamp: <2022-01-18 12:18:49 gorbag>"
+                                      "Time-stamp: <2022-01-19 12:15:04 gorbag>"
                                       "cleanup obsolete code")
 
 ;; 0.3.1   1/18/22 cleanup obsolete code: removing special treatment of registers
@@ -233,10 +233,14 @@
   `((microlisp-shared::clear-gc!)))
 
 ;; &scan-up=scan-down?
-(defupred &scan-up=scan-down? (address=bus nil (*scan-up* *scan-down*)) ; first register is the one we should use for comparison
+(defupred &scan-up=scan-down? (address=bus nil (*scan-up* *scan-down*))
+  ;; first register is the one we should use for comparison
   ;; body of function of two args: fail-tag and success-tag
-  `(((from *scan-down*) (branch address=bus-newcell ,fpga-pla-build-tools::fail-tag ,fpga-pla-build-tools::success-tag))))
+  `(((from *scan-down*)
+     (branch address=bus-newcell ,fpga-pla-build-tools::fail-tag ,fpga-pla-build-tools::success-tag))))
 
 ;; &scan-down=0?
-(defupred &scan-down=0? (address=0 nil (*bus* *scan-down*)) ; will have to fetch first, but check that in simple-branch-pred
-  `(((from *scan-down*) (branch address=0-bus ,fpga-pla-build-tools::fail-tag ,fpga-pla-build-tools::success-tag))))
+(defupred &scan-down=0? (address=0 nil (*bus* *scan-down*))
+  ;; will have to fetch first, but check that in simple-branch-pred
+  `(((from *scan-down*)
+     (branch address=0-bus ,fpga-pla-build-tools::fail-tag ,fpga-pla-build-tools::success-tag))))

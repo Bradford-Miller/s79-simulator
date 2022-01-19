@@ -1,8 +1,10 @@
 (in-package :microlisp-shared) ; instructions are (now) in :microlisp-shared package
 
 (scheme-79:scheme-79-version-reporter "S79 ucode Defs" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:25:15 gorbag>"
+                                      "Time-stamp: <2022-01-19 13:42:36 gorbag>"
                                       "0.3 release!")
+
+;; xxxxx   1/19/22 remove some TBDs in the comments (they were done already)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -190,10 +192,8 @@
       ,(microlisp-int:create-ulmd &mark-in-use! 1 (t) assign &car &rplaca-and-mark! fetch fetch fetch)
       ,(microlisp-int:create-ulmd &unmark! 1 (t) assign &car &rplaca-and-unmark! fetch fetch fetch)
 
-      ;; these have compile-embedded-expresison so the expansion ucode fns
-      ;; are listed here to get the validation counts right NB:
-      ;; embedded-ucode-operations (in ucode-validator.lisp) expects all
-      ;; entries to only have a single argument type. (TBD)
+      ;; these have compile-embedded-expression so the expansion ucode fns
+      ;; are listed here to get the validation counts right
 
       ;;(setq *special-ucode-operations-alist*
       

@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "S79 ucode support ops" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:25:31 gorbag>"
+                                      "Time-stamp: <2022-01-19 13:43:09 gorbag>"
                                       "0.3 release!")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -169,8 +169,9 @@
      (declare (ignorable implied-register)) ; don't need it yet
      (cl:cond
        ;; ok, the one case I'm currently using in &cons - can add more later ;-)
-       ((and (null pred-type) 
-             (eql sense-line :calculated) ;; we have to figure out based on the parameters (probably should have a lookup table, no? TBD)
+       ((and (null pred-type)
+             ;; we have to figure out based on the parameters (probably should have a lookup table, no? TBD)
+             (eql sense-line :calculated) 
              (eql register-1 '*newcell*)
              (eql pred '&address=?))
         (fetch-and-test-for-success register-2 'address=bus-newcell fail-tag success-tag))

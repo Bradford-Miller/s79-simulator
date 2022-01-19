@@ -1,8 +1,10 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Nano" 0 3 3
-                                      "Time-stamp: <2022-01-18 11:58:35 gorbag>"
+                                      "Time-stamp: <2022-01-19 13:38:08 gorbag>"
                                       "cleanup special register treatment")
+
+;; xxxxx   1/19/22 remove some TBDs in the comments (they were done already)
 
 ;; 0.3.3   1/18/22 cleanup obsolete code: removing special treatment of registers
 ;;                    which required multiple control lines for TO as new covering
@@ -36,7 +38,7 @@
 ;; 0.1.6  10/20/21 micro-pc now a bit vector
 
 ;; 0.1.5  10/ 5/21 since we don't have actual continuous update until a
-;;                     latch operation (TBD??)  some actions have to
+;;                     latch operation, some actions have to
 ;;                     be rerun on phase changes or other events to
 ;;                     correctly reflect their state. In this case we
 ;;                     add a run-sense-controls immediately after
@@ -348,7 +350,7 @@
 ;; these inputs are tied to the microcontroller state instead, so
 ;; we'll deal with them there.
 
-;; note that these could (shild?) be created in a similar manner to
+;; note that these could (should?) be created in a similar manner to
 ;; register controls via the defchip-pad macro, but since there aren't
 ;; that many of them I'm doing it manually for now (TBD)
 
