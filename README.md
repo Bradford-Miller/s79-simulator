@@ -1,5 +1,5 @@
 #Scheme-79 Chip Reimplimentation in Simulation and FPGA
-Time-stamp: <2022-01-11 14:00:34 gorbag>
+Time-stamp: <2022-01-24 17:05:18 gorbag>
 
 First cut at a software simulation/emulation of the SCHEME-79 chip (by GLS, also Jack Holloway, Jerry Sussman and Alan
 Bell).  Intent is to (at least) use this to clarify anything in the paper that is unclear before proceeeding to HDL
@@ -12,6 +12,67 @@ Ultimate Opcode"
 and
 "The SCHEME-79 Chip" respectively.
 
+## Loading and Running 
+
+Right now, only the simulator is supported, a future release will generate HDL suitable for importing into an
+appropriate FPGA tool suite.
+
+### Installation
+
+Clone and install the CL-LIB repository, then the fpga-support library repository. The former can be installed anywhere
+ASDF can find it, the latter should be installed as a sibling to the current package (i.e. have a common parent
+directory).
+
+### Compile
+
+### Run
+
+Generally after compiling and loading, I do something like
+
+``` 
+    (test :n 0)
+    (start-console)
+```
+
+This will use the microcode for the specified test and bring up the console. From there, press "step" and you should see
+the diplay populate ready to run the first instruction in the test (in the case of test 0, above, the chip boot code). If you then "run" it should run
+through the boot stage (in this case before GCing memory) and do some simple stack maniplulations. If, when the
+microcode gets to the "DONE" tag the registers and memory are correct per the test's specification, it will indicate the
+test was successful. (You can see clock-by-clock tracing of the microcode in the output pane of the listener).
+
+You can also use the console to start the DSO and a diagnostics panel. These will indicate pad and internal register
+control timing for the simulated run. (They should be started before running the simulation). 
+
+Additional tests may also be run, however, after the first test the sequence to run them is to press "step" to get a
+clear display, "reset" to set the internal microcode PC appropriately for the newly loaded microcode, and then "step"
+again to see the first microinstruction of the new test. It is not necessary to rerun (start-console) as it should
+already be displayed.
+
+## Liberties Taken
+
+Since I'm not set on reproducing the actual chip they developed, a few (I tried to stay reasonable) liberties were taken
+in order to simplify the code and FPGA. Memory and chip space are not as tight as their requirements (a given maximum
+chip size) and I did try to stay true to the actual operation of the chip. Regardless, I document (intentional :) changes to their
+design here
+
+### Registers
+
+While I kept their registers, some control lines were added. Specifically:
+
+Control Wire | Description
+------------ | -----------
+from-displacement | added to *val* to support their &val-displacement-to-exp-displacement u-op
+from-frame | added to *val* to support their &val-frame-to-exp-frame u-op
+not-mark-bit | added to *bus* to allow direct detection of this state. I'm sure inverters are cheap even on an FPGA, but I need some way to actually force the issue (so this may change in the future).
+mark! unmark! | controls added to bus to set the appropriate bits (set/unset the mark-bit)
+type! pointer! | controls added to bus to set the appropriate bits (set/unset the type-not-pointer bit)
+
+### Pads
+
+I added a reset pad to allow external circuitry (ha) to reset the chip. Reset is quite common for chips of this era,
+so I imagine it was left off due to a constraint on bonded pads or packaging.
+
+
 ### Test Sets:
 Some documentation:
 
@@ -19,6 +80,7 @@ Filename | Description
 -------- | -----------
 test-0 | boot function replicates the initial boot in terms of setting *memtop* from the initial memory and then gets a stack pointer from a simulated interrupt. Then it does a push and pop to reverse two items that were in our initial stack (directly placed into memory). This tests register assignment, fetching car and cdr of a location from memory, incrementing registers, getting a pointer from an interrupt, and doing basic stack operations. On completion the machine loops on location "done".
 test-1 | boot function extended to do the initial GC which should consolodate free space and set up the register pointers correctly to allow CONSing. (Note CONS was tested in test-0). Some initial garbage is put into memory to make sure it is ignored by the mark/sweep algorithm.
+test-2 | hand-compiled APPEND function run on a couple list structures (from the AIM's description of APPEND's S-Code)
 
 ####1-11-22 BWM
 test-1 works and have repatriated more code into ../fpga-support as well as some refactoring to more cleanly split
@@ -92,3 +154,11 @@ And finally we need to actually implement the interpreter in HDL.
 At that point we should be able to go to the next level and look at SCHEME-86 (AIM-1040) and improvements there, finally
 getting to the final phase where we focus on the distributed/comms side (getting back to Hewitt Actors) and look at how
 to build a "distributed SCHEME" supercomputing system!
+
+## Contact
+
+Ideally, posting bugs in the project or repository would be the ideal way to contact me (even if it's just a
+misunderstanding of the documentation). 
+
+
+

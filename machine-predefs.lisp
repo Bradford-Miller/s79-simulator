@@ -1,12 +1,16 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 3 3
-                                      "Time-stamp: <2022-01-18 12:39:32 gorbag>"
-                                      "delete obsolete code")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 3 4
+                                      "Time-stamp: <2022-01-25 14:55:19 gorbag>"
+                                      "support decrement-field decrement-displacement")
 
-;; 0.3.3   1/18/22 cleanup obsolete code: removing special treatment of registers
-;;                    which required multiple control lines for TO as new covering
-;;                    set computation deals with it.
+;; 0.3.4   1/24/22 add support for from-decremented-field and
+;;                    from-decremented-displacement
+
+;; 0.3.3   1/18/22 cleanup obsolete code: removing special treatment of
+;;                    registers which required multiple control lines
+;;                    for TO as new covering set computation deals
+;;                    with it.
 
 ;; 0.3.2   1/14/22 flip order of symbols in nanocontrol constants for
 ;;                     consistancy with AIM
@@ -279,9 +283,9 @@
 ;; and frame together.
 (defvar *control-lines-needing-address-field* '(to-address from-incremented from-decremented))
 
-(defvar *control-lines-needing-displacement-field* '(to-displacement))
+(defvar *control-lines-needing-displacement-field* '(to-displacement from-decremented-displacement))
 
-(defvar *control-lines-needing-frame-field* '(to-frame))
+(defvar *control-lines-needing-frame-field* '(to-frame from-decremented-frame))
 
 
 (defun make-nanocontrol-line-symbol (register-name-symbol control-name-symbol)
@@ -460,8 +464,11 @@ data manipulations")
                             `(when (,accessor ',register-name)
                                (setf (pointer-bit ,register-name) 1)))
                            ;; not TO lines
-                           ((from from-decremented from-incremented from-type)
-                            nil) ; ok to ignore - we pick up the from lines on a different init list
+                           ((from from-decremented from-incremented
+                            from-type from-decremented-displacement
+                            from-decremented-frame)
+                            nil) ; ok to ignore - we pick up the from
+                                 ; lines on a different init list
                            (t
                             (note-if *debug-dataflow*
                                      "register ~s control line ~s ignored" register-name control)))))
@@ -495,6 +502,22 @@ data manipulations")
                                                "decremented register ~s placed on bus: ~s"
                                                ',register-name (decrement-field ,register-name))
                                       (copy-field (decrement-field ,register-name) *bus*)))
+                                  (from-decremented-frame
+                                   (let ((field (make-register-field-symbol register-name 'frame)))
+                                     `(when (and (,accessor ',register-name)
+                                                 normal-run-p)
+                                        (note-if *debug-dataflow*
+                                                 "decremented register frame of ~s placed on bus: ~s"
+                                                 ',register-name (decrement-field ,field))
+                                        (copy-field (decrement-field ,field) *bus*))))
+                                   (from-decremented-displacement
+                                    (let ((field (make-register-field-symbol register-name 'displacement)))
+                                      `(when (and (,accessor ',register-name)
+                                                  normal-run-p)
+                                         (note-if *debug-dataflow*
+                                                  "decremented register displacment of ~s placed on bus: ~s"
+                                                  ',register-name (decrement-field ,field))
+                                         (copy-field (decrement-field ,field) *bus*))))
                                   (from-incremented
                                    `(when (and (,accessor ',register-name)
                                                normal-run-p)

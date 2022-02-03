@@ -1,6 +1,6 @@
 (in-package :scheme-79)
 
-(scheme-79-version-reporter "Scheme-79 Project Defs" 0 3 0
+(scheme-79-version-reporter "S79 Project Defs" 0 3 0
                             "Time-stamp: <2022-01-11 15:22:58 gorbag>"
                             "0.3 release!")
 

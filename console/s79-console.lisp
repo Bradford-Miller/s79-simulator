@@ -1,8 +1,10 @@
 (in-package :s79-console)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 3
-                                      "Time-stamp: <2022-01-13 14:26:31 gorbag>"
-                                      "handle display of non-standard registers")
+                                      "Time-stamp: <2022-01-31 17:59:12 gorbag>"
+                                      "add mask-interrupt button")
+
+;; 0.3.3   1/24/22 add mask-interrupt button
 
 ;; 0.3.2   1/17/22 handle display of non-standard registers
 
@@ -168,25 +170,39 @@
 
 ;; 0.0.14   2/ 2/21     fix per-tick updates to show more low level changes
 
-;; 0.0.13   2/ 1/21     show 3 words at and following the content of the *address* pseudo register
+;; 0.0.13   2/ 1/21     show 3 words at and following the content of the *address*
+;;                          pseudo register
 
 ;; 0.0.12   1/26/21     update external bits on each nano cycle (yeah it's expensive but you think channeling
 ;;                        all that information to old-time consoles was cheap? ;-)
+
 ;; 0.0.11   1/20/21     when focused on a register with a pointer, show what's in memory (car and cdr)
 ;;                        fixup nanocode display, add PC (state) to nanocode and ucode displays,
 ;;                        fix focus function for ucode and nanocode (ignore)
+
 ;; 0.0.10   1/19/21     when focused on a register, also display the type symbolically
+
 ;; 0.0.9    1/15/21     also start to add current ncode display (may make it optional since not sure will be
 ;;                        needed once mapping debugged!)
+
 ;; 0.0.8    1/12/21     start to add a new grid showing the current ucode instruction and some symbolic
 ;;                        information on state
+
 ;; 0.0.7    1/ 9/21     invalidate register presentations after step/micro-step so they get updated
+
 ;; 0.0.6    1/ 6/21     implement step and micro-step buttons
+
 ;; 0.0.5    1/ 4/21     prompt for new values for registers when focused; add additional panels for external interfaces
-;; 0.0.4    1/ 4/21     also allow sense lines to be declared disabled (well not enabled anyway) and supress printing them
+
+;; 0.0.4    1/ 4/21     also allow sense lines to be declared disabled (well not
+;;                        enabled anyway) and suppress printing them
+
 ;; 0.0.3    1/ 3/21     add disabled feature for checkboxes and macro-ize building functions
+
 ;; 0.0.2    1/ 2/21     change control lines to checkboxes and allow user to set them (still not validated)
+
 ;; 0.0.1   12/28/20     Add (start-console) function
+
 ;; 0.0.0   12/26/2020   New
 
 ;; define a CAPI console to help with debugging the microcode simulation
@@ -824,13 +840,13 @@ been run (if any) and check if it was successful (if such an evaluation function
       (setq *test-suite* nil)) ; so we don't keep doing this unless we rerun the test
     t))  ; we should halt
 
-;;    :PH1   :PH2 :FRZ :NANO :ALE    :RD :WR :CDR :RDI :int-rq :GCR :RST :RD-State :LD-State
+;;    :PH1   :PH2 :FRZ :NANO :ALE    :RD :WR :CDR :int-rq :RDI :m-int :GCR :RST :RD-State :LD-State
 ;;    :Step  :Run :Run-until :Stop :Freeze :RD-State :LD-State :INT-RQ
 
 (defun get-breakpoint-input-internal (pane)
   (let* ((text (text-input-pane-text pane))
          (result (parse-integer text :junk-allowed t)))
-    (and (typep result '(integer 0 *)) result))) ; might want to narrow to valid addresses
+    (and (typep result '(integer 0 *)) result))) ; might want to narrow to valid addresses (TBD)
 
 (defun get-breakpoint-input-internal-1 (layout)
   ;; we're ok if any of the values passes
@@ -998,7 +1014,7 @@ been run (if any) and check if it was successful (if such an evaluation function
 
 (defun update-data-status ()
   (let ((address-data-panel (slot-value *console* 'address-data-panel))
-        (*warn-when-beyond-memtop* nil)) ; supress warnings
+        (*warn-when-beyond-memtop* nil)) ; suppress warnings
     (mlet (mark ptr type disp frame) (break-out-bits-as-integers microlisp-shared:*memory-pads*)
           ;; also want to show next three addresses - not necessarily in same list!
           (let* ((a1 (logand (bit-vector->integer microlisp-shared:*address*) *address-field-mask*))
@@ -1217,15 +1233,21 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
     :print-function 'capitalize-if-symbol
     :enabled nil)
 
+   (int-rq
+    capi:check-button
+    :data :int-rq
+    :print-function 'capitalize-if-symbol
+    :enabled nil)
+
    (rdi
     capi:check-button
     :data :rdi
     :print-function 'capitalize-if-symbol
     :enabled nil)
 
-   (int-rq
+   (m-int
     capi:check-button
-    :data :int-rq
+    :data :m-int
     :print-function 'capitalize-if-symbol
     :enabled nil)
 
@@ -1363,6 +1385,8 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
      :cdr)
     ('microlisp-shared:*read-interrupt*
      :rdi)
+    ('microlisp-shared:*mask-interrupts*
+     :m-int)
     ('microlisp-shared:*gc-needed*
      :gcr)))
 

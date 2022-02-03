@@ -137,7 +137,9 @@
 
   (ecase *enclosing-opcode*
     (assign ; better have a *to-register*...
-     `(((to ,*to-register*) microlisp-shared::do-simple-get-interrupt-pointer)))))
+     (write-generated-code *upla-stream* nil
+                           `(((to ,*to-register*) microlisp-shared::do-simple-get-interrupt-pointer))
+                           "&get-interrupt-routine-pointer"))))
 
 ;; &read-from-pads
 

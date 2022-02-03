@@ -1,8 +1,10 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 0
-                                      "Time-stamp: <2022-01-14 13:22:08 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 1
+                                      "Time-stamp: <2022-01-24 14:23:14 gorbag>"
+                                      "add mask-interrupt button")
+
+;; 0.3.1   1/24/22 add mask-interrupt button
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -199,7 +201,7 @@
   (declare (ignore args))
   (values))
 
-(defvar *all-indicators* '(:frz :nano :rst :ale :rd :wr :cdr :int-rq :rdi :gcr :rd-state :ld-state)
+(defvar *all-indicators* '(:frz :nano :rst :ale :rd :wr :cdr :int-rq :rdi :m-int :gcr :rd-state :ld-state)
   "used for redraw")
 
 

@@ -1,8 +1,18 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 0
-                                      "Time-stamp: <2022-01-13 14:57:35 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 3
+                                      "Time-stamp: <2022-01-26 11:28:26 gorbag>"
+                                      "*breakpoint-descs*")
+
+;; 0.3.3   1/26/22 add *breakpoint-descs* to have different kinds of
+;;                     breakpoints
+
+;; 0.3.2   1/24/22 add from-decremented-frame and
+;;                     from-decremented-displacement to *exp*
+
+;; 0.3.1   1/24/22 add from-displacement and from-frame to *val*
+;;                     register to implement &val-frame-to-exp-frame
+;;                     and &val-displacement-to-exp-displacement.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -116,7 +126,11 @@ machine was in the RUN state")
   "List of microcode addresses that should cause a break. This is
 similar to a HALT but does not attempt to update statistics, warn
 about further processing, etc. Set a breakpoint using the 'Run-Until'
-button.")
+button or the set-breakpoint fn.")
+
+(defvar *breakpoint-descs* nil
+  "List of breakpoint descriptors. This is to allow us to set 
+'permanent' breakpoints in the microcode for debugging certain ufns.")
 
 ;; pointer is 32 bits with 3 fields: 24 bit data, 7 bit type, and 1
 ;; bit (in-use mark) used by storage allocator.
@@ -201,8 +215,8 @@ button.")
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *control-lines*
     '(to to-type to-displacement to-frame to-address from
-      from-decremented from-incremented from-type mark! unmark! pointer!
-      type!))
+      from-decremented from-incremented from-decremented-frame from-decremented-displacement
+      from-type mark! unmark! pointer! type!))
 
   (defparameter *sense-lines*
     '(address=bus type=bus =bus mark-bit not-mark-bit type-not-pointer
@@ -264,14 +278,16 @@ button.")
 (defchip-reg *exp*)
 (defchip-reg *scan-down* *exp*)
 
-(defureg *exp* (to-type to-displacement to-frame from from-decremented) ())
+;; BWM add from-decremented-frame and from-decremented-displacement 2/25/22
+(defureg *exp* (to-type to-displacement to-frame from from-decremented from-decremented-frame from-decremented-displacement) ())
 
 ;; VAL the value of the expression when determined
 (defchip-reg *val*)
 (defchip-reg *rel-tem-2* *val*)
 (defchip-reg *stack-top* *val*)
 
-(defureg *val* (to-type to-address from) (type=bus address=bus =bus))
+;; added from-displacement and from-frame to implement &val-frame-to-exp-frame, etc. 1/24/22 BWM
+(defureg *val* (to-type to-address from from-displacement from-frame) (type=bus address=bus =bus))
 
 ;; RETPC-COUNT-MARK "used in increment operations to store
 ;; intermediate values because our registers are not dual rank. It is

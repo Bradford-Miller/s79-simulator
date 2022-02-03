@@ -1,201 +1,66 @@
-;; (in-package :scheme-79-mcr) ; this should be in the reader - this is not standard common lisp!
+;; Time-stamp: <2022-01-27 18:17:38 gorbag>
 
-;; also never read or printed, here for documentation purposes only
-;; (thought it might make sense to have some kind of version number
-;; that can be accessed from the machine!)
-
-;;(scheme-79:scheme-79-version-reporter "S79 Microcode" 0 3 1
-;;                                      "Time-stamp: <2022-01-26 11:52:19 gorbag>"
-;;                                      "*stack* from-type")
-
-;; 0.3.1 1/17/22 added from-type for type dispatch (new code paying
-;;                   more attention to declarations!
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; 0.1.1  9/20/21  update comments on defreg bus
-;; 0.1.0  8/20/21  "official" 0.2 release: test-0 passed!
-;;        2/22/21  fix typo in a comment
-;; 0.0.7  2/ 6/21  notes on the debug-routine
-;; 0.0.6  1/12/21  notes on funny 9 bit types (no code changes)
-;; 0.0.5 12/ 8/20  typos (more getting caught by validator!)
-;; 0.0.4 12/ 6/20  more typos and bad character (opt-8?)
-;; 0.0.3 12/ 5/20  another typo (rEplacd?)
-;; 0.0.2 12/ 2/20  more typos (even my primitive validator caught them)
-;; 0.0.1 12/ 1/20  fix typeo (spurious #\,)
-
-;; (in-readtable ucode-syntax) ; to deal with the commas - this should be in the reader.
-;; MIT called this "micro lisp" so some minor variations with standard lisp.
-
-;; What follows is a more or less faithful transcript of the microcode from
-;; AIM 559: this was for the actual SCHEME-79 chip instead of the SIMPLE
-;; prototype produced during Steele's class (which apparently had an error
-;; in fabrication preventing it from running). 
-
-;; Some notes, cribbed shamelessly from AIM 559 (many are direct quotes!)
-
-;; data paths consist of a set of special purpose registers (q.v.)  with
-;; built-in operators, interconnected with a single 32 bit bus
-
-;; there are 10 registers, shared by the interpreter and GC to save
-;; space. (The interpreter cannot run while a GC is taking place, but note
-;; cites to fix that). Registers and operators are all on the same bus. (See
-;; Figure 3)
-
-;; the first bit in most registers is the MARK bit and in many registers this
-;; is followed by a 7 bit type field. The remainder of the 32 bits (24 bits)
-;; is an address or in the case of EXP the address is split into 2 12 bit
-;; fields, the displacement and frame.  This allows some microcode to enable
-;; TO-DISPLAEMENT-EXP and FROM-RETPC-COUNT-MARK which transfers the
-;; DISPLACEMENT part of the data field of the the RETPC-COUNT-MARK register
-;; or the DISPLACEMENT part of the EXP register.
-
-;; The data part of the EXP register can be decremented and placed on the
-;; bus; the DISPLACEMENT and FRAME subfields of the bus can be separately
-;; tested for zero - this is used to implement lookup of variables by
-;; lexical address. Decrementing the data field of EXP is used as a 'scan
-;; down' pointer in teh sweep phase of GC. NEWCELL, which cointains the free
-;; storage pointer can be read on the bus directly or the incremented value
-;; can be placed on the bus. This is also used to scan up in memory during
-;; GC sweep. NEWCELL also continually tests if its data field is equal to
-;; the data field on the bus, and the comparison is used for checking during
-;; allocation to see if the available memory limit has been exceeded.
-
-;; The bus is exteded off chip through pads. The external world is
-;; conceptualized as a set of registers with special capabilities. The
-;; external ADDRESS register is used to access memory and set from the
-;; bus. The pseudo-register MEMORY can be read on to the bus or written from
-;; the bus. The actual access is performed to the list cell addressed by the
-;; ADDRESS register, with the CDR bit controlling which half of the cell is
-;; being acessed. INTERRUPT is an external register that can be read onto
-;; the bus and contains the address of a global symbol whose value (its CAR)
-;; is an appropriate interrupt handler.
-
-;; Code compactness leveraged a nano control map to limit the number of
-;; combinations of register controls in any one micro instruction.  since a
-;; single micro instruction may represent several nano instructions, the
-;; micro sequencer is frozen while the nano-sequencer is running, used to
-;; allow for memory wait states as well.
-
-;; the nano engine was a full stater machine (see Figure 6), but could not
-;; perform conditional branch operations. Subsequences in the microcode
-;; could be subroutinized by the conventional use of a free register to hold
-;; the return micro address in its type field.
-
-;; micro instructions have the form source register (from ...), destination
-;; register (to ...), a set of operations and controls and possible branch
-;; conditions.
-
-;; the nano PLA does 3 separate decoding functions: the from, to and
-;; operation fields of the microinstruction. (Each compiled separately: the
-;; assignment of numbers to each register/constant is therefore unrelated).
-
-;; the operation field of the micro-instruction selects the
-;; nano-instruction; the nano instruction can then selectively enable
-;; decoding of the from and to fields. For single-word nano-routines, both
-;; are automatically enabled, multiple-word nano-routines are predefined and
-;; specify when to enable the decodings.
-
-;; microcode branches are devloped where the condition beting tested is a
-;; boolean bit merged into the low bit of the next state value, therefore
-;; the two targets of the brnch must be allocated in an even/odd pair of
-;; states. If a given micro-word is the target of more than one branch, then
-;; several copies may have to be made (e.g, one in an odd location, the
-;; other in an even). Additionally, addignment of states has to be
-;; compatible with the assignment of type numbers (the S-code operations)
-;; used by the micro state dispatcher.
-
-;; the following microcode is a direct transcription from the appendix
-;; to the AIM (original OCR then fixed manually, some of the line
-;; breaks and whitespace were not preserved exactly, but I did
-;; the best I could and it should have no effect on the code itself.
-
-
-;; Appendix - The SCHEME-79 Microcode
-
-;; In this appendix we present a complete listing of the microcode for the
-;; SCHEME-79 chip. in this listing, symbols surrounded by single asterisks
-;; (e.g. *nil*) are names or aliases of machine registers. Symbols begin-
-;; ning with ampersand (&) are the names of hardware operations. The S-code
-;; (macro) opcodes are (some of) the data types. These are given specific
-;; numerical values. When a DEFFYPE is used to define the microcode that is
-;; used when that type is executed, I usually place a comment showing how
-;; that data type is expected to be used in a piece of S-code. Some data
-;; types are pointer types (meaning that the garbage collector must mark the
-;; thing pointed at by the address part) and others are immediate data
-;; (hence terminal to the garbage collector). The folowing are the data
-;; types with preassigned numerical values:
-
-;;; [I'm guessing these numerical constants are octal! BWM]
+;; This test finally gets to the microcode that interprets s-code. For this test we
+;; hand compiled some s-code (see also README.md in the scode directory). The microcode
+;; just starts with everything in the full-blown microcode (../microcode.mcr) removing those
+;; parts this test doesn't use for simplification purposes 
 
 (defschip **pointer-types**
     '((self-evaluating-pointer 0) 
       (symbol 1)
       (global 2)
-      (set-global 3)
+;      (set-global 3)
       (conditional 4)
       (procedure 5)
       (first-argument 6)
       (next-argument 7)
       (last-argument 10)
-      (apply-no-args 11)
+;      (apply-no-args 11)
       (apply-1-arg 12)
       (primitive-apply-1 13)
       (primitive-apply-2 14)
       (sequence 15)
       (spread-argument 16)
       (closure 17)
-      (get-control-point 20)
-      (control-point 21)
-      (interrupt-point 22)
-      (self-evaluating-pointer-1 23) 
-      (self-evaluating-pointer-2 24) 
-      (self-evaluating-pointer-3 25) 
-      (self-evaluating-pointer-4 26)
+;      (get-control-point 20)
+;      (control-point 21)
+;      (interrupt-point 22)
+;      (self-evaluating-pointer-1 23) 
+;      (self-evaluating-pointer-2 24) 
+;      (self-evaluating-pointer-3 25) 
+;      (self-evaluating-pointer-4 26)
       ))
 
 (defschip **non-pointer-types** 
    '((self-evaluating-immediate 100)
      (local 101)
-     (tail-local 102)
-     (set-local 103)
-     (set-tail-local 104) 
-     (set-only-tail-local 105)
+;     (tail-local 102)
+;     (set-local 103)
+;     (set-tail-local 104) 
+;     (set-only-tail-local 105)
      (primitive-car 106) ;Built-in operators
      (primitive-cdr 107) 
      (primitive-cons 110) 
-     (primitive-rplaca 111) 
-     (primitive-rplacd 112) 
+;     (primitive-rplaca 111) 
+;     (primitive-rplacd 112) 
      (primitive-eq 113)
-     (primitive-type? 114) 
-     (primitive-type! 115) 
+;     (primitive-type? 114) 
+;     (primitive-type! 115) 
      (gc-special-type 116) ;Never appears except during gc
-     (self-evaluating-immediate-1 117)
-     (self-evaluating-immediate-2 120) 
-     (self-evaluating-immediate-3 121) 
-     (self-evaluating-immediate-4 122) 
+;     (self-evaluating-immediate-1 117)
+;     (self-evaluating-immediate-2 120) 
+;     (self-evaluating-immediate-3 121) 
+;     (self-evaluating-immediate-4 122) 
      (mark 123)
      (done 124)
-     (primitive-add1 125)
-     (primitive-sub1 126)
-     (primitive-zerop 127)
-     (primitive-displacement-add1 130) 
-     (primitive-not-atom 131)
+;     (primitive-add1 125)
+;     (primitive-sub1 126)
+;     (primitive-zerop 127)
+;     (primitive-displacement-add1 130) 
+;     (primitive-not-atom 131)
      (boot-load 776)                     ;micro-address forced by RESET
-     (process-interrupt 777)             ;micro-address forced by EXT INT RQ
+;     (process-interrupt 777)             ;micro-address forced by EXT INT RQ
      ))
-
-;; [[ So a note on the above, given the type field is 6 bits, the 7th
-;;    bit is the (non) pointer bit, and the 8th bit is the mark bit,
-;;    777 is 9 bits - whaaat? So I'm thinking these are not only the
-;;    values of the type array plus pointer bit, but also offsets into
-;;    a dispatch table; the funny addresses might only be generated by
-;;    the hardware under the condition of those pins being activated
-;;    and never from actual register contents.]]
-
-;; Pointer data is indicated by the 100 bit being off in the data type.
 
 (defschip **pointer** 100)                    ;100 bit means non-pointer.
 
@@ -287,17 +152,14 @@
 ;(defreg bus
 ;    (mark! unmark! type! pointer!) (mark-bit not-mark-bit type-not-pointer frame=0 displacement=0 address=0))
 
-;; A register has two basic operations which can be done to it. Its contents
-;; can be fetched, and its contents can be assigned from some source. In
-;; addition, for the LISP simulator we define two additional operations
-;; which are used for stacks:
+;; implemented as microcode macros in the chip simulator
 
-(defmacro save (quantity)
-  (assign *stack* (&cons ,quantity (fetch *stack*))))
+;(defmacro save (quantity)
+;  (assign *stack* (&cons ,quantity (fetch *stack*))))
 
-(defmacro restore (register)
-  (progn (assign ,register (&car (fetch *stack*))) 
-         (assign *stack* (&cdr (fetch *stack*)))))
+;(defmacro restore (register)
+;  (progn (assign ,register (&car (fetch *stack*))) 
+;         (assign *stack* (&cdr (fetch *stack*)))))
 
 ;;  At this point we begin to look at the microcode proper. Boot-load is the
 ;; place where the chip is initialized to run. The first thing it does is
@@ -494,12 +356,12 @@
 ;; bound to the first two arguments while z is a tail variable which is
 ;; bound to the remaining arguments.
 
-(deftype tail-local          ;TAIL-LOCAL(lexical-address)
-    (micro-call lookup-exp tail-local-return))
+;; (deftype tail-local          ;TAIL-LOCAL(lexical-address)
+;;     (micro-call lookup-exp tail-local-return))
 
-(defpc tail-local-return
-  (assign *val* (fetch *display*))
-  (dispatch-on-stack))
+;; (defpc tail-local-return
+;;   (assign *val* (fetch *display*))
+;;   (dispatch-on-stack))
 
 ;; Global variables are stored in the value cell of a symbol. The value cell
 ;; is assumed to be in the CAR of the symbol. The CDR may be used for other
@@ -515,37 +377,37 @@
 ;; be used as part of a sequence whose previous entry develops a value in
 ;; *val* which will be the value stuffed into the variable's value locative.
 
-(deftype set-local           ;SET-LOCAL(lexical-address)
-    (micro-call lookup-exp set-local-return))
+;; (deftype set-local           ;SET-LOCAL(lexical-address)
+;;     (micro-call lookup-exp set-local-return))
 
-(defpc set-local-return
-  (&rplaca (fetch *display*) (fetch *val*)) 
-  (dispatch-on-stack))
+;; (defpc set-local-return
+;;   (&rplaca (fetch *display*) (fetch *val*)) 
+;;   (dispatch-on-stack))
 
-(deftype set-tail-local      ;SET-TAIL-LOCAL(lexical-address)
-    (micro-call lookup-exp set-tail-local-return))
+;; (deftype set-tail-local      ;SET-TAIL-LOCAL(lexical-address)
+;;     (micro-call lookup-exp set-tail-local-return))
 
-(defpc set-tail-local-return
-  (&rplacd (fetch *display*) (fetch *val*)) 
-  (dispatch-on-stack))
+;; (defpc set-tail-local-return
+;;   (&rplacd (fetch *display*) (fetch *val*)) 
+;;   (dispatch-on-stack))
 
 ;;   The following is a tricky little critter. It is needed because if we
 ;; have a tail only variable (e.g. (lambda x ---)) we need to be able to get
 ;; at the header of the sublist of the display referred to by the tail
 ;; variable.
 
-(deftype set-only-tail-local ;SET-ONLY-TAIL-LOCAL(lexical-address)
-  (if (&frame=0?)
-      (progn (&rplaca (fetch *display*) (fetch *val*)) 
-             (dispatch-on-stack))
-      (progn (assign *display* (&cdr (fetch *display*))) 
-             (&decrement-frame)
-             (go-to set-only-tail-local))))
+;; (deftype set-only-tail-local ;SET-ONLY-TAIL-LOCAL(lexical-address)
+;;   (if (&frame=0?)
+;;       (progn (&rplaca (fetch *display*) (fetch *val*)) 
+;;              (dispatch-on-stack))
+;;       (progn (assign *display* (&cdr (fetch *display*))) 
+;;              (&decrement-frame)
+;;              (go-to set-only-tail-local))))
 
 ;&set-global-value = &rplaca
-(deftype set-global           ;SET-GLOBAL(symbol)
-  (&set-global-value (fetch *exp*) (fetch *val*)) 
-  (dispatch-on-stack))
+;; (deftype set-global           ;SET-GLOBAL(symbol)
+;;   (&set-global-value (fetch *exp*) (fetch *val*)) 
+;;   (dispatch-on-stack))
 
 (defpc lookup-exp
     (if (&frame=0?)
@@ -562,7 +424,7 @@
                (assign *display* (&cdr (fetch *display*))) 
                (go-to count-displacement))))
 
-;;    Next come all of the various types of self-evaluating data. There are
+;;    Next come all of the various types of self-evaluating data. There arc
 ;; two different classes -- pointer data and immediate data. A symbol is
 ;; pointer data. We provide several unspecified varieties of such
 ;; self-evaluating data for the user to assign to things like fixed numbers
@@ -572,21 +434,21 @@
   (assign *val* (fetch *exp*))
   (dispatch-on-stack))
 
-(deftype self-evaluating-immediate-1 ;SELF-EVALUATING-IMMEDIATE-1(frob) 
-  (assign *val* (fetch *exp*)) 
-  (dispatch-on-stack))
+;; (deftype self-evaluating-immediate-1 ;SELF-EVALUATING-IMMEDIATE-1(frob) 
+;;   (assign *val* (fetch *exp*)) 
+;;   (dispatch-on-stack))
 
-(deftype self-evaluating-immediate-2 ;SELF-EVALUATING-IMMEDIATE-2(frob) 
-  (assign *val* (fetch *exp*)) 
-  (dispatch-on-stack))
+;; (deftype self-evaluating-immediate-2 ;SELF-EVALUATING-IMMEDIATE-2(frob) 
+;;   (assign *val* (fetch *exp*)) 
+;;   (dispatch-on-stack))
 
-(deftype self-evaluating-immediate-3 ;SELF-EVALUATING-IMMEDIATE-3(frob) 
-  (assign *val* (fetch *exp*)) 
-  (dispatch-on-stack))
-
-(deftype self-evaluating-immediate-4 ;SELF-EVALUATING-IMMEDIATE-4(frob)
-  (assign *val* (fetch *exp*)) 
-  (dispatch-on-stack))
+;; (deftype self-evaluating-immediate-3 ;SELF-EVALUATING-IMMEDIATE-3(frob) 
+;;   (assign *val* (fetch *exp*)) 
+;;   (dispatch-on-stack))
+                                        
+;; (deftype self-evaluating-immediate-4 ;SELF-EVALUATING-IMMEDIATE-4(frob)
+;;   (assign *val* (fetch *exp*)) 
+;;   (dispatch-on-stack))
 
 (deftype symbol                      ;SYMBOL(frob)
   (assign *val* (fetch *exp*))
@@ -596,21 +458,21 @@
   (assign *val* (fetch *exp*))
   (dispatch-on-stack))
 
-(deftype self-evaluating-pointer-1   ;SELF-EVALUATING-POINTER-1(frob)
-  (assign *val* (fetch *exp*))
-  (dispatch-on-stack))
+;; (deftype self-evaluating-pointer-1   ;SELF-EVALUATING-POINTER-1(frob)
+;;   (assign *val* (fetch *exp*))
+;;   (dispatch-on-stack))
 
-(deftype self-evaluating-pointer-2   ;SELF-EVALUATING-POINTER-2(frob) 
-  (assign *val* (fetch *exp*))
-  (dispatch-on-stack))
+;; (deftype self-evaluating-pointer-2   ;SELF-EVALUATING-POINTER-2(frob) 
+;;   (assign *val* (fetch *exp*))
+;;   (dispatch-on-stack))
 
-(deftype self-evaluating-pointer-3   ;SELF-EVALUATING-POINTER-3(frob) 
-  (assign *val* (fetch *exp*))
-  (dispatch-on-stack))
+;; (deftype self-evaluating-pointer-3   ;SELF-EVALUATING-POINTER-3(frob) 
+;;   (assign *val* (fetch *exp*))
+;;   (dispatch-on-stack))
 
-(deftype self-evaluating-pointer-4   ;SELF-EVALUATING-POINTER-4(frob)
-  (assign *val* (fetch *exp*)) 
-  (dispatch-on-stack))
+;; (deftype self-evaluating-pointer-4   ;SELF-EVALUATING-POINTER-4(frob)
+;;   (assign *val* (fetch *exp*)) 
+;;   (dispatch-on-stack))
 
 ;;     A lambda expression in the original SCHEME code turns into a
 ;; procedure in the S-code. When executed, a procedure constructs and
@@ -678,9 +540,9 @@
 ;;  extreme caution since it is easy to screw oneself with constructs such
 ;;  as this which violate the expression structure of the language.
 
-(deftype get-control-point          ;GET-CONTROL-POINT((variable-setter . rest)).
-  (&set-type *val* control-point)
-  (save-cdr-and-eval-car sequence-return))
+;(deftype get-control-point          ;GET-CONTROL-POINT((variable-setter . rest)).
+;  (&set-type *val* control-point)
+;  (save-cdr-and-eval-car sequence-return))
 
 ;;  To evaluate a form with more than one arguinent one starts with a
 ;;  pointer of type first-argument which is used to initilize the *args*
@@ -722,7 +584,7 @@
 (defreturn last-argument-return
   (restore *args*)
   (&rplacd (fetch *args*)
-            (&cons (fetch *val*) (fetch *nil*)))
+           (&cons (fetch *val*) (fetch *nil*)))
   (eval-exp-popj-to internal-apply)) ;Amazing! Where did retpc go?
 
 ;;  Procedures with zero or one argument are handled specially
@@ -736,10 +598,10 @@
   (save (fetch *args*))
   (eval-exp-popj-to internal-apply))
 
-(deftype apply-no-args              ;APPLY-NO-ARGS((fn . ?))
-  (assign *exp* (&car (fetch *exp*)))
-  (save (fetch *nil*))              ;ugh! need a place for retpc.
-  (eval-exp-popj-to internal-apply))
+;; (deftype apply-no-args              ;APPLY-NO-ARGS((fn . ?))
+;;   (assign *exp* (&car (fetch *exp*)))
+;;   (save (fetch *nil*))              ;ugh! need a place for retpc.
+;;   (eval-exp-popj-to internal-apply))
 
 ;;  Spread argument is apply. It evaluates an argument, takes it as the set
 ;; of arguments to be passed to the procedure specified by the continuation.
@@ -773,19 +635,19 @@
 ;;  interpreted as a procedure with one argument which returns that argument
 ;;  to the constructor of the control point.
 
-(deftype control-point               ;CONTROL-POINT(state)
-  (assign *val* (&car (fetch *args*)))
-  (assign *stack* (&car (fetch *exp*)))
-  (dispatch-on-stack))
+;; (deftype control-point               ;CONTROL-POINT(state)
+;;   (assign *val* (&car (fetch *args*)))
+;;   (assign *stack* (&car (fetch *exp*)))
+;;   (dispatch-on-stack))
 
 ;;  An interrupt point is similar to a control point except that the
 ;;  *display* and *va1* registers must be restored.
 
-(deftype interrupt-point             ;INTERRUPT-POINT(state)
-  (assign *stack* (fetch *exp*))
-  (restore *val*)
-  (restore *display*)
-  (go-to restore-exp-args-dispatch))
+;; (deftype interrupt-point             ;INTERRUPT-POINT(state)
+;;   (assign *stack* (fetch *exp*))
+;;   (restore *val*)
+;;   (restore *display*)
+;;   (go-to restore-exp-args-dispatch))
 
 (deftype primitive-apply-1           ;PRIMITIVE-APPLY-1((arg . primop))
   (save (&cdr (fetch *exp*)))
@@ -807,50 +669,50 @@
   (assign *val* (&cdr (fetch *val*)))
   (dispatch-on-stack))
 
-(deftype primitive-type?            ;PRIMITIVE-TYPE?(?)
-  (assign *exp* (fetch *val*)) 
-  (assign *val* (fetch *nil*)) 
-  (&set-type *val* (fetch *exp*))   ;build prototype.
-  (dispatch-on-stack))
+;; (deftype primitive-type?            ;PRIMITIVE-TYPE?(?)
+;;   (assign *exp* (fetch *val*)) 
+;;   (assign *val* (fetch *nil*)) 
+;;   (&set-type *val* (fetch *exp*))   ;build prototype.
+;;   (dispatch-on-stack))
 
-                                    ;PRIMITIVE-NOT-ATOM(?)
-(deftype primitive-not-atom      
-  (if (&pointer? (fetch *val*))
-      (progn (assign *val* (fetch *nil*))
-             (&set-type *val* self-evaluating-immediate)) ;T
-      (assign *val* (fetch *nil*)))
-  (dispatch-on-stack))
+;;                                     ;PRIMITIVE-NOT-ATOM(?)
+;; (deftype primitive-not-atom      
+;;   (if (&pointer? (fetch *val*))
+;;       (progn (assign *val* (fetch *nil*))
+;;              (&set-type *val* self-evaluating-immediate)) ;T
+;;       (assign *val* (fetch *nil*)))
+;;   (dispatch-on-stack))
 
-(deftype primitive-zerop            ;PRIMITIVE-ZEROP(?)
-  (if (&val=0?)
-      (progn (assign *val* (fetch *nil*))
-             (&set-type *val* self-evaluating-immediate))  ;T
-      (assign *val* (fetch *nil*)))
-  (dispatch-on-stack))
+;; (deftype primitive-zerop            ;PRIMITIVE-ZEROP(?)
+;;   (if (&val=0?)
+;;       (progn (assign *val* (fetch *nil*))
+;;              (&set-type *val* self-evaluating-immediate))  ;T
+;;       (assign *val* (fetch *nil*)))
+;;   (dispatch-on-stack))
 
-(deftype primitive-sub1             ;PRIMITIVE-SUB1(?)
-  (assign *scan-down* (fetch *val*))
-  (&decrement-scan-down-to-val)
-  (dispatch-on-stack))
+;; (deftype primitive-sub1             ;PRIMITIVE-SUB1(?)
+;;   (assign *scan-down* (fetch *val*))
+;;   (&decrement-scan-down-to-val)
+;;   (dispatch-on-stack))
 
-(deftype primitive-add1             ;PRIMTIIVE-ADD1(?)
-  (assign *exp* (fetch *scan-up*)) 
-  (assign *scan-up* (fetch *val*)) 
-  (&increment-scan-up-to-val) 
-  (assign *scan-up* (fetch *exp*))
-  (dispatch-on-stack))
+;; (deftype primitive-add1             ;PRIMTIIVE-ADD1(?)
+;;   (assign *exp* (fetch *scan-up*)) 
+;;   (assign *scan-up* (fetch *val*)) 
+;;   (&increment-scan-up-to-val) 
+;;   (assign *scan-up* (fetch *exp*))
+;;   (dispatch-on-stack))
 
-(deftype primitive-displacement-add1 ;PRIMITIVE-DISPLACEMNT-ADD1(?)
-  (assign *exp* (fetch *nil*))
-  (&decrement-frame)          ;make -1 in frame part
-  (&val-displacement-to-exp-displacement)
-  (assign *args* (fetch *scan-up*)) 
-  (assign *scan-up* (fetch *exp*)) 
-  (&increment-scan-up)
-  (assign *exp* (fetch *scan-up*)) 
-  (&val-frame-to-exp-frame)
-  (assign *val* (fetch *exp*)) 
-  (dispatch-on-stack))
+;; (deftype primitive-displacement-add1 ;PRIMITIVE-DISPLACEMNT-ADD1(?)
+;;   (assign *exp* (fetch *nil*))
+;;   (&decrement-frame)          ;make -1 in frame part
+;;   (&val-displacement-to-exp-displacement)
+;;   (assign *args* (fetch *scan-up*)) 
+;;   (assign *scan-up* (fetch *exp*)) 
+;;   (&increment-scan-up)
+;;   (assign *exp* (fetch *scan-up*)) 
+;;   (&val-frame-to-exp-frame)
+;;   (assign *val* (fetch *exp*)) 
+;;   (dispatch-on-stack))
 
 ;;  Thus cons = list*.
 
@@ -879,81 +741,34 @@
       (assign *val* (fetch *nil*)))
   (dispatch-on-stack))
 
-(deftype primitive-rplaca           ;PRIMITIVE-RPLACA(?)
-  (restore *args*)
-  (assign *val* (&rplaca (&car (fetch *args*)) (fetch *val*))) 
-  (dispatch-on-stack))
+;; (deftype primitive-rplaca           ;PRIMITIVE-RPLACA(?)
+;;   (restore *args*)
+;;   (assign *val* (&rplaca (&car (fetch *args*)) (fetch *val*))) 
+;;   (dispatch-on-stack))
 
-(deftype primitive-rplacd           ;PRIMITIVE-RPLACD(?)
-  (restore *args*)
-  (assign *val* (&rplacd (&car (fetch *args*)) (fetch *val*))) 
-  (dispatch-on-stack))
+;; (deftype primitive-rplacd           ;PRIMITIVE-RPLACD(?)
+;;   (restore *args*)
+;;   (assign *val* (&rplacd (&car (fetch *args*)) (fetch *val*))) 
+;;   (dispatch-on-stack))
 
-(deftype primitive-type!            ;PRIMITIVE-TYPE!(?)
-  (restore *args*)
-  (assign *exp* *val*)
-  (assign *val* (&car (fetch *args*)))
-  (&set-type *val* (fetch *exp*))
-  (dispatch-on-stack))
+;; (deftype primitive-type!            ;PRIMITIVE-TYPE!(?)
+;;   (restore *args*)
+;;   (assign *exp* *val*)
+;;   (assign *val* (&car (fetch *args*)))
+;;   (&set-type *val* (fetch *exp*))
+;;   (dispatch-on-stack))
 
 ;;  When an interrupt is requested and the machine is allowing interrupts,
 ;;  the microcode continues from the following place:
 
-(deftype process-interrupt 
-  (save (fetch *args*)) 
-  (save (fetch *exp*)) 
-  (save (fetch *display*)) 
-  (save (fetch *val*))
-  (&set-type *stack* interrupt-point)
-  (assign *args* (fetch *stack*))
-  (assign *exp* (&car (&get-interrupt-routine-pointer))) ;from pads
-  (dispatch-on-exp-allowing-interrupts))
-
-;;  The following routines are used to let the user get at the internal
-;;  storage allocator registers (GOD help him!). 
-
-(defpc get-memtop
-  (assign *val* (fetch *memtop*)) 
-  (dispatch-on-stack))
-
-(defpc set-memtop
-  (assign *memtop* (fetch *val*)) 
-  (dispatch-on-stack))
-
-(defpc get-scan-up
-  (assign *val* (fetch *scan-up*)) 
-  (dispatch-on-stack))
-
-(defpc set-scan-up
-  (assign *scan-up* (fetch *val*))
-  (&set-type *scan-up* self-evaluating-pointer) 
-  (dispatch-on-stack))
-
-;;  The following code is put in for debugging purposes. By setting the
-;;  state of the machine to the appropriate value we can read out or set any
-;;  of the internal machine registers.
-
-;; [since this appears to be an infinite loop, I'm guessing the intent
-;;  was to use an interrupt to enter or escape -- BWM]
-
-(defpc debug-routine
-  (&write-to-pads (fetch *exp*)) 
-  (&write-to-pads (fetch *val*)) 
-  (&write-to-pads (fetch *args*)) 
-  (&write-to-pads (fetch *display*)) 
-  (&write-to-pads (fetch *stack*)) 
-  (&write-to-pads (fetch *newcell*)) 
-  (&write-to-pads (fetch *memtop*)) 
-  (&write-to-pads (fetch *retpc-count-mark*))
-  (&write-to-pads (fetch *intermediate-argument*))
-  (&read-from-pads *exp*)
-  (&read-from-pads *val*)
-  (&read-from-pads *args*)
-  (&read-from-pads *display*)
-  (&read-from-pads *stack*)
-  (&read-From-pads *newcell*) 
-  (&read-from-pads *memtop*)
-  (&read-from-pads *retpc-count-mark*) 
-  (&read-from-pads *intermediate-argument*) 
-  (go-to debug-routine))
+; (deftype process-interrupt 
+;   (save (fetch *args*)) 
+;   (save (fetch *exp*)) 
+;   (save (fetch *display*)) 
+;   (save (fetch *val*))
+;   (&set-type *stack* interrupt-point)
+;   (assign *args* (fetch *stack*))
+;   (assign *exp* (&car (&get-interrupt-routine-pointer))) ;from pads
+;   (dispatch-on-exp-allowing-interrupts))
+  
 

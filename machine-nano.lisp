@@ -1,16 +1,23 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Nano" 0 3 3
-                                      "Time-stamp: <2022-01-19 13:38:08 gorbag>"
-                                      "cleanup special register treatment")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Nano" 0 3 5
+                                      "Time-stamp: <2022-01-25 14:44:22 gorbag>"
+                                      "add support for setting and clearing interrupt mask")
+
+;; 0.3.5   1/25/22 add support for from-decremented-frame-exp and
+;;                     from-decremented-displacement-exp
+
+;; 0.3.4   1/24/22 add support for setting and clearing interrupt mask
 
 ;; xxxxx   1/19/22 remove some TBDs in the comments (they were done already)
 
-;; 0.3.3   1/18/22 cleanup obsolete code: removing special treatment of registers
-;;                    which required multiple control lines for TO as new covering
-;;                    set computation deals with it.
+;; 0.3.3   1/18/22 cleanup obsolete code: removing special treatment of
+;;                    registers which required multiple control lines
+;;                    for TO as new covering set computation deals
+;;                    with it.
 
-;; 0.3.2   1/14/22 flip order of symbols in nanocontrol constants for consistancy with AIM
+;; 0.3.2   1/14/22 flip order of symbols in nanocontrol constants for
+;;                    consistancy with AIM
 
 ;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
 ;;                    for consistancy with AIM
@@ -368,6 +375,8 @@
 (defconstant +pad-clear-gc+ #o200) ; pseudo-pad to clear the latched gc-needed pad
 
 (defconstant +pad-conditional+ #o400) ; pseudo-pad to deal with conditionals
+(defconstant +pad-mask-interrupts+ #o1000) ; pseudo-pad to prevent responding to additional interrupts
+(defconstant +pad-clear-mask-interrupts+ #o2000) ;clear above pad
 
 ;; set up an alist to allow us to associate the pad control line with
 ;; the appropriate (symbolic) functions
@@ -379,8 +388,10 @@
     (,+pad-cdr+ (:name *cdr*))
     (,+pad-read-interrupt+ (:name *read-interrupt*))
     (,+pad-gc-needed+ (:name *gc-needed*))
-    (,+pad-clear-gc+ (:name *gc-needed*))
-    (,+pad-conditional+ (:name *conditional*))))
+    (,+pad-clear-gc+ (:name *gc-needed*) (:clear-latch t))
+    (,+pad-conditional+ (:name *conditional*))
+    (,+pad-mask-interrupts+ (:name *mask-interrupts*))
+    (,+pad-clear-mask-interrupts+ (:name *mask-interrupts*) (:clear-latch t))))
 
 (defun rr-value (sym)
   (symbol-value (intern (format nil "+RR-~a+" (string sym)))))
@@ -459,6 +470,10 @@ can use to populate the nano control array."
                     (code-pad +pad-gc-needed+)) ; should be latched
                    (clear-gc
                     (code-pad +pad-clear-gc+)) ; to clear the latch
+                   (mask-interrupts
+                    (code-pad +pad-mask-interrupts+)) ; should be latched
+                   (clear-mask-interupts
+                    (code-pad +pad-clear-mask-interrupts+))
                    (t
                     (code-reg (rr-value spec))))))))
 
@@ -489,6 +504,10 @@ can use to populate the nano control array."
            (push 'clear-gc result))
     (cl:if (plusp (logand line +pad-conditional+))
            (push 'set-conditional result))
+    (cl:if (plusp (logand line +pad-mask-interrupts+))
+           (push 'mask-interrupts result))
+    (cl:if (plusp (logand line +pad-clear-mask-interrupts+))
+           (push 'clear-mask-interrupts result))
     result))
         
 (defun decode-nanocontrol-registers (whole-line)
@@ -531,7 +550,11 @@ can use to populate the nano control array."
     (cl:if (plusp (logand line +rr-from-exp+))
         (push 'from-exp result))
     (cl:if (plusp (logand line +rr-from-decremented-exp+))
-        (push 'from-decremented-exp result))
+           (push 'from-decremented-exp result))
+    (cl:if (plusp (logand line +rr-from-decremented-frame-exp+))
+           (push 'from-decremented-frame-exp result))
+    (cl:if (plusp (logand line +rr-from-decremented-displacement-exp+))
+        (push 'from-decremented-displacement-exp result))
     (cl:if (plusp (logand line +rr-to-type-val+))
         (push 'to-type-val result))
     (cl:if (plusp (logand line +rr-to-address-val+))
@@ -956,9 +979,10 @@ registers and update to the next nanoinstruction if needed"
       (mapc #'(lambda (entry)
                 (let* ((pad-bit (car entry))
                        (pad-name (cadr (assoc :name (cdr entry))))
+                       (pad-clears-latch-p (cadr (assoc :clear-latch (cdr entry))))
                        (pad-type (get-pad-defn-value pad-name :type)))
                   (cl:cond
-                    ((and (eql pad-bit +pad-clear-gc+) ; have to handle special for now, eventually we can do something more general
+                    ((and pad-clears-latch-p
                           (plusp (logand pad-bit pad-controls)))
                      (note-if *debug-nanocontroller*
                               "debug-nanocontroller: clearing pad ~a" pad-name)

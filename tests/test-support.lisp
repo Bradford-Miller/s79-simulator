@@ -1,13 +1,18 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Mech Test Support" 0 3 0
-                                      "Time-stamp: <2022-01-11 17:24:06 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Mech Test Support" 0 3 2
+                                      "Time-stamp: <2022-01-26 17:47:52 gorbag>"
+                                      "test: support *microcode-compiled*")
+
+;; 0.3.2   1/26/22 support *microcode-compiled*
+
+;; 0.3.1   1/12/22 load microcode before the .lisp file
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; 0.1.5  1/24/22 test: load microcode first as test-n.lisp may need it
 
 ;; 0.1.4  1/ 6/22 update packages due to migration
 
@@ -48,6 +53,9 @@
 (defvar *current-test* nil
   "for debugging/diagnostics")
 
+(defvar *microcode-compiled* nil
+  "so when we laod test-<n>.lisp we can tell if we did validate-only-p")
+
 ;; we use this function to allow us to cons up constants for tests in
 ;; a way that's clear to the reader what the value of the cons is
 ;; (specifically the type).
@@ -70,35 +78,39 @@
   ;; increasing numbers tests more microcode/nanocode compilation sets. Note as a test,
   ;; it should also set up some external memory so we can begin executing without loading
   ;; individual cells from the front panel.
+  (let ((*microcode-compiled* nil))
+    (cond
+     (number-p
+      (let ((test-setup-file (format nil "src:scheme-79;s79-simulator;tests;test-~d.lisp" n))
+            (test-ucode-file (format nil "src:scheme-79;s79-simulator;tests;test-~d.mcr" n)))
+        (cond
+         (validate-only-p
+          (read-microcode-for-interpreter test-ucode-file))
+         (t 
+          (compile-microcode test-ucode-file)
+          (setq *microcode-compiled* t)))
+        (load test-setup-file)) ; do we need to do this if we are only validating?
 
-  (cond
-    (number-p
-     (let ((test-setup-file (format nil "src:scheme-79;s79-simulator;tests;test-~d.lisp" n))
-           (test-ucode-file (format nil "src:scheme-79;s79-simulator;tests;test-~d.mcr" n)))
-       (load test-setup-file)
-       (if validate-only-p
-           (read-microcode-for-interpreter test-ucode-file)
-           (compile-microcode test-ucode-file)))
-     ;; declare the test and set up the diagnostics console (if available)
-     (setq diagnostics:*test-suite*
-           (diagnostics:declare-diagnostic-suite ; sets up associations based on what's been loaded
-            (setq *current-test* (format nil "test-~d" n))))) 
-    (validate-only-p 
-     ;; validates the entire (original) microcode. Note that this happens
-     ;; if compile-microcode is called as well since it sets up some tables 
-     ;; the compiler needs
-     (read-microcode-for-interpreter *default-microcode*))
-    (t
-     ;; validates and compiles the microcode into a binary format
-     ;; suitable for storing on-chip (as an array).
-     (compile-microcode *default-microcode*)))
-  ;; if the diagnostics panel is already running... update it
-  (when (diagnostics-running-p)
-    (s79-console:update-diagnostics (diagnostics-running-p) t))
+      ;; declare the test and set up the diagnostics console (if available)
+      (setq diagnostics:*test-suite*
+            (diagnostics:declare-diagnostic-suite ; sets up associations based on what's been loaded
+             (setq *current-test* (format nil "test-~d" n))))) 
+     (validate-only-p 
+      ;; validates the entire (original) microcode. Note that this happens
+      ;; if compile-microcode is called as well since it sets up some tables 
+      ;; the compiler needs
+      (read-microcode-for-interpreter *default-microcode*))
+     (t
+      ;; validates and compiles the microcode into a binary format
+      ;; suitable for storing on-chip (as an array).
+      (compile-microcode *default-microcode*)))
+    ;; if the diagnostics panel is already running... update it
+    (when (diagnostics-running-p)
+      (s79-console:update-diagnostics (diagnostics-running-p) t))
 
-  (unless validate-only-p ;; don't fiddle with the machine if we're just trying to validate the microcode
-    (reset) ; flip the reset line
+    (unless validate-only-p ;; don't fiddle with the machine if we're just trying to validate the microcode
+      (reset) ; flip the reset line
 
-    ;; clear out PCs
-    (scheme-mach:set-micro-pc 0)
-    (copy-field (integer->bit-vector 0) microlisp-shared:*nano-pc*)))
+      ;; clear out PCs
+      (scheme-mach:set-micro-pc 0)
+      (copy-field (integer->bit-vector 0) microlisp-shared:*nano-pc*))))

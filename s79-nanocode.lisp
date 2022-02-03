@@ -1,8 +1,11 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme-79 Nanocode" 0 3 1
-                                      "Time-stamp: <2022-01-19 12:13:41 gorbag>"
-                                      "fix symbols of form <reg>-to-<field>")
+(scheme-79:scheme-79-version-reporter "S79 Nanocode" 0 3 2
+                                      "Time-stamp: <2022-01-26 09:16:55 gorbag>"
+                                      "do-decrement-frame, do-decrement-displacement")
+
+;; 0.3.2.  1/25/22 add do-decrement-frame and do-decrement-displacement
+;;                     nanocodes
 
 ;; 0.3.1   1/13/21 fix symbols of form <reg>-to-<field>; should be
 ;;                     to-<field>-<reg> following TR
@@ -336,6 +339,12 @@
 
 (defnano (microlisp-shared::do-decrement-scan-down)
     (() (from-decremented-exp to-frame-exp to-type-exp to-displacement-exp))) ; scan-down is alias for exp
+
+(defnano (microlisp-shared::do-decrement-frame)
+    (() (from-decremented-frame-exp to-frame-exp)))
+
+(defnano (microlisp-shared::do-decrement-displacement)
+    (() (from-decremented-displacement-exp to-displacement-exp)))
 
 ;; I believe Scheme-79 had a PADS source/destination so read would have PADS in the from field
 

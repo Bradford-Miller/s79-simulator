@@ -1,6 +1,6 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme-79 Sim Ext Defs" 0 3 0
+(scheme-79:scheme-79-version-reporter "S79 Sim Ext Defs" 0 3 0
                                       "Time-stamp: <2022-01-11 16:56:34 gorbag>"
                                       "0.3 release!")
 

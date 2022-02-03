@@ -1,8 +1,16 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "S79 ucode support ops" 0 3 0
-                                      "Time-stamp: <2022-01-19 13:43:09 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "S79 ucode support ops" 0 3 2
+                                      "Time-stamp: <2022-01-27 14:33:59 gorbag>"
+                                      "fetch-and-test-pred support :arg from defupred (fix)")
+
+;; 0.3.2   1/27/22 fix 0.3.1
+
+;; 0.3.1   1/25/22 add :arg option for defupred which just puts the
+;;                      argument or from register onto the bus (rather
+;;                      than taking the car or cdr of what it points
+;;                      to). Here we modify fetch-and-test-pred to
+;;                      support that.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -131,6 +139,9 @@
           (fetch-and-test-for-success (or from-register implied-register) real-sense-line fail-tag success-tag))
          (t
           (ecase pred-type
+            (:arg
+             `(((from ,from-register) ;; get it onto the bus
+                (branch ,real-sense-line ,fail-tag ,success-tag))))
             (:car
              `(((from ,from-register) do-car)
                ((branch ,real-sense-line ,fail-tag ,success-tag))))

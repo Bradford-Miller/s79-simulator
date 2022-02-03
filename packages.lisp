@@ -1,11 +1,17 @@
 (in-package :cl-user)
 (defvar *scheme-79-version-reporter-initializations* nil)
 
-(cl-lib:detailed-version-reporter "Scheme 79 defpackages" 0 3 1
-                                  "Time-stamp: <2022-01-13 14:00:53 gorbag>"
-                                  "internal-freeze -> run-nano"
+(cl-lib:detailed-version-reporter "S79 defpackages" 0 3 4
+                                  "Time-stamp: <2022-01-26 11:28:58 gorbag>"
+                                  "breakpoint-descs"
                                   :initialization-list-symbol
                                   *scheme-79-version-reporter-initializations*)
+
+;; 0.3.4   1/26/22 *breakpoint-descs*
+
+;; 0.3.3   1/24/22 *mask-interrupts*
+
+;; 0.3.2   1/21/22 new s-code package for the (future) s-code compiler
 
 ;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
 ;;                    for consistancy with AIM
@@ -282,7 +288,7 @@
    #:*cold-boot-memory-array*
 
    ;; not part of the original scheme-79 chip, but useful!
-   #:*halt-address* #:*breakpoints*
+   #:*halt-address* #:*breakpoints* #:*breakpoint-descs*
    ))
 
 ;; while this was originally intended to be limited to stuff specific
@@ -330,8 +336,10 @@
    ;; all the registers pads & &forms should be automatically
    ;; exported, but sometimes there are ordering difficulties...
    #:*reset* #:*ale* #:*freeze* #:*read* #:*read-state* #:*load-state*
-   #:*interrupt-request* #:*run-nano* #:*write* #:*cdr*
+   #:*interrupt-request* #:*write* #:*cdr* 
    #:*read-interrupt* #:*gc-needed*
+   ;; pseudo pads
+   #:*conditional* #:*run-nano* #:*mask-interrupts*
 
    ;; names of the control and sense wires
    #:to #:to-type
@@ -482,9 +490,17 @@
 ;; essentially giving us a higher level interface to an abstract
 ;; "scheme machine" which then gets implemented by the scheme-79 chip.
 ;; as well as a cross-compiler to the machine
+(defpackage :s-code
+  ;; internal code for the s-code compiler
+  (:use :cl-lib common-lisp)
+  (:export
+   ))
+
 (defpackage :scheme
-  ;; public face we want to define our own special set of scheme-lisp
-  ;; fns - this prevents us from using the standard packages
+  ;; public face for scheme itself (upon which we can call the s-code
+  ;; compiler to prepare code for the chip) we want to define our own
+  ;; special set of scheme-lisp fns - this prevents us from using the
+  ;; standard packages
   (:use :fpga-project-defs :common :scheme-79) 
   (:export
    ))
