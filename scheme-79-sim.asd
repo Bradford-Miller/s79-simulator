@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-02-03 14:58:30 gorbag>
+;; Time-stamp: <2022-02-04 11:34:43 gorbag>
 
 ;; 10/8/21: flip order of core-support and ucode-defs as we introduce a dependency
 
@@ -12,7 +12,7 @@
 
 (defsystem :scheme-79-sim
   :serial t ; inefficient but simple. 
-  :depends-on (named-readtables fpga-support :cl-lib :five-am) ;adding five-am for regression tests
+  :depends-on (named-readtables fpga-support :cl-lib :fiveam) ;adding fiveam for regression tests
   :components
   (
    (:file "packages")
