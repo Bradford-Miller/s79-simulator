@@ -223,27 +223,27 @@
 (defufn &mark-car-trace-over! (from-register :expansion ((:to *intermediate-argument*)
                                                          (:from *intermediate-argument*)))
   (with-intermediate-argument
-      (compile-embedded-expression
-       `(microlisp:progn
-          (assign *intermediate-argument* (&cdr (fetch ,from-register)))
-          (&rplacd-and-mark-car-trace-over! (fetch ,from-register) (fetch *intermediate-argument*))))))
+    (compile-embedded-expression
+     `(microlisp:progn
+        (assign *intermediate-argument* (&cdr (fetch ,from-register)))
+        (&rplacd-and-mark-car-trace-over! (fetch ,from-register) (fetch *intermediate-argument*))))))
 
 ;; &mark-in-use! ;; mark bit stored in car
 (defufn &mark-in-use! (from-register)
   (with-intermediate-argument
-      (compile-embedded-expression
-       `(microlisp:progn
-          (assign *intermediate-argument* (&car (fetch ,from-register)))
-          (&rplaca-and-mark! (fetch ,from-register) (fetch *intermediate-argument*))))))
+    (compile-embedded-expression
+     `(microlisp:progn
+        (assign *intermediate-argument* (&car (fetch ,from-register)))
+        (&rplaca-and-mark! (fetch ,from-register) (fetch *intermediate-argument*))))))
 
 ;; &unmark!
 (defufn &unmark! (from-register :expansion ((:to *intermediate-argument*)
                                             (:from *intermediate-argument*)))
   (with-intermediate-argument
-      (compile-embedded-expression
-       `(microlisp:progn
-          (assign *intermediate-argument* (&car (fetch ,from-register)))
-          (&rplaca-and-unmark! (fetch ,from-register) (fetch *intermediate-argument*))))))
+    (compile-embedded-expression
+     `(microlisp:progn
+        (assign *intermediate-argument* (&car (fetch ,from-register)))
+        (&rplaca-and-unmark! (fetch ,from-register) (fetch *intermediate-argument*))))))
 
 ;; gc-needed!
 (defufn gc-needed! ()

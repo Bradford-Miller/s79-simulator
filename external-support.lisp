@@ -1,8 +1,12 @@
 (in-package :external-chips)
 
-(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 1
+(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 2
                                       "Time-stamp: <2022-01-14 15:06:20 gorbag>"
-                                      "have debug message for read report what was read")
+                                      "add decode option to dump-memory (default true)")
+
+;; 0.3.2   2/ 4/22 add a decode-p arg to dump-memory. It will report the
+;;                    mark bit and type for the car and cdr without also 
+;;                    being as verbose as dump-memory-with-types
 
 ;; 0.3.1   1/14/22 have the debug message for memory read report what was read
 ;;                    fix dump-memory to write final cdr (fencepost error)
@@ -217,9 +221,14 @@
 
 ;; code to simulate an external RAM
 
-(defparameter *format-car-for-dm* "M=~o P=~o T=~A ~47tD=~o F=~o A=~o~68t  .  ")
+(defparameter *format-car-for-dm-with-types* "M=~o P=~o T=~A ~74tD=~o F=~o A=~o~68t  .  ")
 
-(defparameter *format-cdr-for-dm* "M=~o P=~o T=~A ~102tD=~o F=~o A=~o")
+(defparameter *format-cdr-for-dm-with-types* "M=~o P=~o T=~A ~102tD=~o F=~o A=~o")
+
+(defparameter *format-car-for-dm-decode-p* "~A~A ~40t~o ~48t . ")
+
+(defparameter *format-cdr-for-dm-decode-p* "~A~A ~80t~o")
+
 
 (let ((memory-vector (make-array scheme-mach:*maximum-memory-size* :element-type 'fixnum :initial-element 0)))
   (defun invalid-address-p (address &optional error-p)
@@ -292,27 +301,42 @@
           (terpri *error-output*)
           (setq row-count 0)))))
 
-  (defun dump-memory (&optional (start 0) (end (bit-vector->integer microlisp-shared:*memtop*)))
-    "used for debugging"
+  (defun dump-memory (&optional (start 0) &key (end (bit-vector->integer microlisp-shared:*memtop*)) (decode-p t))
+    "used for debugging. decode-p prints the mark bit, and type for
+each memory address in range; field specific data should use
+\(dump-memory-with-types)"
     (dump-memory-internal
      start end
-     #'(lambda (i) (format *error-output* "~11,'0o " (elt memory-vector i)))
+     (cl:if decode-p
+       #'(lambda (i) (mlet (mark ptr type disp frame addr)
+                         (scheme-mach:break-out-bits-as-integers (elt memory-vector i))
+                       (declare (ignore ptr disp frame)) ; run dump-memory-with-types if you want these broken out (included in fields printed!)
+                       (format *error-output* 
+                               (cl:if (evenp i)
+                                 *format-car-for-dm-decode-p* ; left value (CAR)
+                                 *format-cdr-for-dm-decode-p*) ; right value (CDR)
+                               (cl:if (plusp mark)
+                                 "*"
+                                 " ")
+                               (int->type-name type)
+                               addr)))
+       #'(lambda (i) (format *error-output* "~11,'0o " (elt memory-vector i))))
      #'(lambda (i) (format *error-output* "~8,'0o: " (/ i 2)))))
 
-  (defun dump-memory-with-types (&optional (start 0) (end (bit-vector->integer microlisp-shared:*memtop*)))
+  (defun dump-memory-with-types (&optional (start 0) &key (end (bit-vector->integer microlisp-shared:*memtop*)))
+    "similar to (dump-memory) but prints out each field separately"
     (let ((*dump-values-per-row* 2)) ; override if needed
       (dump-memory-internal
        start end
-       #'(lambda (i) (mlet (mark ptr type disp frame addr) (scheme-mach:break-out-bits-as-integers (elt memory-vector i))
-                           (format *error-output* 
-                                   (cl:if (evenp i)
-                                     *format-car-for-dm* ; left value (CAR)
-                                     *format-cdr-for-dm*) ; right value (CDR)
-                                   mark ptr 
-                                   (cl:if (< type microlisp-shared:**pointer**)
-                                     (string (int->pointer-type-name type))
-                                     (string (int->non-pointer-type-name type)))
-                                   disp frame addr)))
+       #'(lambda (i) (mlet (mark ptr type disp frame addr)
+                         (scheme-mach:break-out-bits-as-integers (elt memory-vector i))
+                       (format *error-output* 
+                               (cl:if (evenp i)
+                                 *format-car-for-dm-with-types* ; left value (CAR)
+                                 *format-cdr-for-dm-with-types*) ; right value (CDR)
+                               mark ptr 
+                               (int->type-name type)
+                               disp frame addr)))
        #'(lambda (i) (format *error-output* "~8,'0o: " (/ i 2))))))
   )
 

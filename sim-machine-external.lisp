@@ -126,7 +126,7 @@
   (format hcl:*background-output* "~&~%Initial memory contents~%")
   (let ((*error-output* hcl:*background-output*))
     ;; may have garbage in the registers, so set range to dump
-    (dump-memory 0 *initial-memtop*))
+    (dump-memory 0 :end *initial-memtop*))
   
   (note "*micro-pc* set to boot-load: good luck!"))
 

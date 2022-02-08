@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Mech Test Support" 0 3 2
-                                      "Time-stamp: <2022-01-26 17:47:52 gorbag>"
+                                      "Time-stamp: <2022-02-04 17:57:41 gorbag>"
                                       "test: support *microcode-compiled*")
 
 ;; 0.3.2   1/26/22 support *microcode-compiled*
@@ -28,7 +28,7 @@
 ;; 0.1.0  10/12/21 New - support functions for the various test-n.lisp
 ;;                     files (may move to FPGA Dev support at some point)
 
-(defparameter *goal-memory-array*
+(defparameter *goal-memory-array* nil
   "This is what we expect memory to look like after we've run")
 
 (defparameter *goal-memory-offset* 2

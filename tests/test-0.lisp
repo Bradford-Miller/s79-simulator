@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-01-18 11:48:28 gorbag>
+;; Time-stamp: <2022-02-04 17:58:33 gorbag>
 
 ;; implement a test function that checks memory and some registers for correct values
 ;; set up *cold-boot-memory-array* so reset will setup external memory correctly for the test
@@ -64,6 +64,8 @@
   (setq *goal-memtop* *initial-memtop*)
 
   (setq *goal-newcell* *goal-stack*) ; last allocated cons was for the stack
+
+  (setq *goal-memory-offset* 2)
   )
 
 ;; set up a test for successful completion

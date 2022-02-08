@@ -1,8 +1,11 @@
 (in-package :scheme-mach) ; pull into scheme-mach so all the defufn can see them
 
-(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 5
-                                      "Time-stamp: <2022-02-03 17:03:32 gorbag>"
+(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 6
+                                      "Time-stamp: <2022-02-04 17:03:32 gorbag>"
                                       "use intentional upla fns")
+
+;; 0.3.6   2/ 4/22 mostly revoke 9/14/21 patch in light of other
+;;                   rewrites, it was overly ambitious
 
 ;; 0.3.5   2/ 2/22 use intentional upla fns
 
@@ -194,8 +197,8 @@
      ((eql opcode-fn-type :args-first)
       (write-generated-code *upla-stream* line
                             ;; suppress internal code generation 9/13/21 BWM
-                            (let ((*upla-stream* nil))
-                              (apply opcode-fn (mapcar #'(lambda (x) (compile-parameter *upla-stream* x)) (cdr line))))
+;                            (let ((*upla-stream* nil))
+                              (apply opcode-fn (mapcar #'(lambda (x) (compile-parameter *upla-stream* x)) (cdr line)))
                             "compile-line"))
      (t
       (compile-parameter-args-last *upla-stream* *line-opcode* opcode-fn (cdr line) line)
