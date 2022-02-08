@@ -1,5 +1,6 @@
-#Scheme-79 Chip Reimplimentation in Simulation and FPGA
-Time-stamp: <2022-02-08 13:23:21 gorbag>
+# Scheme-79 Chip Reimplimentation in Simulation and FPGA
+
+Time-stamp: <2022-02-08 18:16:49 gorbag>
 
 This is a "first cut" at a software simulation/emulation of the
 SCHEME-79 chip (by GLS, also Jack Holloway, Jerry Sussman and Alan
@@ -96,14 +97,14 @@ test-0 | boot function replicates the initial boot in terms of setting *memtop* 
 test-1 | boot function extended to do the initial GC which should consolodate free space and set up the register pointers correctly to allow CONSing. (Note CONS was tested in test-0). Some initial garbage is put into memory to make sure it is ignored by the mark/sweep algorithm.
 test-2 | hand-compiled APPEND function run on a couple list structures (from the AIM's description of APPEND's S-Code)
 
-####1-11-22 
+#### 1-11-22 
 BWM test-1 works and have repatriated more code into
 ../fpga-support as well as some refactoring to more cleanly split
 between generic fpga processing library code and specific scheme-79
 code (some of which is done through defining methods or setting
 variables defined in the fpga-support hierarchy).
 
-####10-21-21 BWM 
+#### 10-21-21 BWM 
 Segregating code into that which supports both
 simulation and translation into HDL under ../fpga-support, and nearly
 have test-1 working (documented below) with the exception at this
@@ -115,7 +116,7 @@ Also added a diagnostics 'front' panel which illustrates which
 microinstructions, nanoinstructions, micro predicates and tests have
 been run along with some statistics.
 
-####8-20-21 BWM 
+#### 8-20-21 BWM 
 test-0 passes (finally!), so designating future work
 as version 0.2 and incremented versions of component files to 0.1.x.
 Source level support has been added to the console (we can report
@@ -127,7 +128,7 @@ reached (e.g. DONE in the microcode) so it can display that in the log
 and on the console as well as automatically run diagnostic tests (in
 the future) to establish if the run was successful.
 
-####6-21-21 BWM 
+#### 6-21-21 BWM 
 First cut at a digital storage oscilloscope simulation
 to allow debugging of the timing of signals to the pads to be a bit
 easier than microstepping through the front-panel interface watching
@@ -139,14 +140,15 @@ but .lisp and .mcr extensions) containing the microcode in the mcr
 file and initial setup (including the initial contents of the
 machine's memory) in the .lisp file. The function 
 ```
-		(test &key n validate-only-p) ``` 
+		(test &key n validate-only-p)
+``` 
 is defined in the
 file scheme-79-defs.lisp where n designates a test file (named
 'test-n') and if validate-only-p is non-nil it only checks but does
 not compile the microcode (so the machine will not be set up to run
 the test).
 
-####2-9-21 BWM
+#### 2-9-21 BWM
 
 Some updates: After some thought, trying to replicate all of the
 ancillary software that is (partially) described in the AIMs isn't
@@ -186,7 +188,7 @@ shows most of the internal machine state in one view, similar to the
 blinkenlights of yore (but at least at this point represents register
 contents as octal numbers :-).
 
-####1-9-21 BWM
+#### 1-9-21 BWM
 
 Version 0.1 designated, given that there is a primitive front panel
 allowing the registers to be loaded and read, and the control/sense
@@ -197,7 +199,7 @@ I expect them to trail the "scheme-79" version until the first major
 release (which will probably also get uploaded to github at that
 point)
 
-####9-11-20 Bradford W. Miller
+#### 9-11-20 Bradford W. Miller
 
 At this point, the microcode and other code present in the above
 papers have been transcribed. Of that, microcode.lisp is a more or
