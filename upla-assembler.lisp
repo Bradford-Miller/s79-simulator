@@ -1,8 +1,16 @@
 (in-package :scheme-79-mcr-i)
 
-(scheme-79:scheme-79-version-reporter "S79 upla assembler" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:25:43 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "S79 upla assembler" 0 3 1
+                                      "Time-stamp: <2022-02-09 12:44:55 gorbag>"
+                                      "line disambiguation")
+
+;; 0.3.1   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -37,7 +45,7 @@
 
 ;; 0.1.8   9/21/21 add short version banner to pass1-stream
 
-;; 0.1.7   9/18/21 break out assemble-code-line from pass5 to make
+;; 0.1.7   9/18/21 break out assemble-code-expression from pass5 to make
 ;;                   debugging easier
 
 ;; 0.1.6   9/ 7/21 enhance disassembler to regenerate the type constant
@@ -68,7 +76,7 @@
 
 ;; 0.0.12   8/17/21 use note-if
 
-;; 0.0.11   8/ 9/21 fix test for determining if line is original
+;; 0.0.11   8/ 9/21 fix test for determining if expression is original
 ;;                      microcode for annotation
 
 ;; 0.0.10   8/ 7/21 Split out and export nanoop-symbol microop-symbol
@@ -86,7 +94,7 @@
 ;; 0.0.5    3/ 7/21 *-code-to-anaphor
 
 ;; 0.0.4    3/ 5/21 sort symtabs prior to printing them add microcode
-;;                    line disassembler we can use on console. For now
+;;                    expression disassembler we can use on console. For now
 ;;                    annotate pass5 diagnostics to check validity of
 ;;                    encoding
 
@@ -117,7 +125,7 @@
 ;;                    verison. But it should be pretty easy for the
 ;;                    stuff I've already coded because other than
 ;;                    &CONS (where this emergent complexity was
-;;                    discovered :-) lines of microLisp pretty much
+;;                    discovered :-) expressions of microLisp pretty much
 ;;                    translated directly into a single nanocode
 ;;                    invocation.
 ;;                    
@@ -219,10 +227,11 @@
 ;;                    following two words with low bit 0 meaning fail,
 ;;                    and 1 meaning success)
 
-;; pass 4 (required if pass 2 and/or pass 3 are run): revisit pass 1 renumbering the lines
+;; pass 4 (required if pass 2 and/or pass 3 are run): revisit pass 1
+;;                    renumbering the lines
 
-;; pass 5: transform from symbolic to numeric representation (machine
-;;         ucode) filling in *microcontrol-array*
+;; pass 5:            transform from symbolic to numeric representation 
+;;                    (machine ucode) filling in *microcontrol-array*
 
 ;; and that's all folks!
 
@@ -345,7 +354,7 @@
 (defvar *nanoops-used-alist* nil
   "track these for metric purposes")
 
-(defun assemble-code-line (entry array-line)
+(defun assemble-code-expression (entry array-expression)
   (mlet (to from instruction next other) (parse-pla-expr entry)
      ;; reformat as microcode: (<next-state> <nanocode-entry>
      ;; <from-register> <to-register>)
@@ -364,7 +373,7 @@
        (next
         (setq next (microcontrol-symbol-value next)))
        (t
-        (setq next (1+ array-line))))
+        (setq next (1+ array-expression))))
             
      (let (proposed-code)
        (cond-binding-predicate-to foo
@@ -437,11 +446,11 @@
   ;; we should have already populated *microcontrol-symtab* so we can ignore tags
 
   (let (entry
-        array-line
+        array-expression
         (*nanoops-used-alist* nil)
         (*read-base* 10)
         (*package* *ulang-pkg*) ;make sure we read into the right package
-        (*debug-stream* output-stream)) ;used by assemble-code-line
+        (*debug-stream* output-stream)) ;used by assemble-code-expression
     
     ;; prepopulate nanoop-usage
     (mapc #'(lambda (entry)
@@ -453,11 +462,11 @@
        (format output-stream ";; ~s ->~%" entry) ; just for debugging
        (cl:cond
          ((and (symbolp entry) (eql (elt (string entry) 0) #\@))
-          (setq array-line (parse-integer (subseq (string entry) 1))))
+          (setq array-expression (parse-integer (subseq (string entry) 1))))
          ((symbolp entry) ; tag
           nil) ; ignore
          (t ; should be a cons
-          (assemble-code-line entry array-line))))
+          (assemble-code-expression entry array-expression))))
     ;; report nanoops actually used
     (dump-nanoop-usage *nanoops-used-alist* output-stream)))
 
@@ -477,32 +486,39 @@
       next-tag
       (intern (format nil "~A+~D" next-tag adder))))
 
-(defun disassemble-microcode (line)
-  "Given a line of microcode, return the equivalent symbolic version"
+(defun disassemble-microcode (expression)
+  "Given a expression of microcode, return the equivalent symbolic version"
   (declare (special *from-to-nano-operations*))
   
-  (destructuring-bind (next nanoop from to) line ; for the moment, presume that line is a quadruple
+  (destructuring-bind
+      (next nanoop from to)
+      expression ; for the moment, presume that expression is a quadruple
     (let ((nanoop-symbol (nanoop-symbol nanoop))
           (from-symbol (from-code-to-anaphor from))
           (to-symbol (to-code-to-anaphor to)))
       (mlet (next-tag adder) (find-likely-microcode-tag next)
-        ;; at this point we're not disassembling into the source lines, but more the symbolic version of the object microcode.
+        ;; at this point we're not disassembling into the source expressions,
+        ;; but more the symbolic version of the object microcode.
         (cl:cond
           ((eql nanoop-symbol 'sense-and-branch)
-           (assert (zerop adder) () "invalid next tag on branch: ~s" line)
+           (assert (zerop adder) () "invalid next tag on branch: ~s" expression)
            ;; treat special
            (values `(,@(cl:if from-symbol
                               `((from ,from-symbol)))
-                     (branch ,(sense-wire-encoding-to-symbol to) ,next-tag ,(find-likely-microcode-tag (1+ next) 0 :error-p t)))
+                     (branch ,(sense-wire-encoding-to-symbol to)
+                             ,next-tag
+                             ,(find-likely-microcode-tag (1+ next) 0 :error-p t)))
                    from-symbol
                    nil
                    'branch
                    next-tag
                    (sense-wire-encoding-to-symbol to)))
           ((eql nanoop-symbol 'branch-type)
-           (assert (zerop adder) () "invalid next tag on branch-type: ~s" line)
+           (assert (zerop adder) () "invalid next tag on branch-type: ~s" expression)
            (values `((from-type-const ,from)
-                     (branch-type ,(sense-wire-encoding-to-symbol to) ,next-tag ,(find-likely-microcode-tag (1+ next) 0 :error-p t)))
+                     (branch-type ,(sense-wire-encoding-to-symbol to)
+                                  ,next-tag
+                                  ,(find-likely-microcode-tag (1+ next) 0 :error-p t)))
                    from-symbol
                    nil
                    'branch-type

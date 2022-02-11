@@ -1,11 +1,19 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 3 1
-                                      "Time-stamp: <2022-01-18 11:57:51 gorbag>"
-                                      "cleanup special register treatment")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 3 2
+                                      "Time-stamp: <2022-02-09 12:34:47 gorbag>"
+                                      "line disambiguation")
+
+;; 0.3.2   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
 
 ;; 0.3.1   1/18/22 cleanup obsolete code: removing special treatment of registers
-;;                    which required multiple control lines for TO as new covering
+;;                    which required multiple control wires for TO as new covering
 ;;                    set computation deals with it.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -101,7 +109,7 @@
   (declare (special *halt-address* s79-console:*console*))
   
   (note "invoking do-reset T: ~D uT: ~S" *tick* *symbolic-clock-phase*)
-  ;; clear the reset line until/unless we have an external driver
+  ;; clear the reset wire until/unless we have an external driver
   ;; 7-25-21 note that reset will clear automatically at the end of the cycle so leave it alone for now.
   ;;(clear-pad '*reset* t)
   (machine-ready-p t) ; we reset regardless, but issue warnings if relevant

@@ -1,8 +1,18 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 3 7
-                                      "Time-stamp: <2022-01-31 17:57:03 gorbag>"
-                                      "update assign to return assembly directly")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 3 9
+                                      "Time-stamp: <2022-02-09 12:36:56 gorbag>"
+                                      "line disambiguation; &global-value :args-last")
+
+;; 0.3.8   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
+;;                  since &global-value translates into &car, it should be 
+;;                     :args-last as &car is.
 
 ;; 0.3.7   1/28/22 assign now returns the actual assembly code rather
 ;;                     than just setting up the to-register in order
@@ -20,7 +30,7 @@
 ;; 0.3.3   1/24/22 add mask-interrupts pseudo-pad
 
 ;; 0.3.2   1/18/22 cleanup obsolete code: removing special treatment of
-;;                    registers which required multiple control lines
+;;                    registers which required multiple control wires
 ;;                    for TO as new covering set computation deals
 ;;                    with it.
 
@@ -112,10 +122,10 @@
 ;; instructions NOT directly related to storage management:
 
 ;; pseudo pad to deal with conditionals - really switches MUX on least
-;; order bit of micro-pc to OR of relevant conditional lines
+;; order bit of micro-pc to OR of relevant conditional wires
 
 ;nano runs on :ph2-rising, and we keep high until we update PC on :ph1-falling
-(defchip-pad *conditional* :pseudo *run-nanocontroller-p1* *update-sense-lines* 7)
+(defchip-pad *conditional* :pseudo *run-nanocontroller-p1* *update-sense-wires* 7)
 
 ;; pseudo pad for the internal version of freeze. So we can distinguish between an internally
 ;; driven freeze (nanocode) and external (generally memory cycle delay)
@@ -173,7 +183,7 @@
 ;; so not sure how they dealt with constants that are part of the
 ;; instruction; I'm going to use the from field since it tends to be
 ;; larger than the to field (there are more from registers than to
-;; register control lines, so it's less of a loss of extra bits).
+;; register control wires, so it's less of a loss of extra bits).
 (defufn &set-type (reg type-constant-or-register)
   (let ((real-register (translate-alias reg))
         (source-register (cl:if (register-p type-constant-or-register)
@@ -235,7 +245,7 @@
 ;; &set-global-values
 
 ;; &global-value
-(defufn &global-value (reg-ref :constituent t)
+(defufn &global-value (reg-ref :constituent t :args-last t) ; args-last because &car is
   ;; register reference should be to address of a symbol, and the &car
   ;; of that symbol is the global-value cell
   (&car reg-ref)) ; redirect
@@ -261,14 +271,18 @@
 (defupred &=type? (type=bus nil))
 
 ;; assign
-(defufn assign (to-register from :args-last t) ; args-last functions get special handling in compile-line & compile-parameter
+(defufn assign (to-register from :args-last t) ; args-last functions get
+                                               ; special handling in
+                                               ; compile-expression &
+                                               ; compile-parameter
   (let ((*enclosing-opcode* 'assign)
         (*to-register* to-register)
         (*constituent-assignment-fn* `(assign ,to-register)))
-    ;; if our current line is the same as the assignment fn, clear it to prevent loops
+    ;; if our current expression is the same as the assignment fn, clear it to
+    ;; prevent loops
     (cond-binding-predicate-to foo 
       ((from-direct-register-p from 'assign)
-       (write-generated-code *upla-stream* *current-line*
+       (write-generated-code *upla-stream* *current-expression*
                              `(((:to ,to-register) (:from ,foo) microlisp-shared::mover))
                              "assign defufn"))
       (t

@@ -1,6 +1,6 @@
 # Scheme-79 Chip Reimplimentation in Simulation and FPGA
 
-Time-stamp: <2022-02-08 18:16:49 gorbag>
+Time-stamp: <2022-02-08 18:22:35 gorbag>
 
 This is a "first cut" at a software simulation/emulation of the
 SCHEME-79 chip (by GLS, also Jack Holloway, Jerry Sussman and Alan
@@ -97,8 +97,8 @@ test-0 | boot function replicates the initial boot in terms of setting *memtop* 
 test-1 | boot function extended to do the initial GC which should consolodate free space and set up the register pointers correctly to allow CONSing. (Note CONS was tested in test-0). Some initial garbage is put into memory to make sure it is ignored by the mark/sweep algorithm.
 test-2 | hand-compiled APPEND function run on a couple list structures (from the AIM's description of APPEND's S-Code)
 
-#### 1-11-22 
-BWM test-1 works and have repatriated more code into
+#### 1-11-22 BWM
+test-1 works and have repatriated more code into
 ../fpga-support as well as some refactoring to more cleanly split
 between generic fpga processing library code and specific scheme-79
 code (some of which is done through defining methods or setting

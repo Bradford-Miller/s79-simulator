@@ -1,8 +1,16 @@
 (in-package :microlisp-shared) ; instructions are (now) in :microlisp-shared package
 
-(scheme-79:scheme-79-version-reporter "S79 ucode Defs" 0 3 1
-                                      "Time-stamp: <2022-01-27 10:38:44 gorbag>"
-                                      "micro-call now a macro so add decl")
+(scheme-79:scheme-79-version-reporter "S79 ucode Defs" 0 3 2
+                                      "Time-stamp: <2022-02-09 12:38:41 gorbag>"
+                                      "line disambiguation")
+
+;; 0.3.2   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
 
 ;; 0.3.1   1/26/22 defined micro-call macro, so add appropriate declarations
 
@@ -169,9 +177,9 @@
 
           ;; special functions I defined
           ,(microlisp-int:create-ulopd 'tag 1 :tag)
-          ,(microlisp-int:create-ulopd 'fetch-and-test-for-success 4 :register-name :sense-line :tag :tag)
+          ,(microlisp-int:create-ulopd 'fetch-and-test-for-success 4 :register-name :sense-wire :tag :tag)
           ,(microlisp-int:create-ulopd 'fetch-and-test-pred 4 :register-name :predicate-name :tag :tag)
-          ,(microlisp-int:create-ulopd 'simple-branch 3 :sense-line :tag :tag)
+          ,(microlisp-int:create-ulopd 'simple-branch 3 :sense-wire :tag :tag)
           ,(microlisp-int:create-ulopd 'simple-branch-pred 3 :predicate-name :tag :tag)
           ,(microlisp-int:create-ulopd 'compare-registers 5 :predicate-name :register-name :register-name :tag :tag)
           ,(microlisp-int:create-ulopd 'compare-to-type-const 4 :register-name :tag :tag :tag)

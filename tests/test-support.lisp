@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Mech Test Support" 0 3 2
-                                      "Time-stamp: <2022-02-04 17:57:41 gorbag>"
+                                      "Time-stamp: <2022-02-09 17:52:11 gorbag>"
                                       "test: support *microcode-compiled*")
 
 ;; 0.3.2   1/26/22 support *microcode-compiled*
@@ -109,7 +109,7 @@
       (s79-console:update-diagnostics (diagnostics-running-p) t))
 
     (unless validate-only-p ;; don't fiddle with the machine if we're just trying to validate the microcode
-      (reset) ; flip the reset line
+      (reset) ; flip the reset pad
 
       ;; clear out PCs
       (scheme-mach:set-micro-pc 0)

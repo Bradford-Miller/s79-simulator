@@ -1,8 +1,16 @@
 (in-package :scheme-79)
 
-(scheme-79-version-reporter "S79 Project Defs" 0 3 0
-                            "Time-stamp: <2022-01-11 15:22:58 gorbag>"
-                            "0.3 release!")
+(scheme-79-version-reporter "S79 Project Defs" 0 3 1
+                            "Time-stamp: <2022-02-09 12:33:58 gorbag>"
+                            "line disambiguation")
+
+;; 0.3.1   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -48,14 +56,14 @@
 ;; 0.0.2  8/20/21 test-0 passed (stack operations, read interrupt
 ;;                    pointer, external memory simulation, memory
 ;;                    read/write (car and cdr), source level support
-;;                    in console (report microcode by line) stack
+;;                    in console (report microcode by expression) stack
 ;;                    support in console (show top N values),
 ;;                    step/u-step/run/halt support in console, basic
 ;;                    microcode and nanocode, test setup and
-;;                    evaluation, diagnostics panel, DSO, reset line,
+;;                    evaluation, diagnostics panel, DSO, reset wire,
 ;;                    halt address reached test,
 
-;; 0.0.1  : 1/ 9/21 Registers and control lines tested and working
+;; 0.0.1  : 1/ 9/21 Registers and control wires tested and working
 ;; through console (clock synchronous)
 
 (defmethod announce-project-version :after (&optional (stream *error-output*) version-only-p)

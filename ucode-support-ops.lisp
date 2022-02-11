@@ -1,8 +1,16 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "S79 ucode support ops" 0 3 2
-                                      "Time-stamp: <2022-01-27 14:33:59 gorbag>"
-                                      "fetch-and-test-pred support :arg from defupred (fix)")
+(scheme-79:scheme-79-version-reporter "S79 ucode support ops" 0 3 3
+                                      "Time-stamp: <2022-02-09 12:40:43 gorbag>"
+                                      "line disambiguation")
+
+;; 0.3.3   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
 
 ;; 0.3.2   1/27/22 fix 0.3.1
 
@@ -39,7 +47,7 @@
 ;; 0.1.10  9/21/21 move version banner in upla to the front of the
 ;;                    file.
 
-;; 0.1.9.  9/13/21 Supress internal code generation in compile-line when
+;; 0.1.9.  9/13/21 Supress internal code generation in compile-expression when
 ;;                   we are calling write-generated-code on an
 ;;                   application of a compiled-function (which might
 ;;                   itself have a comile-embedded expression) until
@@ -55,9 +63,8 @@
 ;; 0.1.6   9/ 1/21 realized (while patching it) had duplicated code from
 ;;                   predefs, now call sense-wire-real-name from there.
 
-;; 0.1.5   8/31/21 write-generated-code no longer asserts if >1 line of
-;;                   code is to be written (though it does put a note
-;;                   in the log)
+;; 0.1.5   8/31/21 write-generated-code no longer asserts if >1 expression is
+;;                   to be written (though it does put a note in the log)
 
 ;; 0.1.4   8/30/21 compare-to-type-const
 
@@ -121,68 +128,68 @@
 
 ;; special functions used for expansion of the defufn's into micro-pla assembler
 
-(defufn fetch-and-test-for-success (from-register sense-line fail-tag success-tag :declarations '(:conditional))
-  ;; check the sense-line - some require us to fetch the pointer onto the bus
+(defufn fetch-and-test-for-success (from-register sense-wire fail-tag success-tag :declarations '(:conditional))
+  ;; check the sense-wire - some require us to fetch the pointer onto the bus
   (cl:cond
-    ((upred-p sense-line)
-     (fetch-and-test-pred from-register sense-line fail-tag success-tag))
+    ((upred-p sense-wire)
+     (fetch-and-test-pred from-register sense-wire fail-tag success-tag))
     (t
-     `(((from ,from-register) (branch ,sense-line ,fail-tag ,success-tag))))))
+     `(((from ,from-register) (branch ,sense-wire ,fail-tag ,success-tag))))))
   
 ;; predicate version of the above
 (defufn fetch-and-test-pred (from-register pred fail-tag success-tag :declarations '(:conditional))
   (assert (upred-p pred) (pred) "~s was not a declared predicate" pred)
-  (mlet (sense-line pred-type implied-register) (upred-desc pred)
-     (let ((real-sense-line (sense-wire-real-name sense-line (or implied-register from-register))))
+  (mlet (sense-wire pred-type implied-register) (upred-desc pred)
+     (let ((real-sense-wire (sense-wire-real-name sense-wire (or implied-register from-register))))
        (cl:cond
          ((null pred-type)
-          (fetch-and-test-for-success (or from-register implied-register) real-sense-line fail-tag success-tag))
+          (fetch-and-test-for-success (or from-register implied-register) real-sense-wire fail-tag success-tag))
          (t
           (ecase pred-type
             (:arg
              `(((from ,from-register) ;; get it onto the bus
-                (branch ,real-sense-line ,fail-tag ,success-tag))))
+                (branch ,real-sense-wire ,fail-tag ,success-tag))))
             (:car
              `(((from ,from-register) do-car)
-               ((branch ,real-sense-line ,fail-tag ,success-tag))))
+               ((branch ,real-sense-wire ,fail-tag ,success-tag))))
             (:cdr
              `(((from ,from-register) do-cdr)
-               ((branch ,real-sense-line ,fail-tag ,success-tag))))))))))
+               ((branch ,real-sense-wire ,fail-tag ,success-tag))))))))))
 
-(defufn simple-branch (sense-line fail-tag success-tag :declarations '(:conditional))
+(defufn simple-branch (sense-wire fail-tag success-tag :declarations '(:conditional))
   (cl:cond
-    ((upred-p sense-line)
-     (simple-branch-pred sense-line fail-tag success-tag))
+    ((upred-p sense-wire)
+     (simple-branch-pred sense-wire fail-tag success-tag))
     (t
      ;; presumably nothing needs to be loaded(?)
      (cl:if *debug-compiler*
-            (break "simple-branch: branch instruction ~s does not put anything on bus (check)" sense-line)
-            (warn "simple-branch: branch instruction ~s does not put anything on bus (check)" sense-line))
-     `((branch ,sense-line ,fail-tag ,success-tag)))))
+            (break "simple-branch: branch instruction ~s does not put anything on bus (check)" sense-wire)
+            (warn "simple-branch: branch instruction ~s does not put anything on bus (check)" sense-wire))
+     `((branch ,sense-wire ,fail-tag ,success-tag)))))
 
 (defufn simple-branch-pred (pred fail-tag success-tag  :declarations '(:conditional))
   (assert (upred-p pred) (pred) "~s was not a declared predicate" pred)
-  (mlet (sense-line pred-type implied-register defining-fn-symbol) (upred-desc pred)
-    (let ((real-sense-line (sense-wire-real-name sense-line implied-register)))
+  (mlet (sense-wire pred-type implied-register defining-fn-symbol) (upred-desc pred)
+    (let ((real-sense-wire (sense-wire-real-name sense-wire implied-register)))
       (cl:cond
         ((not (null defining-fn-symbol)) ; if we declared a defining function
          (funcall defining-fn-symbol fail-tag success-tag)) ; use it
         ((and (null pred-type) implied-register)
-         (fetch-and-test-for-success implied-register real-sense-line fail-tag success-tag))
+         (fetch-and-test-for-success implied-register real-sense-wire fail-tag success-tag))
         ((null pred-type) ; does not need to look at memory, only register content
-         (simple-branch real-sense-line fail-tag success-tag))
+         (simple-branch real-sense-wire fail-tag success-tag))
         (t
          (error "simple-branch-pred: unhandled case ~s" pred))))))
 
 (defufn compare-registers (pred register-1 register-2 fail-tag success-tag :declarations '(:conditional))
   (assert (upred-p pred) (pred) "~s was not a declared predicate" pred)
-  (mlet (sense-line pred-type implied-register) (upred-desc pred)
+  (mlet (sense-wire pred-type implied-register) (upred-desc pred)
      (declare (ignorable implied-register)) ; don't need it yet
      (cl:cond
        ;; ok, the one case I'm currently using in &cons - can add more later ;-)
        ((and (null pred-type)
              ;; we have to figure out based on the parameters (probably should have a lookup table, no? TBD)
-             (eql sense-line :calculated) 
+             (eql sense-wire :calculated) 
              (eql register-1 '*newcell*)
              (eql pred '&address=?))
         (fetch-and-test-for-success register-2 'address=bus-newcell fail-tag success-tag))

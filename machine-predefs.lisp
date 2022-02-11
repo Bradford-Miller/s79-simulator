@@ -1,14 +1,22 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 3 4
-                                      "Time-stamp: <2022-01-25 14:55:19 gorbag>"
-                                      "support decrement-field decrement-displacement")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 3 5
+                                      "Time-stamp: <2022-02-09 12:30:04 gorbag>"
+                                      "line disambiguation")
+
+;; 0.3.5   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
 
 ;; 0.3.4   1/24/22 add support for from-decremented-field and
 ;;                    from-decremented-displacement
 
 ;; 0.3.3   1/18/22 cleanup obsolete code: removing special treatment of
-;;                    registers which required multiple control lines
+;;                    registers which required multiple control wires
 ;;                    for TO as new covering set computation deals
 ;;                    with it.
 
@@ -46,18 +54,18 @@
 ;; 0.1.12 10/20/21 defchip-special-reg to define internal
 ;;                     non-programmer-model registers for synchronous
 ;;                     processing on FPGA.
-;;                 increment *nanocontrol-line-next-initial-value* to
+;;                 increment *nanocontrol-wire-next-initial-value* to
 ;;                     account for new from*-type constant
 
 ;; 0.1.11 10/15/21 use *scheme-mach*
 
-;; 0.1.10 10/ 1/21 update *nanocontrol-line-next-initial-value* to
+;; 0.1.10 10/ 1/21 update *nanocontrol-wire-next-initial-value* to
 ;;                   account for supporting from-const
 
-;; 0.1.9   9/30/21 make sure defureg exports sense and control line names
+;; 0.1.9   9/30/21 make sure defureg exports sense and control wire names
 
 ;; 0.1.8   9/23/21 add support for not-mark-bit
-;;                   make sure we set/clear mark and pointer bit depending on the (new) control lines
+;;                   make sure we set/clear mark and pointer bit depending on the (new) control wires
 
 ;; 0.1.7   9/16/21 Export latch-name if created, 
 ;;                 Ignore clear-pad on an already cleared latched pad
@@ -72,9 +80,9 @@
 ;;                    rely on multiple registers such as
 ;;                    &scan-up=scan-down?
 
-;; 0.1.3   8/31/21 added cases for sense lines type=type and type=pointer
+;; 0.1.3   8/31/21 added cases for sense wires type=type and type=pointer
 ;;                    which make more sense than type-not-pointer as the
-;;                    sense line. NB: type=pointer-bus is in the paper!!
+;;                    sense wire. NB: type=pointer-bus is in the paper!!
 
 ;; 0.1.2   8/26/21 register-p
 
@@ -190,13 +198,13 @@
 
 ;; 0.0.16     2-19-21 cl:progn (differentiate from our ucode version)
 
-;; 0.0.15     2-17-21 export sense-line names suitable for the uPLA assembler
+;; 0.0.15     2-17-21 export sense-wire names suitable for the uPLA assembler
 
 ;; 0.0.14     2- 6-21 add microcontrol-array
 
 ;; 0.0.13     2- 3-21 fix export for pad (wrap with eval-when)
 
-;; 0.0.12     2- 1-21 pad and control line specs to support nanocontroller
+;; 0.0.12     2- 1-21 pad and control wire specs to support nanocontroller
 
 ;; 0.0.11     1-25-21 pad support - test/clear/set pads
 
@@ -234,7 +242,7 @@
 ;; 0.0.2      1- 8-21 moved register-flag-accessor here to help with
 ;;                      recompilations
 
-;; 0.0.1      1- 7-21 add initializations for sense lines (end of ph2 for
+;; 0.0.1      1- 7-21 add initializations for sense wires (end of ph2 for
 ;;                      now)
 
 ;; 0.0.0     12-31-20 moved from machine-defs to make sure these are
@@ -277,33 +285,33 @@
 (defmacro pointer-bit (x)
   `(sbit ,x 1))
 
-(defvar *control-lines-needing-type-field* '(to-type))
+(defvar *control-wires-needing-type-field* '(to-type))
 
 ;; address field is also the "data" field - consists of displacement
 ;; and frame together.
-(defvar *control-lines-needing-address-field* '(to-address from-incremented from-decremented))
+(defvar *control-wires-needing-address-field* '(to-address from-incremented from-decremented))
 
-(defvar *control-lines-needing-displacement-field* '(to-displacement from-decremented-displacement))
+(defvar *control-wires-needing-displacement-field* '(to-displacement from-decremented-displacement))
 
-(defvar *control-lines-needing-frame-field* '(to-frame from-decremented-frame))
+(defvar *control-wires-needing-frame-field* '(to-frame from-decremented-frame))
 
 
-(defun make-nanocontrol-line-symbol (register-name-symbol control-name-symbol)
+(defun make-nanocontrol-wire-symbol (register-name-symbol control-name-symbol)
   ;; the control name may include the field, e.g. to-type
   (intern (format nil "+RR-~A-~A+"
                   (string control-name-symbol)
                   (strip-register-name register-name-symbol))))
 
-(defparameter *nanocontrol-line-next-initial-value* #o100
+(defparameter *nanocontrol-wire-next-initial-value* #o100
   "Because we reset it in machine-defs")
 
-(defparameter *nanocontrol-line-next* *nanocontrol-line-next-initial-value*
+(defparameter *nanocontrol-wire-next* *nanocontrol-wire-next-initial-value*
   "#o1, #o2 and #o4 are reserved for from*, to* and from-to*")
 
 (defvar *nanocontrol-to-spec* nil
   "Alist whose key is the nanocontrol constant and the cdr is a
 key/value list of specifications (register, controls, etc.) to make it
-simpler for the simulator to convert from a line signal to a set of
+simpler for the simulator to convert from a wire signal to a set of
 data manipulations")
 
 
@@ -316,8 +324,8 @@ data manipulations")
 (defvar *to-controls* nil)
 (defvar *sense-controls* nil)
 
-;; we also need to establish bits (lines) to be used by the
-;; nanocontroller of the form +rr-<control-line>-<register-name>+ so
+;; we also need to establish bits (wires) to be used by the
+;; nanocontroller of the form +rr-<control-wire>-<register-name>+ so
 ;; when that particular bit in the nanocontrol array is set the right
 ;; thing can happen. (Note that will be offset into it's appropriate
 ;; field in the horizontal nanocontrol encoding). See machine-nano.lisp
@@ -357,66 +365,66 @@ data manipulations")
     (setf (sense-wire-register sense-wire-rn) register)
     (setq *sense-wire-encoding* (ash *sense-wire-encoding* 1)))) ; so we can specify multiple and OR them
 
-(defmacro defureg (register-name control-lines sense-lines)
+(defmacro defureg (register-name control-wires sense-wires)
   `(cl:progn
      (eval-when (:load-toplevel :execute)
-       (setf (valid-control-lines ',register-name) ',control-lines)
-       (declare-register-control-wires ',register-name ',control-lines) ; put into alist as well
-       (setf (valid-sense-lines ',register-name) ',sense-lines)
-       (declare-register-sense-wires ',register-name ',sense-lines) ; put into alist as well
+       (setf (valid-control-wires ',register-name) ',control-wires)
+       (declare-register-control-wires ',register-name ',control-wires) ; put into alist as well
+       (setf (valid-sense-wires ',register-name) ',sense-wires)
+       (declare-register-sense-wires ',register-name ',sense-wires) ; put into alist as well
        (setf (register-flags ',register-name) 0))
-     ,@(when (intersection control-lines *control-lines-needing-type-field*)
+     ,@(when (intersection control-wires *control-wires-needing-type-field*)
         `((defvar ,(make-register-field-symbol register-name 'type)
             (make-type-field ,register-name))
           (eval-when (:load-toplevel :execute)
             (export-ulisp-symbol ',(make-register-field-symbol register-name 'type)))))
-     ,@(when (intersection control-lines *control-lines-needing-address-field*)
+     ,@(when (intersection control-wires *control-wires-needing-address-field*)
          `((defvar ,(make-register-field-symbol register-name 'address)
              (make-data-field ,register-name))
            (eval-when (:load-toplevel :execute)
              (export-ulisp-symbol ',(make-register-field-symbol register-name 'address)))))
-     ,@(when (intersection control-lines *control-lines-needing-displacement-field*)
+     ,@(when (intersection control-wires *control-wires-needing-displacement-field*)
          `((defvar ,(make-register-field-symbol register-name 'displacement)
              (make-displacement-field ,register-name))
            (eval-when (:load-toplevel :execute)
              (export-ulisp-symbol ',(make-register-field-symbol register-name 'displacement)))))
-     ,@(when (intersection control-lines *control-lines-needing-frame-field*)
+     ,@(when (intersection control-wires *control-wires-needing-frame-field*)
          `((defvar ,(make-register-field-symbol register-name 'frame)
              (make-frame-field ,register-name))
            (eval-when (:load-toplevel :execute)
              (export-ulisp-symbol ',(make-register-field-symbol register-name 'frame)))))
-     ;; define control line constants for nanocontrol array
-     ,@(mapcar #'(lambda (control-line)
+     ;; define control wire constants for nanocontrol array
+     ,@(mapcar #'(lambda (control-wire)
                    (prog1 `(cl:progn
-                             (defconstant ,(make-nanocontrol-line-symbol register-name control-line)
-                               ,*nanocontrol-line-next*)
+                             (defconstant ,(make-nanocontrol-wire-symbol register-name control-wire)
+                               ,*nanocontrol-wire-next*)
                              (update-alist
-                              ,*nanocontrol-line-next*
+                              ,*nanocontrol-wire-next*
                               '((:register ,register-name)
-                                (:control ,control-line)
-                                (:accessor ,(register-flag-accessor control-line))
+                                (:control ,control-wire)
+                                (:accessor ,(register-flag-accessor control-wire))
                                 (:setter (lambda (x)
-                                           (setf (,(register-flag-accessor control-line)
+                                           (setf (,(register-flag-accessor control-wire)
                                                   ',register-name)
                                                  x))))
                               *nanocontrol-to-spec*)) ; create a spec we can use when running the nanocontroller
-                     (setq *nanocontrol-line-next* (ash *nanocontrol-line-next* 1))))
-               control-lines)
-     (mapc #'export-ulisp-symbol ',control-lines)
+                     (setq *nanocontrol-wire-next* (ash *nanocontrol-wire-next* 1))))
+               control-wires)
+     (mapc #'export-ulisp-symbol ',control-wires)
 
-     ;; define sense line constants for the nanocontrol array
-     ,@(mapcar #'(lambda (sense-line) ; e.g. address=bus
-                   `(encode-sense-wire ',sense-line ',register-name))
-               sense-lines)
-     (mapc #'export-ulisp-symbol ',sense-lines)
+     ;; define sense wire constants for the nanocontrol array
+     ,@(mapcar #'(lambda (sense-wire) ; e.g. address=bus
+                   `(encode-sense-wire ',sense-wire ',register-name))
+               sense-wires)
+     (mapc #'export-ulisp-symbol ',sense-wires)
 
-     ;; next are initializations for the control lines. These should
+     ;; next are initializations for the control wires. These should
      ;; be run, I think, as "ph1" is raised, unless "freeze" has been
      ;; asserted.
-     ,@(when control-lines
+     ,@(when control-wires
          `((cl:progn
              (add-initialization
-              (format nil "~A control lines TO" (string ',register-name))
+              (format nil "~A control wires TO" (string ',register-name))
               '(cl:progn
                 ,@(mapcar
                    #'(lambda (control)
@@ -463,20 +471,20 @@ data manipulations")
                            (type!
                             `(when (,accessor ',register-name)
                                (setf (pointer-bit ,register-name) 1)))
-                           ;; not TO lines
+                           ;; not TO wires
                            ((from from-decremented from-incremented
                             from-type from-decremented-displacement
                             from-decremented-frame)
                             nil) ; ok to ignore - we pick up the from
-                                 ; lines on a different init list
+                                 ; wires on a different init list
                            (t
                             (note-if *debug-dataflow*
-                                     "register ~s control line ~s ignored" register-name control)))))
-                   control-lines))
+                                     "register ~s control wire ~s ignored" register-name control)))))
+                   control-wires))
               ()
               '*to-controls*)
              (add-initialization
-              (format nil "~A controls lines FROM" (string ',register-name))
+              (format nil "~A controls wires FROM" (string ',register-name))
               '(let ((normal-run-p (phase-equal *symbolic-clock-phase* *run-register-controls*)))
                 ;; normal-run-p lets us distinguish between the
                 ;; programmed run of the controls and repeats
@@ -534,13 +542,13 @@ data manipulations")
                                                  ',register-name ,field)
                                         (copy-field ,field *bus*))))
                                   )))
-                   control-lines))
+                   control-wires))
               ()
               '*from-controls*))))
                                     
-     ;; sense lines need initializations to set them correctly. 
-     ,@(when sense-lines
-         `((add-initialization (format nil "~A sense lines" (string ',register-name))
+     ;; sense wires need initializations to set them correctly. 
+     ,@(when sense-wires
+         `((add-initialization (format nil "~A sense wires" (string ',register-name))
               '(cl:progn ,@(mapcar #'(lambda (sense)
                             (let ((accessor (register-flag-accessor sense)))
                               (ecase sense
@@ -587,7 +595,7 @@ data manipulations")
                                                     ,(make-register-field-symbol '*bus* 'type))
                                              (equal ,(make-register-field-symbol register-name 'address)
                                                     ,(make-register-field-symbol '*bus* 'address))))))))
-                            sense-lines))
+                            sense-wires))
               ()
               '*sense-controls*)))))
 

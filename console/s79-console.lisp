@@ -1,8 +1,18 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 3
-                                      "Time-stamp: <2022-01-31 17:59:12 gorbag>"
-                                      "add mask-interrupt button")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 5
+                                      "Time-stamp: <2022-02-10 14:14:47 gorbag>"
+                                      "redraw-pads")
+
+;; 0.3.5   2/10/22 separate pad redraw into a (compilable) fn
+
+;; 0.3.4   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
 
 ;; 0.3.3   1/24/22 add mask-interrupt button
 
@@ -28,7 +38,7 @@
 
 ;; 0.1.17 11/ 2/21 clear-register-description-pane
 
-;; 0.1.16 10/26/21 use *control-lines* and *sense-lines* instead of
+;; 0.1.16 10/26/21 use *control-wires* and *sense-wires* instead of
 ;;                     individual declarations to help automate
 ;;                     changing them.
 
@@ -78,7 +88,7 @@
 ;;                    machine declarations)
 
 ;; 0.1.4   9/ 9/21 use type=type and type=pointer instead of TNP sense
-;;                    line (reality is we'd use an inverter in
+;;                    wire (reality is we'd use an inverter in
 ;;                    hardware, but we can't specify that yet
 
 ;; 0.1.3   9/ 7/21 only use address portion of stack to print top N entries
@@ -194,12 +204,12 @@
 
 ;; 0.0.5    1/ 4/21     prompt for new values for registers when focused; add additional panels for external interfaces
 
-;; 0.0.4    1/ 4/21     also allow sense lines to be declared disabled (well not
+;; 0.0.4    1/ 4/21     also allow sense wires to be declared disabled (well not
 ;;                        enabled anyway) and suppress printing them
 
 ;; 0.0.3    1/ 3/21     add disabled feature for checkboxes and macro-ize building functions
 
-;; 0.0.2    1/ 2/21     change control lines to checkboxes and allow user to set them (still not validated)
+;; 0.0.2    1/ 2/21     change control wires to checkboxes and allow user to set them (still not validated)
 
 ;; 0.0.1   12/28/20     Add (start-console) function
 
@@ -325,7 +335,7 @@
       (describe-register interface)
 
       (when (and writer
-                 ;; make sure we clicked on a register and not a control line else we'll get the "wrong" writer function
+                 ;; make sure we clicked on a register and not a control wire else we'll get the "wrong" writer function
                  (eql (name displayer) :value))
         ;; might want to let the read base be configurable - hex may be more convenient in the future?
         (let ((new-value (capi:prompt-for-string "Enter a new value for the register (in octal)"
@@ -343,7 +353,7 @@
             (redraw-cell row column)))))))
 
         
-;; this allows the user to interactively set the control lines and
+;; this allows the user to interactively set the control wires and
 ;; single step the machine to see what would happen. Specific existing
 ;; microcode instructions may or may not exist for the combination
 ;; selected, of course!
@@ -351,16 +361,16 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (mapc #'(lambda (control)
             (eval `(register-check-box-fn ,control))) ; a macro that creates a defun...
-        *control-lines*)
+        *control-wires*)
   (mapc #'(lambda (sense)
-            ;; ignore some of the sense lines as we implement them specially
+            ;; ignore some of the sense wires as we implement them specially
             (unless (member sense '(type-not-pointer mark-bit not-mark-bit))
               (eval `(register-sense-fn ,sense))))
-        *sense-lines*))
+        *sense-wires*))
 
 ;; common macro won't generate the sense needed for this
 (defun register-mark-bit-function (register-metadata)
-  (cl:if (member 'mark-bit (valid-sense-lines (register-symbol register-metadata)))
+  (cl:if (member 'mark-bit (valid-sense-wires (register-symbol register-metadata)))
          (plusp (mark-bit (symbol-value (register-symbol register-metadata))))
          :disabled))
 
@@ -456,10 +466,10 @@
                                                                "")))))
               
      ;; The third columnm section is a button grid conveying the
-     ;; control and sense line states of the register
+     ;; control and sense wire states of the register
      (flet ((make-button-column (control-p name-string
                                  &optional (name-symbol (make-keyword (string-upcase name-string))))
-              (let ((fn-symbol (line-name-to-fn-symbol name-symbol)))
+              (let ((fn-symbol (wire-name-to-fn-symbol name-symbol)))
                 (make-instance 'grid-display-column
                                :name name-symbol
                                :header-title name-string
@@ -476,13 +486,13 @@
                       :bands
                       (list
                        ;; so far, this can't be "automated" based on
-                       ;; *control-lines* and *sense-lines* so we can
+                       ;; *control-wires* and *sense-wires* so we can
                        ;; define abbreviations. Once we move that data
                        ;; into the metadata (or definition structure),
                        ;; though... (TBD)
 
                        ;; (Key: ADR = address DSP = displacement FRAM = frame INC = incremented DEC = decremented)
-                       ;; control lines
+                       ;; control wires
                        (make-button-column t "To")
                        (make-button-column t "To-Type")
                        (make-button-column t "To-ADR" :to-address)
@@ -497,7 +507,7 @@
                        (make-button-column t "FR-INC" :from-incremented)
                        (make-button-column t "FR-Type" :from-type)
 
-                       ;; sense lines
+                       ;; sense wires
                        (make-button-column nil "ADR=Bus" :address=bus)
                        (make-button-column nil "Typ=Bus" :type=bus)
                        (make-button-column nil "=Bus")
@@ -1110,7 +1120,7 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
               *run-external-data-transfer*
               *run-nanocontroller-p1*
               *run-register-controls*
-              *update-sense-lines*
+              *update-sense-wires*
               *run-nanocontroller-p2*)))
     results))
 
@@ -1277,10 +1287,12 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
 
    (push-button-panel
     capi:push-button-panel
-    :items '(:Step :Run :Run-until :Stop :Freeze :RD-State :LD-State :INT-RQ :u-Step :reset :dso :diagnostics :debug)
+    :items '(:Step :Run :Run-until :Stop :Freeze :RD-State :LD-State :INT-RQ
+                   :u-Step :reset :dso :diagnostics #||:debug ||#)
     :print-function 'capitalize-if-symbol
     :callback-type :data-interface
     :selection-callback 's79-button-selection-callback
+    ;; doesn't work on MacOS
     #|| :alternative-action-callback 's79-button-alternate-callback ||#
     :layout-args '(:x-uniform-size-p t))
     )
@@ -1359,7 +1371,7 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
                    ()
                    '*all-ph-list*)
 
-;; sense lines are updated on ph2 falling
+;; sense wires are updated on ph2 falling
 
 (defun translate-pad-to-indicator (pad-name)
   (case pad-name
@@ -1400,22 +1412,25 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
             (delete indicator (status *console*))))
     pad-logical-value))
 
+(defun redraw-pads ()
+  (when *console*
+    (check-pad 'microlisp-shared:*freeze*)
+    (check-pad 'microlisp-shared:*run-nano*)
+    (check-pad 'microlisp-shared:*ale*)
+    (check-pad 'microlisp-shared:*read*)
+    (check-pad 'microlisp-shared:*write*)
+    (check-pad 'microlisp-shared:*cdr*)
+    (check-pad 'microlisp-shared:*read-interrupt*)
+    (check-pad 'microlisp-shared:*interrupt-request*)
+    (check-pad 'microlisp-shared:*gc-needed*)
+    (check-pad 'microlisp-shared:*reset*)
+    (check-pad 'microlisp-shared:*read-state*)
+    (check-pad 'microlisp-shared:*load-state*)
+    ;; force redraw
+    (redraw-indicators)))
+
 (add-initialization "update-pad settings"
-                    '(when *console*
-                      (check-pad 'microlisp-shared:*freeze*)
-                      (check-pad 'microlisp-shared:*run-nano*)
-                      (check-pad 'microlisp-shared:*ale*)
-                      (check-pad 'microlisp-shared:*read*)
-                      (check-pad 'microlisp-shared:*write*)
-                      (check-pad 'microlisp-shared:*cdr*)
-                      (check-pad 'microlisp-shared:*read-interrupt*)
-                      (check-pad 'microlisp-shared:*interrupt-request*)
-                      (check-pad 'microlisp-shared:*gc-needed*)
-                      (check-pad 'microlisp-shared:*reset*)
-                      (check-pad 'microlisp-shared:*read-state*)
-                      (check-pad 'microlisp-shared:*load-state*)
-                      ;; force redraw
-                      (redraw-indicators))
+                    '(redraw-pads)
                     ()
                     '*all-ph-list*)     ; this is going to be expensive if 8x per clock, so
                                         ; we might want to make this conditional on pressing

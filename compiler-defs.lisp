@@ -1,8 +1,16 @@
 (in-package :scheme-mach) ; pull into scheme-mach so all the defufn can see them
 
-(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 6
-                                      "Time-stamp: <2022-02-04 17:03:32 gorbag>"
-                                      "use intentional upla fns")
+(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 7
+                                      "Time-stamp: <2022-02-09 12:09:58 gorbag>"
+                                      "line disambiguation")
+
+;; 0.3.7   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
 
 ;; 0.3.6   2/ 4/22 mostly revoke 9/14/21 patch in light of other
 ;;                   rewrites, it was overly ambitious
@@ -15,17 +23,17 @@
 ;; 0.3.3   1/27/22 generate-ucode: when asserting nano-op not defined, report
 ;;                    which one
 
-;; 0.3.2   1/24/22 compile-line now errors out when an undefined opcode is used.
+;; 0.3.2   1/24/22 compile-expression now errors out when an undefined opcode is used.
 
 ;; 0.3.1   1/18/22 cleanup obsolete code: removing special treatment of registers
-;;                    which required multiple control lines for TO as new
+;;                    which required multiple control wires for TO as new
 ;;                    covering set computation deals with it.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; 0.1.12  1/ 7/22 moved method for compile-line here; toplevel is now
+;; 0.1.12  1/ 7/22 moved method for compile-expression here; toplevel is now
 ;;                    in support files and this is the "interface" fn to
 ;;                    the project (for now)
 
@@ -179,36 +187,37 @@
 ;; [44: MARK-NODE-3] CONDITION-BIT CLEAR (even) - typically 'fail'
 ;; [45: MARK-NODE-1] CONDITION-BIT SET (odd) - typically 'success'
 
-;; for the current release, compile-line is the primary interface to
-;; the project-specific code to compile the microlisp. The second
-;; interface is to the assembler passes. See ulisp-assembler.lisp and
-;; upla-assembler.lisp
-(defmethod compile-line (line)
-  (declare (type list line)) ; so we remember it's not a string
+;; for the current release, compile-expression is the primary interface to the
+;; project-specific code to compile the microlisp. The second interface is to
+;; the assembler passes. See ulisp-assembler.lisp and upla-assembler.lisp
+(defmethod compile-expression (expression)
+  (declare (type list expression)) ; so we remember it's not a string
   (let* ((*from-register* nil)
          (*to-register* nil)
-         (*line-opcode* (car line))
-         (opcode-fn (opcode-fn *line-opcode*))
-         (opcode-fn-type (ucode-precedence *line-opcode*)))
+         (*expression-opcode* (car expression))
+         (opcode-fn (opcode-fn *expression-opcode*))
+         (opcode-fn-type (ucode-precedence *expression-opcode*)))
     
     (cl:cond
      ((null opcode-fn)
-      (error "Opcode ~s has not been defined!" *line-opcode*))
+      (error "Opcode ~s has not been defined!" *expression-opcode*))
      ((eql opcode-fn-type :args-first)
-      (write-generated-code *upla-stream* line
+      (write-generated-code *upla-stream* expression
                             ;; suppress internal code generation 9/13/21 BWM
 ;                            (let ((*upla-stream* nil))
-                              (apply opcode-fn (mapcar #'(lambda (x) (compile-parameter *upla-stream* x)) (cdr line)))
-                            "compile-line"))
+                            (apply opcode-fn (mapcar #'(lambda (x)
+                                                         (compile-parameter *upla-stream* x))
+                                                     (cdr expression)))
+                            "compile-expression"))
      (t
-      (compile-parameter-args-last *upla-stream* *line-opcode* opcode-fn (cdr line) line)
+      (compile-parameter-args-last *upla-stream* *expression-opcode* opcode-fn (cdr expression) expression)
       ))))
 
-;; useful for calling compile-line interactively
-(defun debug-compile-line (line)
-  (declare (type list line)) ; so we remember it's not a string
+;; useful for calling compile-expression interactively
+(defun debug-compile-expression (exp)
+  (declare (type list exp)) ; so we remember it's not a string
   (let ((*upla-stream* cl:*standard-output*))
-    (compile-line line)))
+    (compile-expression exp)))
 
 ;; this is specific to Scheme-79 I think
 (defvar *intermediate-in-use* nil)
@@ -302,12 +311,13 @@ this one."
      (get-sense-wire-encoding sense-bit)))) ;to (overloaded with condition)
 
 ;; probably a better way to do this, but wait until I get things
-;; working then refactor! (i.e. make all work like &cons)
-(defvar *current-line* nil
-  "The current line we are working on")
+;; working then refactor! (e.g., make all work like &cons ?)
+(defvar *current-expression* nil
+  "The current expression we are working on")
+
 (defun compile-parameter-args-last (stream opcode opcode-fn parameter-list original-parameter)
   (declare (ignore stream)) ; for now
-  (let ((*current-line* original-parameter))
+  (let ((*current-expression* original-parameter))
     (ecase opcode
       ;; these do own compilation (may want to make adding to this
       ;; list declaration-based)
@@ -326,27 +336,15 @@ this one."
        ;; code gets generated recursively
        (upla-write-code-annotation original-parameter) ; make sure the save itself gets into the log
        (funcall opcode-fn (car parameter-list))) ; will generate the code
-      (( &car &cdr) ; already captures the line in the output file
+      ((&global-value &car &cdr) ; already captures the expression in the output file
        (funcall opcode-fn (car parameter-list))))))
-      ;(assign
-      ;(funcall opcode-fn (car parameter-list) (cadr parameter-list)) ; sets up special vars
-      ;(let ((*enclosing-opcode* 'assign))
-      ;; should be ok if thing we are assigning from is also args-last, no? 1/27/22 BWM
-         ;(write-generated-code stream line (compile-parameter stream (cadr parameter-list) nil) "cpal assign")))
-       
-       ;; treat as :args-last so we can capture the arguments
-       ;;(write-generated-code stream
-;;                             original-parameter
-  ;;                           (funcall opcode-fn
-    ;;                                  (car parameter-list)
-      ;;                                (cadr parameter-list)))))))
   
 (defun compile-parameter (stream arg &optional (check-args-first-p t))
-  "Similar to compile line, but while a 'line' is toplevel, an 'arg'
+  "Similar to compile expression, but while a 'expression' is toplevel, an 'arg'
 is an argument to another opcode (but may itself be an function)"
   (cl:cond
     ((consp arg)
-     (let* ((opcode (car arg)) ; maintain the globals from compile-line
+     (let* ((opcode (car arg)) ; maintain the globals from compile-expression
             (opcode-fn (opcode-fn opcode))
             (opcode-fn-type (ucode-precedence opcode))
             (opcode-constituent-p (ucode-constituent opcode))
@@ -358,7 +356,7 @@ is an argument to another opcode (but may itself be an function)"
                                   ((not (null *enclosing-opcode*))
                                    *enclosing-opcode*)
                                   (t
-                                   *line-opcode*))))
+                                   *expression-opcode*))))
        (assert opcode-fn (arg) "compile-parameter: ~s is not a defined opcode!" opcode)
        (assert opcode-fn-type (arg) "compile-parameter: ~s does not have a valid precence!" opcode)
        (cl:cond
@@ -376,8 +374,8 @@ is an argument to another opcode (but may itself be an function)"
                code
                "cp"))))
          (check-args-first-p
-          (error "compile-parameter: args-first expected; embedded args-last opcode?! ~s (fn: ~s line: ~s)"
-                 arg *function-being-compiled* *line-opcode*))
+          (error "compile-parameter: args-first expected; embedded args-last opcode?! ~s (fn: ~s expression: ~s)"
+                 arg *function-being-compiled* *expression-opcode*))
          (t ; args-last
           (let ((*enclosing-opcode* (or *enclosing-opcode* opcode)))
             (compile-parameter-args-last stream opcode opcode-fn (cdr arg) arg))))))
@@ -447,7 +445,7 @@ indirect on the register."
          (cl:cond
            ((not (null ,value-ref))
             ;; generate assembly code directly
-            (write-generated-code *upla-stream* *current-line* 
+            (write-generated-code *upla-stream* *current-expression* 
                                   `(((from ,,value-ref) (to ,(cadr ,cons)) ,',core-uop-symbol))
                                   ,(string name))
             nil) ; wrote it so don't return it

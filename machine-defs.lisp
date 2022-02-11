@@ -1,8 +1,16 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 3
-                                      "Time-stamp: <2022-01-26 11:28:26 gorbag>"
-                                      "*breakpoint-descs*")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 4
+                                      "Time-stamp: <2022-02-09 12:11:23 gorbag>"
+                                      "line disambiguation")
+
+;; 0.3.4   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
 
 ;; 0.3.3   1/26/22 add *breakpoint-descs* to have different kinds of
 ;;                     breakpoints
@@ -25,7 +33,7 @@
 
 ;; 0.1.13 11/12/21 move break-out-bits-as-integers here (from s79-console)
 
-;; 0.1.12 10/26/21 set up *control-lines* *sense-lines* to help
+;; 0.1.12 10/26/21 set up *control-wires* *sense-wires* to help
 ;;                     "automate" some definition generation
 
 ;; 0.1.11 10/21/21 nano-pc now a bit vector
@@ -61,7 +69,7 @@
 
 ;; 0.1.0   8/20/21 "official" 0.2 release: test-0 passed!
 
-;; 0.0.17     8-16-21 *nanocontrol-line-next-initial-value* instead of a constant
+;; 0.0.17     8-16-21 *nanocontrol-wire-next-initial-value* instead of a constant
 
 ;; 0.0.16     7-20-21 *input-pad-types* *output-pad-types*
 
@@ -90,7 +98,7 @@
 ;;                      types (from microcode defschip declarations)
 
 ;; 0.0.5      1-16-21 move pseudo register declarations here to insure
-;;                      correct reset of nanocontrol lines and expansion
+;;                      correct reset of nanocontrol wires and expansion
 
 ;; 0.0.4      1-12-21 PCs for micro and nano machines, as well as access
 ;;                       functions for the micro and nano code (skeletal)
@@ -204,7 +212,7 @@ button or the set-breakpoint fn.")
 ;; building process... so we can be free to configure these for our
 ;; FPGA process here (or in a new FPGA project-specific file... TBD)
 
-;; 10/26/21 write up the names of the sense and control lines
+;; 10/26/21 write up the names of the sense and control wires
 ;; separately so we can refer to them in other parts of the code (and
 ;; move toward having only one place to establish a new control or
 ;; sense)
@@ -213,18 +221,18 @@ button or the set-breakpoint fn.")
 ;; of the bus using nanocode
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *control-lines*
+  (defparameter *control-wires*
     '(to to-type to-displacement to-frame to-address from
       from-decremented from-incremented from-decremented-frame from-decremented-displacement
       from-type mark! unmark! pointer! type!))
 
-  (defparameter *sense-lines*
+  (defparameter *sense-wires*
     '(address=bus type=bus =bus mark-bit not-mark-bit type-not-pointer
       type=pointer type=type frame=0 displacement=0 address=0))
 
-  (eval `(defflags register ,@*control-lines* ,@*sense-lines*))
+  (eval `(defflags register ,@*control-wires* ,@*sense-wires*))
 
-  ;; note that many of these control lines define covering sets for
+  ;; note that many of these control wires define covering sets for
   ;; others.  so if we want to write TO a register, but it only has
   ;; TO-TYPE and TO-ADDRESS controls, we can use the latter to
   ;; substitute for the former. Declare those relationships here.
@@ -236,13 +244,13 @@ button or the set-breakpoint fn.")
 
 ;; if we're recompiling this file, we need to reset the counter for nanocontrol bits, lest they get out of hand
 (eval-when (:compile-toplevel)
-  (setq *nanocontrol-line-next* *nanocontrol-line-next-initial-value*)
+  (setq *nanocontrol-wire-next* *nanocontrol-wire-next-initial-value*)
   (reset-sense-wire-encoding))
 
 (defchip-reg *bus*)
-;; added control lines for setting/unsetting special bits on the bus
+;; added control wires for setting/unsetting special bits on the bus
 ;; also add not-mark-bit (presumably we'd have an inverter in the fpga
-;; so wouldn't need another sense line, but this is closer than using
+;; so wouldn't need another sense wire, but this is closer than using
 ;; logic)
 (defureg *bus* (mark! unmark! type! pointer!) (mark-bit not-mark-bit type=pointer type=type frame=0 displacement=0 address=0))
 
@@ -421,6 +429,6 @@ is more efficient."
   ;; hardware would work. We'll get to that level of emulation soon I
   ;; hope, but this has the advantage of being able to present the
   ;; actual source code and then the machine version of that
-  ;; (essentially setting control lines to be emulated that moves data
+  ;; (essentially setting control wires to be emulated that moves data
   ;; around the registers and pads)
   (cdr (assoc symbol *nanocontrol-symtab*)))

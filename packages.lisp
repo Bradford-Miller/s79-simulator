@@ -1,11 +1,19 @@
 (in-package :cl-user)
 (defvar *scheme-79-version-reporter-initializations* nil)
 
-(cl-lib:detailed-version-reporter "S79 defpackages" 0 3 4
-                                  "Time-stamp: <2022-01-26 11:28:58 gorbag>"
-                                  "breakpoint-descs"
+(cl-lib:detailed-version-reporter "S79 defpackages" 0 3 5
+                                  "Time-stamp: <2022-02-09 12:31:54 gorbag>"
+                                  "line disambiguation"
                                   :initialization-list-symbol
                                   *scheme-79-version-reporter-initializations*)
+
+;; 0.3.5   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
 
 ;; 0.3.4   1/26/22 *breakpoint-descs*
 
@@ -45,8 +53,8 @@
 
 ;; 0.1.28 12/ 2/21 moving some defns from :scheme-mach to :fpga-pla-build-tools
 
-;; 0.1.27 10/26/21 export from-type stuff and new *control-lines*
-;;                   *sense-lines*
+;; 0.1.27 10/26/21 export from-type stuff and new *control-wires*
+;;                   *sense-wires*
 
 ;; 0.1.26 10/21/21 export *nano-pc-size*, *nano-pc-max-address*
 ;;                   import :fpga-plas where it will be needed
@@ -68,7 +76,7 @@
 ;;                    (won't need to say cl:if anymore which is the
 ;;                    far more common case than scheme-79-mcr:if)
 
-;; 0.1.18  9/24/21 export mark! etc as control lines (so console sees
+;; 0.1.18  9/24/21 export mark! etc as control wires (so console sees
 ;;                    them). Should automate on declaration (TBD)
 
 ;; 0.1.18  9/20/21 move clock support init lists to :fpga-clocked
@@ -81,7 +89,7 @@
 ;; 0.1.15  9/14/21 add new support packages: fpga-combinatorics and
 ;;                    fpga-clocked
 
-;; 0.1.14  9/13/21 debug-compile-line: a debug version of compile line
+;; 0.1.14  9/13/21 debug-compile-expression: a debug version of compile expression
 ;;                    exported from :scheme-79 and writes to
 ;;                    *standard-output* instead of the intermediate
 ;;                    file to check if the compiler is working. Note,
@@ -222,7 +230,7 @@
 
            ;; for debugging
            #:disassemble-microcontrol-array
-           #:debug-compile-line
+           #:debug-compile-expression
            #:dump-memory #:dump-memory-with-types #:clear-memory
 
            ;; debug flags
@@ -345,12 +353,12 @@
    #:to #:to-type
    #:to-displacement #:to-frame #:to-address #:from #:from-decremented
    #:from-incremented #:from-type #:mark! #:unmark! #:type! #:pointer!
-   #:*control-lines*
+   #:*control-wires*
 
    #:address=bus #:type=bus #:=bus #:mark-bit
    #:pointer-bit #:type-not-pointer #:frame=0 #:displacement=0
    #:address=0 #:type=pointer #:type=type
-   #:*sense-lines*
+   #:*sense-wires*
 
    #:from-type-const ;; special
 
@@ -376,7 +384,7 @@
 
    ;; internal timing
    #:*run-microcontroller* #:*run-external-data-transfer* #:*run-nanocontroller-p1*
-   #:*run-register-controls* #:*update-sense-lines* #:*run-nanocontroller-p2*
+   #:*run-register-controls* #:*update-sense-wires* #:*run-nanocontroller-p2*
 
    ;; microcode and nanocode compilation support - sets up bit
    ;; encoding for register references, for instance
