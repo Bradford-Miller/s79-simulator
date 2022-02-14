@@ -282,9 +282,13 @@
     ;; prevent loops
     (cond-binding-predicate-to foo 
       ((from-direct-register-p from 'assign)
-       (write-generated-code *upla-stream* *current-expression*
-                             `(((:to ,to-register) (:from ,foo) microlisp-shared::mover))
-                             "assign defufn"))
+       (let ((foo (write-generated-code *upla-stream* *current-expression*
+                                        `(((:to ,to-register) (:from ,foo) microlisp-shared::mover))
+                                        "assign defufn")))
+         (if *upla-stream*
+           nil ; we generated the code so don't return it
+           foo)))
+
       (t
        (compile-parameter *upla-stream* from nil))))) ; let *constituent-assignment-fn* do it's job
 

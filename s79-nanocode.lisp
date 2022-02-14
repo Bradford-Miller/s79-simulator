@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "S79 Nanocode" 0 3 3
-                                      "Time-stamp: <2022-02-09 12:32:50 gorbag>"
+                                      "Time-stamp: <2022-02-11 13:41:39 gorbag>"
                                       "line disambiguation")
 
 ;; 0.3.3   2/ 9/22 way too many things (fns, variables) with "line" in their name
@@ -231,6 +231,7 @@
 
 ;; note that the notes in the GC section indicate that rplaca/rplacd operations (below) always clear the mark bit.
 
+;; only generated in rplaca
 (defnano (microlisp-shared::write-car)
   ((from-to*) (ale))
   ((from* unmark!-bus) (write)))
@@ -255,6 +256,7 @@
    ((from*) (ale))    
   ((to*) (read cdr)))
 
+;; only generated in rplacd
 (defnano (microlisp-shared::write-cdr :force-add t) ; distinguish from write-and-unmark-cdr for debugging
     ((from-to*) (ale))
   ((from* unmark!-bus) (write cdr)))

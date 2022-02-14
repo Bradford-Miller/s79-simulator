@@ -1,8 +1,11 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 4
-                                      "Time-stamp: <2022-02-09 12:11:23 gorbag>"
-                                      "line disambiguation")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 5
+                                      "Time-stamp: <2022-02-11 17:30:14 gorbag>"
+                                      "increase micro-pc size")
+
+;; 0.3.5   2/11/22 increase micro-pc size to 11 bits (from 10) to support larger
+;;                    microprogram of test-2.
 
 ;; 0.3.4   2/ 9/22 way too many things (fns, variables) with "line" in their name
 ;;                    and it's ambiguous.  Splitting so "line" refers to,
@@ -387,7 +390,8 @@ button or the set-breakpoint fn.")
 ;; 10/20/21 - make the micro-pc a register for conformance to hardware implementation
 ;;            and to support loading it from the nanocode (e.g. dispatch) to get the
 ;;            timing right
-(defparameter *micro-pc-size* 10
+;;  2/11/22 - increase from 10 to 11 bits to support test-2.
+(defparameter *micro-pc-size* 11
   "bits in the micropc")
 
 (defparameter *micro-pc-max-address*

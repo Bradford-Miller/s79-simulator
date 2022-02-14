@@ -1,8 +1,11 @@
 (in-package :scheme-mach) ; pull into scheme-mach so all the defufn can see them
 
-(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 7
-                                      "Time-stamp: <2022-02-09 12:09:58 gorbag>"
-                                      "line disambiguation")
+(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 8
+                                      "Time-stamp: <2022-02-14 11:31:59 gorbag>"
+                                      "from-direct-register-p handle &global-value")
+
+;; 0.3.8   2/14/22 &global-value is an alias for &car so
+;;                    from-direct-register-p should treat it that way.
 
 ;; 0.3.7   2/ 9/22 way too many things (fns, variables) with "line" in their name
 ;;                    and it's ambiguous.  Splitting so "line" refers to,
@@ -356,7 +359,8 @@ is an argument to another opcode (but may itself be an function)"
                                   ((not (null *enclosing-opcode*))
                                    *enclosing-opcode*)
                                   (t
-                                   *expression-opcode*))))
+                                   *expression-opcode*)))
+            )
        (assert opcode-fn (arg) "compile-parameter: ~s is not a defined opcode!" opcode)
        (assert opcode-fn-type (arg) "compile-parameter: ~s does not have a valid precence!" opcode)
        (cl:cond
@@ -409,7 +413,7 @@ indirect on the register."
     (cl:if (register-p from-reference)
       from-reference
       nil))
-   ((member (car from-reference) '(&car &cdr &cons &get-interrupt-routine-pointer))
+   ((member (car from-reference) '(&car &cdr &cons &get-interrupt-routine-pointer &global-value))
     nil) ; indirect
    (t ;; a cons
       (or (and 
@@ -449,7 +453,7 @@ indirect on the register."
                                   `(((from ,,value-ref) (to ,(cadr ,cons)) ,',core-uop-symbol))
                                   ,(string name))
             nil) ; wrote it so don't return it
-           ((and (consp ,value) (member (car ,value) '(&car &cdr)))
+           ((and (consp ,value) (member (car ,value) '(&car &cdr &global-value)))
             ;; generate an intermediate argument to store the result of the car or cdr and then assign it
             (setq *constituent-assignment-fn* nil) ; clear this
             (with-intermediate-argument
