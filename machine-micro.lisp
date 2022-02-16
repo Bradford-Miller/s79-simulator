@@ -1,11 +1,15 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 3 4
-                                      "Time-stamp: <2022-02-03 14:10:54 gorbag>"
-                                      "when debugging, add a check for tight loops")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 3 5
+                                      "Time-stamp: <2022-02-15 13:15:35 gorbag>"
+                                      "note-breakpoint-reached")
 
-;; 0.3.4   2/ 3/22 when we detect that the micro-pc is being set to the same address
-;;                   and we are running (not single stepping) we execute (stop).
+;; 0.3.5   2/15/22 call note-breakpoint-reached so console can refresh 
+;;                    properly
+
+;; 0.3.4   2/ 3/22 when we detect that the micro-pc is being set to the
+;;                    same address and we are running (not single
+;;                    stepping) we execute (stop).
 
 ;; 0.3.3   1/26/22 add register use for micro-call, micro-return
 ;;                 support "permanent" breakpoints in clear-breakpoints,
@@ -475,7 +479,8 @@ a given offset. Currently does not directly handle conditionals (TBD)"
     ;; check for breakpoint
     (when (member (bit-vector->integer *micro-pc*) *breakpoints* :test #'=)
       (note-banner '("BREAKPOINT REACHED!") 3)
-      (set-running-p nil))
+      (set-running-p nil)
+      #+capi (s79-console:note-breakpoint-reached)) ; let the console know about it
 
     *micro-pc*)))
 

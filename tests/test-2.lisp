@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-01-27 12:50:12 gorbag>
+;; Time-stamp: <2022-02-16 12:05:13 gorbag>
 
 ;; Now that we can boot, we want to run a simple S-Code function.
 ;; The following is a hand-compiled version of figure 2 in AIM-559
@@ -172,58 +172,53 @@
       (break 'microlisp:primitive-apply-2)
 
       ;; we know the boot code works from test-1, so break on that return so we can start tracing
-      ;; the interpretation of our apply fn (and advance the breakpoint as we determine what works)
+      ;; the interpretation of our apply fn (and advance this breakpoint as we determine what works)
       (tbreak 'microlisp:boot-load-return)))
   
-  (setq {args} 4 ;; addresses we fill in after our hand compilation
-        {arg1} 5
-        {arg2} 8
-        {append} 10
-        {argnxt} 7
-        {app-glo} 11
-        {app-fn} 12
-        {app-seq} 13
-        {cond-c1} 17
-        {cond-c2} 20
-        {cond-c3} 23)
+  (setq {args} 3 ;; addresses we fill in after our hand compilation (in decimal)
+        {arg1} 4
+        {arg2} 7
+        {append} 9
+        {argnxt} 6
+        {app-glo} 10
+        {app-fn} 11
+        {app-seq} 12
+        {cond-c1} 16
+        {cond-c2} 19
+        {cond-c3} 22)
   (setq *cold-boot-memory-array*
         ;; short so we'll use list format
 
         ;; start with address 2 - where we will begin executing
-        ;; code. CAR should be a pointer to the code though for test-1
-        ;; we won't actually execute it; it gets stuffed into *exp* in
-        ;; boot-load-return and stack gets nulled out.
-
-        ;; we point to a constant list just so we have some
-        ;; non-garbage to maintain by the GC.
+        ;; code. CAR should be a pointer to the arguments to the function
+        ;; and CDR should be the function pointer
 
         ;; CAR                        CDR
         `(
-          ,(make-word +sep+ #o3)    ,+nil+                ; address 2 (see above)
           ;; this is the function application we will evaluate
-          ,(make-word +sa+ {args})  ,(make-word +symbol+ {append}) ; address 3 ; apply APPEND to list of arguments
-          ,(make-word +arg1+ {arg1}) ,(make-word +sep+ {argnxt}) ; address 4 ({args})
-          ,(make-word +sei+ #o1)    ,(make-word +sep+ (1+ {arg1})) ; address 5 ({arg1})
-          ,(make-word +sei+ #o2)    ,+nil+                ; address 6
-          ,(make-word +argL+ {arg2}) ,+nil+               ; address 7 {argnxt}
-          ,(make-word +sei+ #o3)    ,(make-word +sep+ (1+ {arg2})) ; address 8 ({arg2})
-          ,(make-word +sei+ #o4)    ,+nil+                ; address 9
+          ,(make-word +sa+ {args})  ,(make-word +symbol+ {append}) ; address 2 ; apply APPEND to list of arguments
+          ,(make-word +arg1+ {arg1}) ,(make-word +sep+ {argnxt}) ; address 3 ({args})
+          ,(make-word +sei+ #o1)    ,(make-word +sep+ (1+ {arg1})) ; address 4 ({arg1})
+          ,(make-word +sei+ #o2)    ,+nil+                ; address 5
+          ,(make-word +argL+ {arg2}) ,+nil+               ; address 6 {argnxt}
+          ,(make-word +sei+ #o3)    ,(make-word +sep+ (1+ {arg2})) ; address 7 ({arg2})
+          ,(make-word +sei+ #o4)    ,+nil+                ; address 8
           ;; and here we define the APPEND symbol
-          ,(make-word +glo+ {app-glo}) ,+nil+             ; address 10 {append}; symbol; no plist
-          ,(make-word +clos+ {app-fn}) ,+nil+             ; address 11 {app-glo}; global value cell
+          ,(make-word +glo+ {app-glo}) ,+nil+             ; address 9 {append}; symbol; no plist
+          ,(make-word +clos+ {app-fn}) ,+nil+             ; address 10 {app-glo}; global value cell
           ;; leading into the APPEND function
-          ,(make-word +proc+ {app-seq}) ,+nil+            ; address 12 {app-fn}; no environment
-          ,(make-word +seq+ (1+ {app-seq})) ,+nil+        ; address 13 {app-seq}; no documentation
-          ,(make-word +arg1+ (+ 2 {app-seq})) ,(make-word +cond+ {cond-c1}) ; address 14
-          ,(make-word +loc+ #o0)    ,(make-word +app2+ (+ 3 {app-seq})) ; address 15
-          ,+nil+                    ,(make-word +eq+ #o0) ; address 16
-          ,(make-word +loc+ #o1)    ,(make-word +arg1+ (1+ {cond-c1})) ; address 17 {cond-c1}
-          ,(make-word +app1+ (+ 2 {cond-c1})) ,(make-word +app2+ {cond-c2}) ; address 18
-          ,(make-word +loc+ #o0)    ,(make-word +car+ #o0); address 19
-          ,(make-word +arg1+ (+ 1 {cond-c2})) ,(make-word +cons+ #o0) ; address 20 {cond-c2}
-          ,(make-word +app1+ (+ 2 {cond-c2})) ,(make-word +argL+ {cond-c3}) ; address 21
-          ,(make-word +loc+ #o0)    ,(make-word +cdr+ #o0) ; address 22
-          ,(make-word +loc+ #o1)    ,(make-word +glo+ {app-glo}) ; address 23 {cond-c3}
+          ,(make-word +proc+ {app-seq}) ,+nil+            ; address 11 {app-fn}; no environment
+          ,(make-word +seq+ (1+ {app-seq})) ,+nil+        ; address 12 {app-seq}; no documentation
+          ,(make-word +arg1+ (+ 2 {app-seq})) ,(make-word +cond+ {cond-c1}) ; address 13
+          ,(make-word +loc+ #o0)    ,(make-word +app2+ (+ 3 {app-seq})) ; address 14
+          ,+nil+                    ,(make-word +eq+ #o0) ; address 15
+          ,(make-word +loc+ #o1)    ,(make-word +arg1+ (1+ {cond-c1})) ; address 16 {cond-c1}
+          ,(make-word +app1+ (+ 2 {cond-c1})) ,(make-word +app2+ {cond-c2}) ; address 17
+          ,(make-word +loc+ #o0)    ,(make-word +car+ #o0); address 18
+          ,(make-word +arg1+ (+ 1 {cond-c2})) ,(make-word +cons+ #o0) ; address 19 {cond-c2}
+          ,(make-word +app1+ (+ 2 {cond-c2})) ,(make-word +argL+ {cond-c3}) ; address 20
+          ,(make-word +loc+ #o0)    ,(make-word +cdr+ #o0) ; address 21
+          ,(make-word +loc+ #o1)    ,(make-word +glo+ {app-glo}) ; address 22 {cond-c3}
           ))
 
   ;; when appropriate set interrupt routine pointer to 2,

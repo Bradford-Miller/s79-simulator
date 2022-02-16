@@ -1,8 +1,11 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 5
-                                      "Time-stamp: <2022-02-10 14:14:47 gorbag>"
-                                      "redraw-pads")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 6
+                                      "Time-stamp: <2022-02-15 13:15:14 gorbag>"
+                                      "new: note-breakpoint-reached")
+
+;; 0.3.6   2/15/22 add note-breakpoint-reached so we redraw the console
+;;                    after a breakpoint
 
 ;; 0.3.5   2/10/22 separate pad redraw into a (compilable) fn
 
@@ -850,6 +853,14 @@ been run (if any) and check if it was successful (if such an evaluation function
       (setq *test-suite* nil)) ; so we don't keep doing this unless we rerun the test
     t))  ; we should halt
 
+(defun note-breakpoint-reached ()
+  "called when a breakpoint is reached"
+  (let ((interface *console*))
+    (when interface
+      (update-register-description-pane interface (format nil "*** Breakpoint Reached: ~o ***" (bit-vector->integer *micro-pc*)))
+
+      (redraw-console))))
+
 ;;    :PH1   :PH2 :FRZ :NANO :ALE    :RD :WR :CDR :int-rq :RDI :m-int :GCR :RST :RD-State :LD-State
 ;;    :Step  :Run :Run-until :Stop :Freeze :RD-State :LD-State :INT-RQ
 
@@ -917,7 +928,7 @@ been run (if any) and check if it was successful (if such an evaluation function
      (redraw-console))
 
     (:freeze ; toggle on/off
-     ;; should be a toggle switch, but for now it's momentary on - off
+     ;; should be a toggle switch, but for now it's momentary on - off button
      (if (check-pad 'microlisp-shared:*freeze*)
        (clear-pad 'microlisp-shared:*freeze*)
        (set-pad 'microlisp-shared:*freeze*))
@@ -925,7 +936,7 @@ been run (if any) and check if it was successful (if such an evaluation function
      (set-button-selected :frz interface (check-pad 'microlisp-shared:*freeze*)))
 
     (:reset ; momentary on
-     ;; should be momentary-on
+     ;; should be momentary-on, though I wish we could give more feedback it was pressed
      (reset)) ; simulates the pad being raised for one clock
 
     (:stop

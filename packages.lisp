@@ -1,11 +1,13 @@
 (in-package :cl-user)
 (defvar *scheme-79-version-reporter-initializations* nil)
 
-(cl-lib:detailed-version-reporter "S79 defpackages" 0 3 5
-                                  "Time-stamp: <2022-02-09 12:31:54 gorbag>"
-                                  "line disambiguation"
+(cl-lib:detailed-version-reporter "S79 defpackages" 0 3 6
+                                  "Time-stamp: <2022-02-15 13:09:47 gorbag>"
+                                  "note-breakpoint-reached"
                                   :initialization-list-symbol
                                   *scheme-79-version-reporter-initializations*)
+
+;; 0.3.6   2/15/22 note-breakpoint-reached
 
 ;; 0.3.5   2/ 9/22 way too many things (fns, variables) with "line" in their name
 ;;                    and it's ambiguous.  Splitting so "line" refers to,
@@ -480,18 +482,20 @@
   (:shadowing-import-from :scheme-79-mcr-i #:find-likely-microcode-tag #:microcodes-used
                           #:get-uc-annotation)
 
-  (:export #:*halt-address*
+  (:export 
+   #:*halt-address*
+   #:note-breakpoint-reached
+   
+   #:*dso* #:*console*
 
-           #:*dso* #:*console*
-
-           #:clear-register-description-pane
+   #:clear-register-description-pane
            
-           #:update-microinstruction-metrics
-           #:*diagnostics-interface* #:redraw-diagnostics
-           #:update-diagnostics #:reset-uinstruction-metrics
-           #:update-predicates #:update-test-suites
-           #:update-microtests #:update-nanotests
-           #:dw1-tests #:dw2-tests #:dw3-tests #:dw4-tests))
+   #:update-microinstruction-metrics
+   #:*diagnostics-interface* #:redraw-diagnostics
+   #:update-diagnostics #:reset-uinstruction-metrics
+   #:update-predicates #:update-test-suites
+   #:update-microtests #:update-nanotests
+   #:dw1-tests #:dw2-tests #:dw3-tests #:dw4-tests))
 
 ;; while i'm not curently using this package yet, the intent is this
 ;; is where the scheme langage and ->s-code functions would go,
