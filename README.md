@@ -1,6 +1,6 @@
 # Scheme-79 Chip Reimplimentation in Simulation and FPGA
 
-Time-stamp: <2022-02-08 18:22:35 gorbag>
+Time-stamp: <2022-02-16 12:35:52 gorbag>
 
 This is a "first cut" at a software simulation/emulation of the
 SCHEME-79 chip (by GLS, also Jack Holloway, Jerry Sussman and Alan
@@ -49,8 +49,16 @@ it will indicate the test was successful. (You can see clock-by-clock
 tracing of the microcode in the output pane of the listener).
 
 You can also use the console to start the DSO and a diagnostics panel.
-These will indicate pad and internal register control timing for the
-simulated run. (They should be started before running the simulation).
+The DSO will indicate pad and internal register control timing for the
+simulated run; the diagnostics panel lists micro and nanoinstructions
+and how many times they have been executed since the system was
+loaded. (They should be started before running the simulation). When a
+test is successfully completed (or gets to the DONE tag but does not
+pass the test) the instructions executed during the cycle are marked as
+failed or successful in the diagnostics panel to help target
+debugging. Predicates are marked up separately so the success and
+failure arms can both be checked. (Consider this a primitive code
+coverage tool).
 
 Additional tests may also be run, however, after the first test (with
 the console exposed) the sequence to run them is to press "step" to
@@ -65,8 +73,8 @@ Since I'm not set on reproducing the actual chip they developed, a few
 (I tried to stay reasonable) liberties were taken in order to simplify
 the code and FPGA. Memory and chip space are not as tight as their
 requirements (a given maximum chip size) and I did try to stay true to
-the actual operation of the chip. Regardless, I document (intentional
-:) changes to their design here
+the actual operation of the chip. Regardless, I document substantive
+(intentional :) changes to their design here:
 
 ### Registers
 
@@ -88,14 +96,30 @@ chip. Reset is quite common for chips of this era, so I imagine it was
 left off due to a constraint on bonded pads or packaging.
 
 
-### Test Sets:
+## Test Sets:
+
+Note that normally on completion the machine would loop on location
+"done" (and the microcode is set up to do this!), however the TEST mode
+overrides this and halts the machine to examine memory and registers
+and test that they are correct. (under the tests directory test-<n>.mcr
+contains the test's associated microcode, and test-<n>.lisp contains
+code to set up the memory on RESET and to check the results when the
+test in completed. In some cases, breakpoints may be extablished as
+well, though typically I would expect this only for tests that have not
+yet passed.
+
 Some documentation:
 
 Filename | Description
 -------- | -----------
-test-0 | boot function replicates the initial boot in terms of setting *memtop* from the initial memory and then gets a stack pointer from a simulated interrupt. Then it does a push and pop to reverse two items that were in our initial stack (directly placed into memory). This tests register assignment, fetching car and cdr of a location from memory, incrementing registers, getting a pointer from an interrupt, and doing basic stack operations. On completion the machine loops on location "done".
+test-0 | boot function replicates the initial boot in terms of setting *memtop* from the initial memory and then gets a stack pointer from a simulated interrupt. Then it does a push and pop to reverse two items that were in our initial stack (directly placed into memory). This tests register assignment, fetching car and cdr of a location from memory, incrementing registers, getting a pointer from an interrupt, and doing basic stack operations. 
 test-1 | boot function extended to do the initial GC which should consolodate free space and set up the register pointers correctly to allow CONSing. (Note CONS was tested in test-0). Some initial garbage is put into memory to make sure it is ignored by the mark/sweep algorithm.
-test-2 | hand-compiled APPEND function run on a couple list structures (from the AIM's description of APPEND's S-Code)
+test-2 | hand-compiled APPEND function run on a couple list structures (from the AIM's description of APPEND's S-Code). This is the first test of the chip's ability to actually interpret Scheme S-Code rather than just the internal microcode, and I expect future tests to be more elaborated to exercise all of the various microcoded functions. Note that at the time this test was written we do not yet have an S-Code compiler, so a future test may check an APPEND function output by that (future) compiler!
+
+## Status:
+
+Note the TODO.txt file documents specific tasks that are planned (in
+some sense ;-) or previous TODO items that have been completed.
 
 #### 1-11-22 BWM
 test-1 works and have repatriated more code into
@@ -152,39 +176,39 @@ the test).
 
 Some updates: After some thought, trying to replicate all of the
 ancillary software that is (partially) described in the AIMs isn't
-really needed, and as the "real goal" after some retrocomputing fun
-and learning more about how to build a processor (on an FPGA) is to
-also have a set of tools that will help design a new kind of
-distributed processing system, I refocused on the lower levels of the
-SCHEME-79 implementation and have been building it around an
-(optional) front-panel that should make it clearer what is going on
-and make it easier to develop and debug the nanocode and other parts
-of the implementation. So rather than just an "interpreter" for the
-microcode, I've tried to come up with a more or less faithful
-representation (using bit vectors where possible) of the registers,
-the register control lines, the sense lines, etc. as described for the
-chip, and also am trying to emulate what such a chip would do during
-each of the phases of the two-phase clock using initialization list
-that run during each part of the clock (e.g. rising, falling, etc.).
-While this won't be completely accurate with respect to how this is
-implemented in, say, HDL, it should be a better path toward building
-tools that will eventually help transform a lisp-like state machine
-representation directly into RTL or HDL. And that's worth doing the
-implementation "the hard way" since by having those tools the ultimate
-goal of building more advanced Actor based machines in hardware should
-be simpler.
+really needed, and as the "real goal" after some retrocomputing fun and
+learning more about how to build a processor (on an FPGA) is to also
+have a set of tools that will help design a new kind of distributed
+processing system, I refocused on the lower levels of the SCHEME-79
+implementation and have been building it around an (optional)
+front-panel that should make it clearer what is going on and make it
+easier to develop and debug the nanocode and other parts of the
+implementation. So rather than just an "interpreter" for the microcode,
+I've tried to come up with a more or less faithful representation
+(using bit vectors where possible) of the registers, the register
+control lines, the sense lines, etc. as described for the chip, and
+also am trying to emulate what such a chip would do during each of the
+phases of the two-phase clock using initialization list that run during
+each part of the clock (e.g. rising, falling, etc.).  While this won't
+be completely accurate with respect to how this is implemented in, say,
+HDL, it should be a better path toward building tools that will
+eventually help transform a lisp-like state machine representation
+directly into RTL or HDL. And that's worth doing the implementation
+"the hard way" since by having those tools the ultimate goal of
+building more advanced Actor based machines in hardware should be
+simpler.
 
 So at this point I am currently writing nanocode that matches the
 microcode while implementing machine instructions and writing a
 microcode compiler (essentially the machine instructions are
-implemented to generate a binary version of the microcode that will
-run the nanocode FSM just as on the original chip). Since I'm doing
-this only with the microcode and only 3 example of nanocode it's not a
-fast process, but again the goal here is to put together tools and
+implemented to generate a binary version of the microcode that will run
+the nanocode FSM just as on the original chip). Since I'm doing this
+only with the microcode and only 3 example of nanocode it's not a fast
+process, but again the goal here is to put together tools and
 methodology that will not only help construct SCHEME-79 but also
 SCHEME-86 and then the later systems. This has meant a larger focus on
-something I initially ignored - building a simulated console that
-shows most of the internal machine state in one view, similar to the
+something I initially ignored - building a simulated console that shows
+most of the internal machine state in one view, similar to the
 blinkenlights of yore (but at least at this point represents register
 contents as octal numbers :-).
 
@@ -202,7 +226,7 @@ point)
 #### 9-11-20 Bradford W. Miller
 
 At this point, the microcode and other code present in the above
-papers have been transcribed. Of that, microcode.lisp is a more or
+papers have been transcribed. Of that, microcode.mcr is a more or
 less faithful copy of the appendix in AIM-559, and probably the most
 important for this project.
 
