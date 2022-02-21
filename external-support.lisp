@@ -1,8 +1,10 @@
 (in-package :external-chips)
 
-(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 2
-                                      "Time-stamp: <2022-01-14 15:06:20 gorbag>"
-                                      "add decode option to dump-memory (default true)")
+(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 3
+                                      "Time-stamp: <2022-02-18 16:20:15 gorbag>"
+                                      "dump-memory cosmetics")
+
+;; 0.3.3   2/18/22 dump-memory cosmetics
 
 ;; 0.3.2   2/ 4/22 add a decode-p arg to dump-memory. It will report the
 ;;                    mark bit and type for the car and cdr without also 
@@ -221,13 +223,13 @@
 
 ;; code to simulate an external RAM
 
-(defparameter *format-car-for-dm-with-types* "M=~o P=~o T=~A ~74tD=~o F=~o A=~o~68t  .  ")
+(defparameter *format-car-for-dm-with-types* "M=~o P=~o T=~A ~48tD~4,'0o F~4,'0o A~8,'0o~58t . ")
 
-(defparameter *format-cdr-for-dm-with-types* "M=~o P=~o T=~A ~102tD=~o F=~o A=~o")
+(defparameter *format-cdr-for-dm-with-types* "M=~o P=~o T=~A ~110tD~4,'0o F~4,'0o A~8,'0o")
 
-(defparameter *format-car-for-dm-decode-p* "~A~A ~40t~o ~48t . ")
+(defparameter *format-car-for-dm-decode-p* "~A~A ~40t~8,'0o~43t . ")
 
-(defparameter *format-cdr-for-dm-decode-p* "~A~A ~80t~o")
+(defparameter *format-cdr-for-dm-decode-p* "~A~A ~80t~8,'0o")
 
 
 (let ((memory-vector (make-array scheme-mach:*maximum-memory-size* :element-type 'fixnum :initial-element 0)))

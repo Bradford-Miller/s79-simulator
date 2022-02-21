@@ -5,7 +5,7 @@
 ;; that can be accessed from the machine!)
 
 ;;(scheme-79:scheme-79-version-reporter "S79 Microcode" 0 3 1
-;;                                      "Time-stamp: <2022-01-26 11:52:19 gorbag>"
+;;                                      "Time-stamp: <2022-02-18 16:52:34 gorbag>"
 ;;                                      "*stack* from-type")
 
 ;; 0.3.1 1/17/22 added from-type for type dispatch (new code paying
@@ -249,7 +249,9 @@
 ;; to the corresponding field on the bus. The following expressions define
 ;; the control lines and sense wires on the registers.
 
-(defreg *exp* (to-type to-displacement to-frame from from-decremented) ())
+(defreg *exp* (to-type to-displacement to-frame from from-decremented
+               from-type from-decremented-frame from-decremented-displacement) ;; additions BWM 1/24/22, 2/18/22
+  ())
 
 (defreg *newcell* (to-type to-address from from-incremented) (address=bus))
 

@@ -1,6 +1,6 @@
 # Scheme-79 Chip Reimplimentation in Simulation and FPGA
 
-Time-stamp: <2022-02-16 12:35:52 gorbag>
+Time-stamp: <2022-02-18 17:12:31 gorbag>
 
 This is a "first cut" at a software simulation/emulation of the
 SCHEME-79 chip (by GLS, also Jack Holloway, Jerry Sussman and Alan
@@ -85,6 +85,7 @@ Control Wire | Description
 ------------ | -----------
 from-displacement | added to *val* to support their &val-displacement-to-exp-displacement u-op
 from-frame | added to *val* to support their &val-frame-to-exp-frame u-op
+from-type | added to *exp* to support dispatch-on-exp-allowing-interrupts
 not-mark-bit | added to *bus* to allow direct detection of this state. I'm sure inverters are cheap even on an FPGA, but I need some way to actually force the issue (so this may change in the future).
 mark! unmark! | controls added to bus to set the appropriate bits (set/unset the mark-bit)
 type! pointer! | controls added to bus to set the appropriate bits (set/unset the type-not-pointer bit)
@@ -93,7 +94,9 @@ type! pointer! | controls added to bus to set the appropriate bits (set/unset th
 
 I added a reset pad to allow external circuitry (ha) to reset the
 chip. Reset is quite common for chips of this era, so I imagine it was
-left off due to a constraint on bonded pads or packaging.
+left off due to a constraint on bonded pads or packaging. For the most
+part, this is to allow a simple interface to a button on the FPGA
+later.
 
 
 ## Test Sets:

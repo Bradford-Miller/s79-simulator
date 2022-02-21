@@ -1,6 +1,7 @@
-;; Time-stamp: <2022-02-04 11:34:43 gorbag>
+;; Time-stamp: <2022-02-18 16:18:26 gorbag>
 
-;; 10/8/21: flip order of core-support and ucode-defs as we introduce a dependency
+;;  2/18/21: add memory window
+;; 10/ 8/21: flip order of core-support and ucode-defs as we introduce a dependency
 
 (cl:in-package :asdf)
 
@@ -68,16 +69,18 @@
                               ; chip (though note much of this will be
                                         ; part of our FPGA!)
    
-   ;; console and DSO have only been implemented under LispWorks CAPI
    #+capi
    (:module "console" :serial t
     :components
-    ((:file "diagnostics-panel") ; a generalized simple grid for presenting test results (or just tracking them if manually operated)
+    (;; console, memory window, and DSO have only been implemented under LispWorks CAPI
      (:file "s79-console-defs")
      (:file "s79-console")
-     (:file "dso")))
-
-   ;; similarly for diagnostics panel
+     (:file "dso")
+     (:file "mem")
+     ;; similarly for diagnostics panel: a generalized simple grid for
+     ;; presenting test results (or just tracking them if manually
+     ;; operated):
+     (:file "diagnostics-panel") ))
    #+capi
    (:file "diagnostics-support")
 

@@ -1,8 +1,12 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 5
-                                      "Time-stamp: <2022-02-11 17:30:14 gorbag>"
-                                      "increase micro-pc size")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 6
+                                      "Time-stamp: <2022-02-21 11:14:51 gorbag>"
+                                      "break out other field lengths into defparameters")
+
+;;         2/21/22 add comment about FROM-TYPE specialness
+
+;; 0.3.6   2/18/22 break out displacement and frame field lengths as parameters
 
 ;; 0.3.5   2/11/22 increase micro-pc size to 11 bits (from 10) to support larger
 ;;                    microprogram of test-2.
@@ -177,7 +181,11 @@ button or the set-breakpoint fn.")
 (defun make-type-field (x)
   (make-array *type-field-length* :element-type 'bit :displaced-to x :displaced-index-offset 1))
 
-(defparameter *address-field-length* 24)
+(defparameter *displacement-field-length* 12)
+
+(defparameter *frame-field-length* 12)
+
+(defparameter *address-field-length* (+ *displacement-field-length* *frame-field-length*))
 
 (defparameter *address-field-mask* #0xffffff)
 
@@ -189,10 +197,10 @@ button or the set-breakpoint fn.")
 
 ;; for those registers that have it
 (defun make-displacement-field (x)
-  (make-array 12 :element-type 'bit :displaced-to x :displaced-index-offset 8))
+  (make-array *displacement-field-length* :element-type 'bit :displaced-to x :displaced-index-offset 8))
 
 (defun make-frame-field (x)
-  (make-array 12 :element-type 'bit :displaced-to x :displaced-index-offset 20))
+  (make-array *frame-field-length* :element-type 'bit :displaced-to x :displaced-index-offset 20))
 
 ;; list node (a cons) has two pointers (called CAR and CDR). This is
 ;; the unit of memory allocation!
@@ -243,6 +251,15 @@ button or the set-breakpoint fn.")
   (declare-covering-set 'to 'to-type 'to-address) ; ignore mark-bit - handled separately regardless
   
   (declare-covering-set 'to-address 'to-displacement 'to-frame)
+  ;; NB: we don't cover FROM because every registers from which we can legit
+  ;; copy the whole register already has FROM declared. And from-type takes
+  ;; advantage of that to copy bits directly to the low order bits on the bus!
+  ;; (TBD: in the chip these bits were handled separately from the bus with
+  ;; their own MUX into the Micro-PC register. The current version of the
+  ;; emulator doesn't do that to take advantage of the existing infrastructure
+  ;; but we should add that to a future release, effectively setting up a
+  ;; parallel bus (and we'll want to handle multiple buses in the future
+  ;; anyway!))
   )
 
 ;; if we're recompiling this file, we need to reset the counter for nanocontrol bits, lest they get out of hand
@@ -289,8 +306,10 @@ button or the set-breakpoint fn.")
 (defchip-reg *exp*)
 (defchip-reg *scan-down* *exp*)
 
-;; BWM add from-decremented-frame and from-decremented-displacement 2/25/22
-(defureg *exp* (to-type to-displacement to-frame from from-decremented from-decremented-frame from-decremented-displacement) ())
+;; BWM add from-decremented-frame and from-decremented-displacement 1/24/22
+;; BWM add from-type 2/18/22
+(defureg *exp* (to-type to-displacement to-frame
+                from from-decremented from-decremented-frame from-decremented-displacement from-type) ())
 
 ;; VAL the value of the expression when determined
 (defchip-reg *val*)

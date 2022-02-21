@@ -1,11 +1,13 @@
 (in-package :cl-user)
 (defvar *scheme-79-version-reporter-initializations* nil)
 
-(cl-lib:detailed-version-reporter "S79 defpackages" 0 3 6
-                                  "Time-stamp: <2022-02-15 13:09:47 gorbag>"
-                                  "note-breakpoint-reached"
+(cl-lib:detailed-version-reporter "S79 defpackages" 0 3 7
+                                  "Time-stamp: <2022-02-18 16:24:20 gorbag>"
+                                  "export displacement and frame field parameters"
                                   :initialization-list-symbol
                                   *scheme-79-version-reporter-initializations*)
+
+;; 0.3.7   2/18/22 export *frame-field-length* and *displacement-field-length*
 
 ;; 0.3.6   2/15/22 note-breakpoint-reached
 
@@ -318,6 +320,7 @@
 
   (:export
    #:*address-field-length* #:*address-field-mask* #:data-field-length* #:*type-field-length*
+   #:*displacement-field-length* #:*frame-field-length*
    
    #:*maximum-memory-size* #:*maximum-memory-content*
 

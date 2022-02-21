@@ -1,8 +1,11 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 3 5
-                                      "Time-stamp: <2022-02-15 13:15:35 gorbag>"
-                                      "note-breakpoint-reached")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 3 6
+                                      "Time-stamp: <2022-02-18 16:24:54 gorbag>"
+                                      "make set-micro-pc generic so we can hook it")
+
+;; 0.3.6   2/18/22 make set-micro-pc generic so we can hook it (e.g.
+;;                    with an :around method)
 
 ;; 0.3.5   2/15/22 call note-breakpoint-reached so console can refresh 
 ;;                    properly
@@ -389,7 +392,10 @@ a given offset. Currently does not directly handle conditionals (TBD)"
             (when *debug-microcontroller*
               (note "checking sense-wire ~A : ~S" sense-wire-symbol foo)))))))
     
-(defun set-micro-pc (new-pc-value)
+(defgeneric set-micro-pc (new-pc-value)
+  (:documentation "setting up the micro-pc for a new value, of interest to debugging tools too"))
+
+(defmethod set-micro-pc (new-pc-value)
   (let* ((new-pc-integer (if (integerp new-pc-value)
                             new-pc-value
                             (bit-vector->integer new-pc-value)))

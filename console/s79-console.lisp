@@ -1,21 +1,27 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 6
-                                      "Time-stamp: <2022-02-15 13:15:14 gorbag>"
-                                      "new: note-breakpoint-reached")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 7
+                                      "Time-stamp: <2022-02-18 16:18:57 gorbag>"
+                                      "specify :before method on set-micro-pc")
+
+;; 0.3.7   2/18/22 add :before method on set-micro-pc to clear the breakpoint
+;;                    message if needed (or rather rewrite it to 
+;;                    "Last breakpoint.."
+;;                 add "memory" button to start memory viewer
 
 ;; 0.3.6   2/15/22 add note-breakpoint-reached so we redraw the console
 ;;                    after a breakpoint
 
 ;; 0.3.5   2/10/22 separate pad redraw into a (compilable) fn
 
-;; 0.3.4   2/ 9/22 way too many things (fns, variables) with "line" in their name
-;;                    and it's ambiguous.  Splitting so "line" refers to,
-;;                    e.g. an output (log) line, "expression" refers to a
-;;                    'line' of code (single expression in nano or microcode
-;;                    land typically, and because we used (READ) it wasn't
-;;                    confined to a single input line anyway) and "wire" to
-;;                    refer to, e.g., a control or sense 'line' on a register.
+;; 0.3.4 2/ 9/22 way too many things (fns, variables) with "line" in
+;;                 their name and it's ambiguous.  Splitting so "line"
+;;                 refers to, e.g. an output (log) line, "expression"
+;;                 refers to a 'line' of code (single expression in
+;;                 nano or microcode land typically, and because we
+;;                 used (READ) it wasn't confined to a single input
+;;                 line anyway) and "wire" to refer to, e.g., a
+;;                 control or sense 'line' on a register.
 
 ;; 0.3.3   1/24/22 add mask-interrupt button
 
@@ -853,13 +859,29 @@ been run (if any) and check if it was successful (if such an evaluation function
       (setq *test-suite* nil)) ; so we don't keep doing this unless we rerun the test
     t))  ; we should halt
 
+(defmethod set-micro-pc :before (new-pc-value)
+  "If we had a breakpoint and we've moved away from that breakpoint, then update the note"
+  (let*-non-null ((interface *console*))
+    (when (display-breakpoint-p interface)
+      (let ((new-pc-integer (if (integerp new-pc-value)
+                              new-pc-value
+                              (bit-vector->integer new-pc-value))))
+        (when (not (= new-pc-integer (last-breakpoint-reached interface)))
+          (update-register-description-pane 
+           interface 
+           (format nil "*** Last Breakpoint Reached: ~o ***" 
+                   (last-breakpoint-reached interface)))
+          (setf (display-breakpoint-p interface) nil)))))) ; so we can overwrite if needed.
+
 (defun note-breakpoint-reached ()
   "called when a breakpoint is reached"
   (let ((interface *console*))
     (when interface
-      (update-register-description-pane interface (format nil "*** Breakpoint Reached: ~o ***" (bit-vector->integer *micro-pc*)))
-
-      (redraw-console))))
+      (let ((bp (bit-vector->integer *micro-pc*)))
+        (update-register-description-pane interface (format nil "*** Breakpoint Reached: ~o ***" bp))
+        (setf (last-breakpoint-reached interface) bp)
+        (setf (display-breakpoint-p interface) t)
+        (redraw-console)))))
 
 ;;    :PH1   :PH2 :FRZ :NANO :ALE    :RD :WR :CDR :int-rq :RDI :m-int :GCR :RST :RD-State :LD-State
 ;;    :Step  :Run :Run-until :Stop :Freeze :RD-State :LD-State :INT-RQ
@@ -904,7 +926,10 @@ been run (if any) and check if it was successful (if such an evaluation function
     (dso-update-and-redraw))
   (let ((diagnostics-interface (diagnostics-running-p)))
     (when diagnostics-interface
-      (redraw-diagnostics diagnostics-interface))))
+      (redraw-diagnostics diagnostics-interface)))
+  (let ((mem-window (mem-running-p)))
+    (when mem-window
+      (redraw-mem mem-window))))
 
 (defun s79-button-selection-callback (data interface)
   (ecase data
@@ -981,6 +1006,9 @@ been run (if any) and check if it was successful (if such an evaluation function
     
     (:diagnostics
      (start-diagnostics))
+
+    (:memory
+     (start-mem))
 
     ;; for debugging window (temporary)
     (:debug
@@ -1176,6 +1204,10 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
                         :accessor ncode-display-array)
    (focused-register :initform nil
                      :accessor focused-register)
+   (last-breakpoint-reached :initform 0
+                            :accessor last-breakpoint-reached)
+   (display-breakpoint-p :initform nil
+                         :accessor display-breakpoint-p)
    )
   
   (:panes
@@ -1299,7 +1331,7 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
    (push-button-panel
     capi:push-button-panel
     :items '(:Step :Run :Run-until :Stop :Freeze :RD-State :LD-State :INT-RQ
-                   :u-Step :reset :dso :diagnostics #||:debug ||#)
+                   :u-Step :reset :dso :diagnostics :memory #||:debug ||#)
     :print-function 'capitalize-if-symbol
     :callback-type :data-interface
     :selection-callback 's79-button-selection-callback

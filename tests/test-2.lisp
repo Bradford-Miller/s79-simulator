@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-02-16 12:05:13 gorbag>
+;; Time-stamp: <2022-02-18 16:17:28 gorbag>
 
 ;; Now that we can boot, we want to run a simple S-Code function.
 ;; The following is a hand-compiled version of figure 2 in AIM-559
@@ -138,7 +138,7 @@
 (defconstant +symbol+ (pointer-type-name->int 'microlisp:symbol))
 (defconstant +sei+ (non-pointer-type-name->int 'microlisp:self-evaluating-immediate))
 
-(defconstant +nil+ (make-word +sei+ #o0))
+(defconstant +nil+ (make-word +sep+ #o0))
 
 (defconstant +clos+ (pointer-type-name->int 'microlisp:closure))
 (defconstant +proc+ (pointer-type-name->int 'microlisp:procedure))
