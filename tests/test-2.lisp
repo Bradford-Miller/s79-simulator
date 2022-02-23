@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-02-18 16:17:28 gorbag>
+;; Time-stamp: <2022-02-23 11:22:29 gorbag>
 
 ;; Now that we can boot, we want to run a simple S-Code function.
 ;; The following is a hand-compiled version of figure 2 in AIM-559
@@ -173,7 +173,8 @@
 
       ;; we know the boot code works from test-1, so break on that return so we can start tracing
       ;; the interpretation of our apply fn (and advance this breakpoint as we determine what works)
-      (tbreak 'microlisp:boot-load-return)))
+      (tbreak 'microlisp:spread-argument))) ; we get here fine as of 2/22/22. Single stepping is
+                                            ; painful but has to be done once...
   
   (setq {args} 3 ;; addresses we fill in after our hand compilation (in decimal)
         {arg1} 4

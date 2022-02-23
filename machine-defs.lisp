@@ -1,12 +1,13 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 6
-                                      "Time-stamp: <2022-02-21 11:14:51 gorbag>"
+                                      "Time-stamp: <2022-02-22 14:43:41 gorbag>"
                                       "break out other field lengths into defparameters")
 
 ;;         2/21/22 add comment about FROM-TYPE specialness
 
 ;; 0.3.6   2/18/22 break out displacement and frame field lengths as parameters
+;;                    add from-type to *exp*
 
 ;; 0.3.5   2/11/22 increase micro-pc size to 11 bits (from 10) to support larger
 ;;                    microprogram of test-2.
@@ -157,7 +158,7 @@ button or the set-breakpoint fn.")
 ;;       Mark  ~ptr      DISPLACEMENT  FRAME
 ;;               -TYPE-   ----  ADDRESS  ----
 
-;; to help print out 32 bit values as separate fields
+;; to help print out 32 bit values as separate fields ; probably should base on defconstants (TBD)
 (defun break-out-bits-as-integers (value)
   ;; if input is an integer, convert to bit-vector
   (let ((raw-value (cl:if (integerp value)

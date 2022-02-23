@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-02-18 16:53:30 gorbag>
+;; Time-stamp: <2022-02-23 11:39:42 gorbag>
 
 ;; This test finally gets to the microcode that interprets s-code. For this test we
 ;; hand compiled some s-code (see also README.md in the scode directory). The microcode
@@ -117,8 +117,6 @@
 (defreg *exp* (to-type to-displacement to-frame from from-decremented
                from-type from-decremented-frame from-decremented-displacement) ;; additions BWM 1/24/22, 2/18/22
   ())
-
-(defreg *exp* (to-type to-displacement to-frame from from-decremented) ())
 
 (defreg *newcell* (to-type to-address from from-incremented) (address=bus))
 

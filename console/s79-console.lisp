@@ -1,8 +1,11 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 7
-                                      "Time-stamp: <2022-02-18 16:18:57 gorbag>"
-                                      "specify :before method on set-micro-pc")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 8
+                                      "Time-stamp: <2022-02-23 12:51:34 gorbag>"
+                                      "print tick as part of ucode status")
+
+;; 0.3.8   2/23/22 add tick (*tick*) to ucode-status panel. Useful when
+;;                    comparing to last update of memory panel!
 
 ;; 0.3.7   2/18/22 add :before method on set-micro-pc to clear the breakpoint
 ;;                    message if needed (or rather rewrite it to 
@@ -1132,10 +1135,11 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
     (capi:modify-editor-pane-buffer   ucode-state-panel
                                       :contents               
                                       (setf (ucode-data-text *console*)
-                                            (format nil " Micro PC: ~o (~a: ~a)~%~A~A"
+                                            (format nil " Micro PC: ~o (~a: ~a)  Tick: ~D~%~A~A"
                                                     (bit-vector->integer *micro-pc*)
                                                     pc-class
                                                     pc-symbolic-name
+                                                    *tick*
                                                     ;; add reminders - we could just note the indicators near the bottom, but
                                                     ;; they're easy to miss...
                                                     (if (test-pad-immediate 'microlisp-shared:*freeze*)

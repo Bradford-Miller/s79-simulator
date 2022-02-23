@@ -1,8 +1,10 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 2
-                                      "Time-stamp: <2022-02-09 12:46:21 gorbag>"
-                                      "line disambiguation")
+(scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 3
+                                      "Time-stamp: <2022-02-23 13:24:09 gorbag>"
+                                      "update some column widths")
+
+;; 0.3.3   2/23/22 make the code columns wider to accomodate larger numbers
 
 ;; 0.3.2   2/ 9/22 way too many things (fns, variables) with "line" in their name
 ;;                    and it's ambiguous.  Splitting so "line" refers to,
@@ -82,7 +84,7 @@
 
 (defparameter *ucode-offset-column-width* 150)
 
-(defparameter *ucode-value-column-width* 250)
+(defparameter *ucode-value-column-width* 260)
 
 (defparameter *ucode-symbolic-column-width* 650)
 
@@ -103,7 +105,7 @@
 
 (defparameter *ncode-name-column-width* 360)
 
-(defparameter *ncode-value-column-width* 150)
+(defparameter *ncode-value-column-width* 260)
 
 (defparameter *control-column-width* 450)
 
