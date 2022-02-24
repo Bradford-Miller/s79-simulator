@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-02-23 11:39:42 gorbag>
+;; Time-stamp: <2022-02-23 18:10:51 gorbag>
 
 ;; This test finally gets to the microcode that interprets s-code. For this test we
 ;; hand compiled some s-code (see also README.md in the scode directory). The microcode
@@ -124,7 +124,8 @@
     (to-type to-address from from-displacement from-frame) ; BWM added from-displacement and from-frame 1/24/22
     (type=bus address=bus =bus))               ;=bus is AND of type, address=bus
 
-(defreg *retpc-count-mark* (to-type to-address from) ())
+(defreg *retpc-count-mark* (to-type to-address from
+                                    from-type) ()) ;; additions BWM 2/23/22
 
 (defreg *stack* (to-type to-address from from-type) ()) ; BWM added from-type for type dispatch
 

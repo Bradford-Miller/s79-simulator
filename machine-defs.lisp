@@ -1,8 +1,10 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 6
-                                      "Time-stamp: <2022-02-22 14:43:41 gorbag>"
-                                      "break out other field lengths into defparameters")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 7
+                                      "Time-stamp: <2022-02-23 18:12:16 gorbag>"
+                                      "add from-type to retpc-count-mark")
+
+;; 0.3.7   2/23/22 add from-type to retpc-count-mark
 
 ;;         2/21/22 add comment about FROM-TYPE specialness
 
@@ -325,7 +327,8 @@ button or the set-breakpoint fn.")
 ;; also used for storing microcode return addresses for use in
 ;; microcode subroutines"
 (defchip-reg *retpc-count-mark*)
-(defureg *retpc-count-mark* (to-type to-address from) ())
+(defureg *retpc-count-mark* (to-type to-address from
+                                     from-type) ()) ;; added 2/23/22
 
 ;; ARGS when args for a procedure call are being evaluated at each
 ;; step the result in VAL is added to the list of already evaluaged
