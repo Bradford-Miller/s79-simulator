@@ -1,8 +1,10 @@
 (in-package :scheme-mach) ; pull into scheme-mach so all the defufn can see them
 
-(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 8
-                                      "Time-stamp: <2022-02-14 11:31:59 gorbag>"
-                                      "from-direct-register-p handle &global-value")
+(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 9
+                                      "Time-stamp: <2022-02-25 17:51:59 gorbag>"
+                                      "fix status message from defrplacop")
+
+;; 0.3.9   2/24/22 defrplacop status message had typo in operative clause
 
 ;; 0.3.8   2/14/22 &global-value is an alias for &car so
 ;;                    from-direct-register-p should treat it that way.
@@ -462,7 +464,7 @@ indirect on the register."
                   (assign *intermediate-argument* ,,value)
                   (,',name ,,cons (fetch *intermediate-argument*))))))
            (t
-            (note-if *debug-compiler* "complex argument to rplac* form: !s" ,value)
+            (note-if *debug-compiler* "complex argument to rplac* form: ~s" ,value)
             ;; *constituent-assignment-fn* should generate the right thing
             (compile-embedded-expression ,value))
             )))))

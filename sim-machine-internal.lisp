@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 3 9
-                                      "Time-stamp: <2022-02-09 12:36:56 gorbag>"
+                                      "Time-stamp: <2022-02-24 17:54:08 gorbag>"
                                       "line disambiguation; &global-value :args-last")
 
 ;; 0.3.8   2/ 9/22 way too many things (fns, variables) with "line" in their name
@@ -400,7 +400,7 @@
 ;; The internal-apply (tag) sets up exp and dispatches as well as sets
 ;; up args. Is there anything left for this fn to do other than the
 ;; goto? Is there something we should be getting from the stack? Need
-;; to walk through the simulation to this point and swee the state! (TBD)
+;; to walk through the simulation to this point and see the state! (TBD)
 
 (defufn eval-exp-popj-to (tag)
  (note-if *debug-compiler* "eval-exp-popj-to turned into goto (for now)")

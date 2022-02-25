@@ -1,8 +1,11 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Mech Test Support" 0 3 2
-                                      "Time-stamp: <2022-02-09 17:52:11 gorbag>"
-                                      "test: support *microcode-compiled*")
+(scheme-79:scheme-79-version-reporter "Scheme Mech Test Support" 0 3 3
+                                      "Time-stamp: <2022-02-25 17:27:00 gorbag>"
+                                      "test: clear-memory")
+
+;; 0.3.3   2/25/22 add clear-memory call to test so we can more easily see what changes
+;;                     (particularly when we call test multiple times)
 
 ;; 0.3.2   1/26/22 support *microcode-compiled*
 
@@ -78,6 +81,10 @@
   ;; increasing numbers tests more microcode/nanocode compilation sets. Note as a test,
   ;; it should also set up some external memory so we can begin executing without loading
   ;; individual cells from the front panel.
+  ;;
+  ;; since we're testing, clear the memory (easier to tell what changes)
+  (clear-memory)
+  
   (let ((*microcode-compiled* nil))
     (cond
      (number-p

@@ -1,8 +1,10 @@
 (in-package :external-chips)
 
-(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 4
-                                      "Time-stamp: <2022-02-23 11:15:40 gorbag>"
-                                      "dump-memory shows where registers point")
+(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 5
+                                      "Time-stamp: <2022-02-24 11:51:59 gorbag>"
+                                      "*word-size* get-address-bits")
+
+;; 0.3.5   2/24/22 use new *word-size* parameter, get-address-bits fn
 
 ;; 0.3.4   2/23/22 enhance dump-memory to show which registers refer to a 
 ;;                    given memory location
@@ -267,7 +269,7 @@
     (let ((actual-address (+ (* 2 int-address) (cl:if cdr-p 1 0))))
       (cl:if as-integer-p ;; used for display typically
         (elt *memory-vector* actual-address)
-        (integer->bit-vector (elt *memory-vector* actual-address) :result-bits 32))))) ; add pad
+        (integer->bit-vector (elt *memory-vector* actual-address) :result-bits *word-size*))))) ; add pad
 
 (defun write-address (address cdr-p new-value)
   "write to (car/cdr) of the address"
@@ -292,7 +294,7 @@
 
 (defun clear-memory ()
   "used for debugging"
-  (dotimes (i (* 2 scheme-mach:*maximum-memory-size*))
+  (dotimes (i scheme-mach:*maximum-memory-size*)
     (setf (elt *memory-vector* i) 0)))
 
 (defun dump-memory-internal (start end print-fn row-leader-print-fn)
@@ -320,7 +322,7 @@ each memory address in range; field specific data should use
 
       (when show-registers
         (mapc #'(lambda (reg-name)
-                  (let* ((reg-value (bit-vector->integer (subseq (symbol-value reg-name) 8)))
+                  (let* ((reg-value (bit-vector->integer (get-address-bits (symbol-value reg-name))))
                          (existing-entry (cdr (assoc reg-value reg-address-alist))))
                     (update-alist reg-value (list* reg-name existing-entry) reg-address-alist)))
               all-regs))

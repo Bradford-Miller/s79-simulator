@@ -1,8 +1,12 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 8
-                                      "Time-stamp: <2022-02-23 12:51:34 gorbag>"
-                                      "print tick as part of ucode status")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 9
+                                      "Time-stamp: <2022-02-24 17:57:18 gorbag>"
+                                      "get-address-bits fn")
+
+;; 0.3.9   2/24/22 use get-address-bits fn when printing stack addresses (strips
+;;                    type)
+;;                 call clear-register-description-pane on reset
 
 ;; 0.3.8   2/23/22 add tick (*tick*) to ucode-status panel. Useful when
 ;;                    comparing to last update of memory panel!
@@ -594,7 +598,7 @@
   (let ((*warn-when-beyond-memtop* nil))
     (cond
       ((plusp (bit-vector->integer x))
-       (format nil "~o:(~o . ~o)" (bit-vector->integer x) (read-address x nil t) (read-address x t t)))
+       (format nil "~o:(~o . ~o)" (bit-vector->integer (get-address-bits x)) (read-address x nil t) (read-address x t t)))
       (t
        "NIL"))))
 
@@ -838,10 +842,13 @@
     (set-button-selected i *console* (member i (status *console*)))))
 
 (defun halt-processing (interface)
-  (declare (special *test-suite*)) ; we have to refer to the diagnostics interface so we use the global
-  "The original scheme-79 chip doesn't have a HALT instruction, but just loops (generally in the microcode
-at location DONE). This is to do some extra work when we notice we are at DONE, e.g. to mark the test has 
-been run (if any) and check if it was successful (if such an evaluation function was declared)"
+  "The original scheme-79 chip doesn't have a HALT instruction, but just
+loops (generally in the microcode at location DONE). This is to do some extra
+work when we notice we are at DONE, e.g. to mark the test has been run (if any)
+and check if it was successful (if such an evaluation function was declared)"
+  ;; we have to refer to the diagnostics interface so we use the global
+  (declare (special *test-suite* *diagnostics-interface*)) 
+
   (when (and (not (null *halt-address*))
              (eql (bit-vector->integer *micro-pc*) *halt-address*))
     (note "We have reached the halt address!")
@@ -965,6 +972,7 @@ been run (if any) and check if it was successful (if such an evaluation function
 
     (:reset ; momentary on
      ;; should be momentary-on, though I wish we could give more feedback it was pressed
+     (clear-register-description-pane)
      (reset)) ; simulates the pad being raised for one clock
 
     (:stop

@@ -1,8 +1,11 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 7
-                                      "Time-stamp: <2022-02-23 18:12:16 gorbag>"
-                                      "add from-type to retpc-count-mark")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 8
+                                      "Time-stamp: <2022-02-24 11:44:00 gorbag>"
+                                      "break out more bit functions")
+
+;; 0.3.8   2/24/22 add get-type-bits, get-frame-bits, get-displacement-bits,
+;;                     get-address-bits
 
 ;; 0.3.7   2/23/22 add from-type to retpc-count-mark
 
@@ -153,26 +156,13 @@ button or the set-breakpoint fn.")
 ;; pointer is 32 bits with 3 fields: 24 bit data, 7 bit type, and 1
 ;; bit (in-use mark) used by storage allocator.
 
-;; NB: the sbit/bit operation puts the high order bit (the one with the largest offset) into the lowest bit based on integer->bit-vector.
-;;     SO we try to be consistent here:
+;; NB: the sbit/bit operation puts the high order bit (the one with the largest
+;;     offset) into the lowest bit based on integer->bit-vector.  SO we try to
+;;     be consistent here:
 ;;
 ;; (s)BIT: 0     1 .. 7   8     ..  19  20-31
 ;;       Mark  ~ptr      DISPLACEMENT  FRAME
 ;;               -TYPE-   ----  ADDRESS  ----
-
-;; to help print out 32 bit values as separate fields ; probably should base on defconstants (TBD)
-(defun break-out-bits-as-integers (value)
-  ;; if input is an integer, convert to bit-vector
-  (let ((raw-value (cl:if (integerp value)
-                     (integer->bit-vector value :result-bits *register-size*)
-                     value)))
-    (let ((mark (mark-bit raw-value))
-          (ptr (pointer-bit raw-value))
-          (type (bit-vector->integer (subseq raw-value 1 8))) ; include pointer bit
-          (disp (bit-vector->integer (subseq raw-value 8 20)))
-          (frame (bit-vector->integer (subseq raw-value 20)))
-          (addr (bit-vector->integer (subseq raw-value 8))))
-      (values mark ptr type disp frame addr))))
 
 ;; note that these create aliases (displaced arrays) so you can set
 ;; bits in these and they will set the appropriate bits in the
@@ -182,7 +172,9 @@ button or the set-breakpoint fn.")
 (defparameter *type-field-length* 7)
 
 (defun make-type-field (x)
-  (make-array *type-field-length* :element-type 'bit :displaced-to x :displaced-index-offset 1))
+  (make-array *type-field-length* :element-type 'bit
+                                  :displaced-to x
+                                  :displaced-index-offset 1))
 
 (defparameter *displacement-field-length* 12)
 
@@ -194,16 +186,53 @@ button or the set-breakpoint fn.")
 
 (defparameter *data-field-length* *address-field-length*)
 
+(defparameter *type-bit-field-end* (- *word-size* *address-field-length*))
+
+(defparameter *displacement-bit-field-end* (- *word-size* *frame-field-length*))
+
 (defun make-data-field (x)
   "Also used for the address field"
-  (make-array *data-field-length* :element-type 'bit :displaced-to x :displaced-index-offset 8))
+  (make-array *data-field-length* :element-type 'bit
+                                  :displaced-to x
+                                  :displaced-index-offset 8))
 
 ;; for those registers that have it
 (defun make-displacement-field (x)
-  (make-array *displacement-field-length* :element-type 'bit :displaced-to x :displaced-index-offset 8))
+  (make-array *displacement-field-length* :element-type 'bit
+                                          :displaced-to x
+                                          :displaced-index-offset 8))
 
 (defun make-frame-field (x)
-  (make-array *frame-field-length* :element-type 'bit :displaced-to x :displaced-index-offset 20))
+  (make-array *frame-field-length* :element-type 'bit
+                                   :displaced-to x
+                                   :displaced-index-offset 20))
+
+;; for when we don't have fields
+(defun get-type-bits (x)
+  (subseq x 1 *type-bit-field-end*))
+
+(defun get-displacement-bits (x)
+  (subseq x *type-bit-field-end* *displacement-bit-field-end*))
+
+(defun get-frame-bits (x)
+  (subseq x *displacement-bit-field-end*))
+
+(defun get-address-bits (x)
+  (subseq x *type-bit-field-end*))
+
+;; to help print out 32 bit values as separate fields
+(defun break-out-bits-as-integers (value)
+  ;; if input is an integer, convert to bit-vector
+  (let ((raw-value (cl:if (integerp value)
+                     (integer->bit-vector value :result-bits *register-size*)
+                     value)))
+    (let ((mark (mark-bit raw-value))
+          (ptr (pointer-bit raw-value))
+          (type (bit-vector->integer (get-type-bits raw-value))) ; include pointer bit
+          (disp (bit-vector->integer (get-displacement-bits raw-value)))
+          (frame (bit-vector->integer (get-frame-bits raw-value)))
+          (addr (bit-vector->integer (get-address-bits raw-value))))
+      (values mark ptr type disp frame addr))))
 
 ;; list node (a cons) has two pointers (called CAR and CDR). This is
 ;; the unit of memory allocation!
@@ -237,7 +266,8 @@ button or the set-breakpoint fn.")
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *control-wires*
     '(to to-type to-displacement to-frame to-address from
-      from-decremented from-incremented from-decremented-frame from-decremented-displacement
+      from-decremented from-incremented from-decremented-frame
+      from-decremented-displacement
       from-type mark! unmark! pointer! type!))
 
   (defparameter *sense-wires*
@@ -275,7 +305,9 @@ button or the set-breakpoint fn.")
 ;; also add not-mark-bit (presumably we'd have an inverter in the fpga
 ;; so wouldn't need another sense wire, but this is closer than using
 ;; logic)
-(defureg *bus* (mark! unmark! type! pointer!) (mark-bit not-mark-bit type=pointer type=type frame=0 displacement=0 address=0))
+(defureg *bus*
+    (mark! unmark! type! pointer!)
+  (mark-bit not-mark-bit type=pointer type=type frame=0 displacement=0 address=0))
 
 ;; bus doesn't really have proper declarations
 (defvar *bus-frame* (make-frame-field *bus*))
@@ -451,7 +483,8 @@ is more efficient."
       (get-pc-ucode symbol)))
 
 (defun get-nanocode (symbol)
-  "given the symbolic opcode for a bit of naocode, this retreives the associated offset into the code/controller table"
+  "given the symbolic opcode for a bit of naocode, this retreives the
+associated offset into the code/controller table"
   ;; similar to get-microcode, this is not exactly how the real
   ;; hardware would work. We'll get to that level of emulation soon I
   ;; hope, but this has the advantage of being able to present the

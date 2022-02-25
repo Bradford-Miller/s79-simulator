@@ -2,7 +2,7 @@
 (defvar *scheme-79-version-reporter-initializations* nil)
 
 (cl-lib:detailed-version-reporter "S79 defpackages" 0 3 7
-                                  "Time-stamp: <2022-02-18 16:24:20 gorbag>"
+                                  "Time-stamp: <2022-02-24 12:27:09 gorbag>"
                                   "export displacement and frame field parameters"
                                   :initialization-list-symbol
                                   *scheme-79-version-reporter-initializations*)
@@ -325,6 +325,7 @@
    #:*maximum-memory-size* #:*maximum-memory-content*
 
    ;; parsing out words
+   #:get-type-bits #:get-displacement-bits #:get-frame-bits #:get-address-bits
    #:break-out-bits-as-integers
 
    ;; internal version of the clock
@@ -430,7 +431,7 @@
                 #:*freeze* #:*read* #:*read-state* #:*load-state* #:*interrupt-request*
                 #:*write* #:*cdr* #:*read-interrupt* #:*gc-needed* #:*run-nano*
                 
-                #:*input-pad-types* #:*output-pad-types*
+                #:*input-pad-types* #:*output-pad-types* #:get-address-bits 
 
                 #:*test-ale-to-expect-address* #:*get-address-from-pads* #:*put-memory-content-onto-pads*
                 #:*get-memory-content-from-pads* #:*test-for-read-interrupt*

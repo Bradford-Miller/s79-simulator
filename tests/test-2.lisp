@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-02-23 18:13:50 gorbag>
+;; Time-stamp: <2022-02-25 14:41:47 gorbag>
 
 ;; Now that we can boot, we want to run a simple S-Code function.
 ;; The following is a hand-compiled version of figure 2 in AIM-559
@@ -100,7 +100,7 @@
 ;;        (      *         |   *----)-----> (last-arg        | NIL    )
 ;;               |                          (      *         |        )
 ;;               V                                 |              
-;;        (SE-immediate    | SE-ptr )       (SE-immediate    | SE-ptr )     
+;;        (SE-immediate    | SE-ptr )       (SE-immediate    | SE-ptr )     ;; maybe cons instead of se-ptr here
 ;;        (      1         |   *    )       (      3         |   *    )
 ;;                             |                                 |
 ;;               ---------------                   ---------------
@@ -202,10 +202,10 @@
           ;; this is the function application we will evaluate
           ,(make-word +sa+ {args})  ,(make-word +symbol+ {append}) ; address 2 ; apply APPEND to list of arguments
           ,(make-word +arg1+ {arg1}) ,(make-word +sep+ {argnxt}) ; address 3 ({args})
-          ,(make-word +sei+ #o1)    ,(make-word +sep+ (1+ {arg1})) ; address 4 ({arg1})
+          ,(make-word +sei+ #o1)    ,(make-word +cons+ (1+ {arg1})) ; address 4 ({arg1})
           ,(make-word +sei+ #o2)    ,+nil+                ; address 5
           ,(make-word +argL+ {arg2}) ,+nil+               ; address 6 {argnxt}
-          ,(make-word +sei+ #o3)    ,(make-word +sep+ (1+ {arg2})) ; address 7 ({arg2})
+          ,(make-word +sei+ #o3)    ,(make-word +cons+ (1+ {arg2})) ; address 7 ({arg2})
           ,(make-word +sei+ #o4)    ,+nil+                ; address 8
           ;; and here we define the APPEND symbol
           ,(make-word +glo+ {app-glo}) ,+nil+             ; address 9 {append}; symbol; no plist
