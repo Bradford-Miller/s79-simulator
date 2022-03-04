@@ -1,8 +1,10 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Memory Window" 0 3 0
-                                      "Time-stamp: <2022-02-23 12:51:43 gorbag>"
+(scheme-79:scheme-79-version-reporter "Scheme Machine Memory Win" 0 3 0
+                                      "Time-stamp: <2022-03-02 17:58:57 gorbag>"
                                       "new")
+
+;; 0.3.3   3/ 2/22 rename module to fit version-reporter limit
 
 ;; 0.3.2   2/23/22 convert main panel to capi:editor-panel. 
 ;;                 add new status panel to right of update button to show last update tick

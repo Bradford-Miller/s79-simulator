@@ -1,8 +1,10 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 9
-                                      "Time-stamp: <2022-02-24 17:57:18 gorbag>"
-                                      "get-address-bits fn")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 10
+                                      "Time-stamp: <2022-03-02 15:19:12 gorbag>"
+                                      "add offset and tag to uaddr in ucode state info")
+
+;; 0.3.10  3/ 2/22 add tag and offset to UAddr column in Ucode State Info pane
 
 ;; 0.3.9   2/24/22 use get-address-bits fn when printing stack addresses (strips
 ;;                    type)
@@ -625,8 +627,10 @@
                                            :right-border-spec 1
                                            :size *ucode-offset-column-width*
                                            :print-function #'(lambda (x)
-                                                               (let ((tag (microop-symbol x)))
-                                                                 (format nil "~o:~a" x (if tag tag "")))))))
+                                                               (mlet (tag adder) (find-likely-microcode-tag x)
+                                                                 (format nil "~o:~a+~d" x tag adder))))))
+                                                               ;(let ((tag (microop-symbol x)))
+                                                               ;  (format nil "~o:~a" x (if tag tag "")))))))
 
 
 
@@ -972,7 +976,7 @@ and check if it was successful (if such an evaluation function was declared)"
 
     (:reset ; momentary on
      ;; should be momentary-on, though I wish we could give more feedback it was pressed
-     (clear-register-description-pane)
+     (clear-register-description-pane interface)
      (reset)) ; simulates the pad being raised for one clock
 
     (:stop

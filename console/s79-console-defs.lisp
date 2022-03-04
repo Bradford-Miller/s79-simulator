@@ -1,8 +1,13 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 3
-                                      "Time-stamp: <2022-02-23 13:24:09 gorbag>"
-                                      "update some column widths")
+(scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 4
+                                      "Time-stamp: <2022-03-03 14:44:13 gorbag>"
+                                      "reorg register order to make useful registers easier to find")
+
+;; 0.3.4   3/ 3/22 reorder the registers to the ones that change more often
+;;                    (typically) are further up the list.  except the PC which
+;;                    is on the bottom to make it easy to find. (May also want
+;;                    to color code at some point (TBD)
 
 ;; 0.3.3   2/23/22 make the code columns wider to accomodate larger numbers
 
@@ -82,7 +87,7 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (eval `(defflags register-metadata ,@*control-wires* ,@*sense-wires*)))
 
-(defparameter *ucode-offset-column-width* 150)
+(defparameter *ucode-offset-column-width* 200)
 
 (defparameter *ucode-value-column-width* 260)
 
@@ -120,15 +125,25 @@
 (defparameter *ncode-total-height* (* (1+ *ncode-depth*) *ucode-height*))
 
 (defparameter *s79-register-metadata*
+  ;; 3/3/22 reorganize for debugging purposes; stuff that changes more is
+  ;; toward the top and stuff that's relatively static (e.g. NIL, Memtop) are
+  ;; toward the bottom
   (list (make-instance 'register-metadata
                        :name "Bus"
                        :symbol '*bus*)
+
         (make-instance 'register-metadata
-                       :name "Memtop"
-                       :symbol '*memtop*)
+                       :name "Intermediate-Argument"
+                       :symbol '*intermediate-argument*)
+
+        ;; these are the primary registers used for evaluation
         (make-instance 'register-metadata
                        :name "Newcell / scan-up"
                        :symbol '*newcell*)
+        (make-instance 'register-metadata
+                       :name "Stack"
+                       :symbol '*stack*)
+
         (make-instance 'register-metadata
                        :name "Exp / scan-down"
                        :symbol '*exp*)
@@ -136,33 +151,37 @@
                        :name "Val / stack-top / rel-tem-2"
                        :symbol '*val*)
         (make-instance 'register-metadata
-                       :name "Retpc-Count-Mark"
-                       :symbol '*retpc-count-mark*)
-        (make-instance 'register-metadata
                        :name "Args / Leader / rel-tem-1"
                        :symbol '*args*)
+        
         (make-instance 'register-metadata
-                       :name "Stack"
-                       :symbol '*stack*)
+                       :name "Retpc-Count-Mark"
+                       :symbol '*retpc-count-mark*)
+
         (make-instance 'register-metadata
                        :name "Display / node-pointer"
                        :symbol '*display*)
-        (make-instance 'register-metadata
-                       :name "Intermediate-Argument"
-                       :symbol '*intermediate-argument*)
-        ;; not sure we need this one... I guess to see the From control
-        (make-instance 'register-metadata
-                       :name "Nil (Pseudo-Reg)"
-                       :symbol '*nil*)
+
         (make-instance 'register-metadata
                        :name "Address (Pseudo-Reg)"
                        :symbol '*address*)
         (make-instance 'register-metadata
                        :name "Memory (Pseudo-Reg)"
                        :symbol '*memory*)
+
         (make-instance 'register-metadata
                        :name "Interrupt (Pseudo-Reg)"
                        :symbol '*interrupt*)
+
+        (make-instance 'register-metadata
+                       :name "Memtop"
+                       :symbol '*memtop*)
+        ;; not sure we need this one... I guess to see the From control
+        (make-instance 'register-metadata
+                       :name "Nil (Pseudo-Reg)"
+                       :symbol '*nil*)
+
+        ;; put this at the bottom so it's easy to find
         (make-instance 'register-metadata
                        :name "Micro PC"
                        :symbol '*micro-pc*
