@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-02-25 14:41:47 gorbag>
+;; Time-stamp: <2022-03-08 12:17:24 gorbag>
 
 ;; Now that we can boot, we want to run a simple S-Code function.
 ;; The following is a hand-compiled version of figure 2 in AIM-559
@@ -34,7 +34,7 @@
 ;; notation. Conditionals and control sequences (PROGN) are peformed
 ;; somewhat differently than they are in the source langauge.
 
-;; the (ASCII ;-) graphic representation of the S-Code (Figure 2):
+;; the (ASCII ;-) graphic representation of the S-Code (AIM 559 Figure 2):
 
 ;;  ----------
 ;;  |        |
@@ -89,18 +89,26 @@
 ;; the first address we will execute. That should be the application
 ;; of the APPEND function to a couple of lists.
 
-;; in the microcode, APPLY should turn into the uinst spread-argument. AFAICT
-;; that means if we want to call (APPEND '(1 2) '(3 4)) we should do
+;; the "..."s in the above are what appear in TR 559 (Figure 2). But I suspect
+;; this represents more code which I'll have to figure out to make the example
+;; work! 
+
+;; in the microcode, we start with arguments and the continuation
+;; after last-argument is the function to call
 ;;
-;;        (spread-argument | symbol )
-;;        (      *         |   *----)----->     [Symbol Cell of APPEND]
+;;        (sequence        | NIL    ) ;; single element sequence
+;;        (      *         |        )
 ;;               |
 ;;               V
-;;        (1st-arg         | SE-ptr ) 
-;;        (      *         |   *----)-----> (last-arg        | NIL    )
-;;               |                          (      *         |        )
-;;               V                                 |              
-;;        (SE-immediate    | SE-ptr )       (SE-immediate    | SE-ptr )     ;; maybe cons instead of se-ptr here
+;;        (1st-arg         | NIL    ) ;; ?? done ??
+;;        (      *         |        )
+;;               |                       
+;;               V                       
+;;        (SE-Pointer      | last-arg )     (SE-Pointer      | symbol  ) 
+;;        (      *         |   *------)---> (      *         |    *----)----->     [Symbol Cell of APPEND]
+;;               |                                 |
+;;               V                                 V              
+;;        (SE-immediate    | SE-ptr )       (SE-immediate    | SE-ptr ) 
 ;;        (      1         |   *    )       (      3         |   *    )
 ;;                             |                                 |
 ;;               ---------------                   ---------------
@@ -110,7 +118,7 @@
 ;;        (      2         |        )       (      4         |        )
 
 ;;    Now the symbol cell of APPEND looks like (Value cell | Plist)
-;; which I beleive is what was reported in Figure 2. So now we just
+;; which I believe is what was reported in Figure 2. So now we just
 ;; have to expand figure 2 to cover
 
 ;; Note this has some differences with AIM 514, the append example
@@ -138,7 +146,13 @@
 (defconstant +symbol+ (pointer-type-name->int 'microlisp:symbol))
 (defconstant +sei+ (non-pointer-type-name->int 'microlisp:self-evaluating-immediate))
 
-(defconstant +nil+ (make-word +sep+ #o0))
+(defconstant +nil+ (make-word +sep+ #o0)) ;; might really need to be +symbol+?
+;; alternatively may want to create my own type for now. The original microcode
+;; is not sacrosanct, we should get it working as far as it is, but we can
+;; allow our own types and encoding for simplicity. Remember our goal here is
+;; to generate tools for generating FPGA processors, not the Scheme-79 chip
+;; itself; just document it in the README as a variation if it continues into
+;; the general microcode.
 
 (defconstant +clos+ (pointer-type-name->int 'microlisp:closure))
 (defconstant +proc+ (pointer-type-name->int 'microlisp:procedure))
@@ -160,11 +174,13 @@
 
 (eval-when (:load-toplevel :execute)
   ;; set some breakpoints to help with debugging
-  ;; in particular, I'm not yet clear on the semantics of eval-exp-popj-to so these breaks
-  ;; deal with tags near those calls.
+
   (when *microcode-compiled* ; doesn't make sense if we only validated the code
     (flet ((break (sym) (set-breakpoint (microcontrol-symbol-value sym t) :permanent))
            (tbreak (sym) (set-breakpoint (microcontrol-symbol-value sym t)))) ; temporary break
+      ;; break before any call to eval-exp-popj-to:
+      ;; I'm not yet clear on the semantics of eval-exp-popj-to so these breaks
+      ;; deal with tags near those calls.
       (break 'microlisp:last-argument-return)
       (break 'microlisp:apply-1-arg-return)
       (break 'microlisp:spread-argument-return)
@@ -173,56 +189,80 @@
 
       ;; we know the boot code works from test-1, so break on that return so we can start tracing
       ;; the interpretation of our apply fn (and advance this breakpoint as we determine what works)
-      (tbreak 'microlisp:first-argument))) ; we get here fine as of 2/23/22. (almost to first-argument-return!)
-                                        ; (failed 2/23/22 on (dispatch (fetch *retpc-count-mark*)) because
-                                        ; we didn't have a from-type on it...
-                                        ; Single stepping is
-                                        ; painful but has to be done once...
+
+      ;; Single stepping is painful but has to be done once... delete these breaks once we confirm the
+      ;; memory and registers are correct
+      ;(tbreak 'microlisp:boot-load-return)
+      ;(tbreak 'microlisp:sequence)
+      ;; (tbreak 'microlisp:first-argument) ; we get here fine as of 2/23/22. (almost to first-argument-return!)
+      ;; (tbreak 'microlisp:last-argument) ; we get here fine as of 3/8/22. *args* seems to be good (first arg is there)
+
+      ;; second arg seems to get set up correctly so we're good at the point we
+      ;; call eval-exp-popj-to in last-argument-return! (see break above on last-argument-return)
+      
+      ;; if we reach here, we should check that *args* is now correct for invoking the closure
+      (tbreak 'microlisp:closure)
+      (tbreak 'microlisp:conditional)
+
+      ))
   
   (setq {args} 3 ;; addresses we fill in after our hand compilation (in decimal)
-        {arg1} 4
-        {arg2} 7
-        {append} 9
-        {argnxt} 6
-        {app-glo} 10
-        {app-fn} 11
-        {app-seq} 12
-        {cond-c1} 16
-        {cond-c2} 19
-        {cond-c3} 22)
+        {arg1} 5
+        {arg2} 8
+        {append} 10
+        {argnxt} 7
+        {app-glo} 11
+        {app-fn} 12
+        {app-seq} 13
+        {cond-c1} 17
+        {cond-c2} 20
+        {cond-c3} 23)
   (setq *cold-boot-memory-array*
         ;; short so we'll use list format
 
         ;; start with address 2 - where we will begin executing
-        ;; code. CAR should be a pointer to the arguments to the function
+        ;; code. CAR should be a pointer to the first argument to the function
         ;; and CDR should be the function pointer
+
+        ;; stack initialized to boot-load-return|2 in boot-load
+        ;; boot-load-return sets
+        ;; initial EXP as the CAR of stack (address 2), and we will dispatch on that
+        ;; STACK is Done|NIL
 
         ;; CAR                        CDR
         `(
+          ;; start off with a sequence, pointing to our first expression and NIL rest
+          ,(make-word +seq+ {args}) ,+nil+ ; address 2
           ;; this is the function application we will evaluate
-          ,(make-word +sa+ {args})  ,(make-word +symbol+ {append}) ; address 2 ; apply APPEND to list of arguments
-          ,(make-word +arg1+ {arg1}) ,(make-word +sep+ {argnxt}) ; address 3 ({args})
-          ,(make-word +sei+ #o1)    ,(make-word +cons+ (1+ {arg1})) ; address 4 ({arg1})
-          ,(make-word +sei+ #o2)    ,+nil+                ; address 5
-          ,(make-word +argL+ {arg2}) ,+nil+               ; address 6 {argnxt}
-          ,(make-word +sei+ #o3)    ,(make-word +cons+ (1+ {arg2})) ; address 7 ({arg2})
-          ,(make-word +sei+ #o4)    ,+nil+                ; address 8
+          ,(make-word +arg1+ (1+ {args})) ,+nil+ ; address 3 ({args})
+          ;; I had used self-evaluating-poitner for the cdr here but that led to an infinite loop.
+          ;; primitive-cons might be the right choice, but I'm concerned it's a non-pointer type. If that
+          ;; fails, try sequence? Or may need to make up my own pointer for now.
+          ,(make-word +sep+ {arg1})  ,(make-word +argL+ {argnxt}) ; address 4
+          ,(make-word +sei+ #o1)    ,(make-word +sep+ (1+ {arg1})) ; address 5 ({arg1})
+          ,(make-word +sei+ #o2)    ,+nil+                ; address 6
+          ;; append goes into the continuation, but possibly this should be the
+          ;; closure, (the value of the append symbol) at this point, i.e., we
+          ;; may expect the compiler to have removed the symbol reference?
+          ,(make-word +sep+ {arg2}) ,(make-word +symbol+ {append})               ; address 7 {argnxt}
+          ,(make-word +sei+ #o3)    ,(make-word +sep+ (1+ {arg2})) ; address 8 ({arg2})
+          ,(make-word +sei+ #o4)    ,+nil+                ; address 9
           ;; and here we define the APPEND symbol
-          ,(make-word +glo+ {app-glo}) ,+nil+             ; address 9 {append}; symbol; no plist
-          ,(make-word +clos+ {app-fn}) ,+nil+             ; address 10 {app-glo}; global value cell
+          ,(make-word +glo+ {app-glo}) ,+nil+             ; address 10 {append}; symbol; no plist
+          ,(make-word +clos+ {app-fn}) ,+nil+             ; address 11 {app-glo}; global value cell
           ;; leading into the APPEND function
-          ,(make-word +proc+ {app-seq}) ,+nil+            ; address 11 {app-fn}; no environment
-          ,(make-word +seq+ (1+ {app-seq})) ,+nil+        ; address 12 {app-seq}; no documentation
-          ,(make-word +arg1+ (+ 2 {app-seq})) ,(make-word +cond+ {cond-c1}) ; address 13
-          ,(make-word +loc+ #o0)    ,(make-word +app2+ (+ 3 {app-seq})) ; address 14
-          ,+nil+                    ,(make-word +eq+ #o0) ; address 15
-          ,(make-word +loc+ #o1)    ,(make-word +arg1+ (1+ {cond-c1})) ; address 16 {cond-c1}
-          ,(make-word +app1+ (+ 2 {cond-c1})) ,(make-word +app2+ {cond-c2}) ; address 17
-          ,(make-word +loc+ #o0)    ,(make-word +car+ #o0); address 18
-          ,(make-word +arg1+ (+ 1 {cond-c2})) ,(make-word +cons+ #o0) ; address 19 {cond-c2}
-          ,(make-word +app1+ (+ 2 {cond-c2})) ,(make-word +argL+ {cond-c3}) ; address 20
-          ,(make-word +loc+ #o0)    ,(make-word +cdr+ #o0) ; address 21
-          ,(make-word +loc+ #o1)    ,(make-word +glo+ {app-glo}) ; address 22 {cond-c3}
+          ,(make-word +proc+ {app-seq}) ,+nil+            ; address 12 {app-fn}; no environment
+          ,(make-word +seq+ (1+ {app-seq})) ,+nil+        ; address 13 {app-seq}; no documentation
+          ,(make-word +arg1+ (+ 2 {app-seq})) ,(make-word +cond+ {cond-c1}) ; address 14
+          ,(make-word +loc+ #o0)    ,(make-word +app2+ (+ 3 {app-seq})) ; address 15
+          ,+nil+                    ,(make-word +eq+ #o0) ; address 16
+          ,(make-word +loc+ #o1)    ,(make-word +arg1+ (1+ {cond-c1})) ; address 17 {cond-c1}
+          ,(make-word +app1+ (+ 2 {cond-c1})) ,(make-word +app2+ {cond-c2}) ; address 18
+          ,(make-word +loc+ #o0)    ,(make-word +car+ #o0); address 19
+          ,(make-word +arg1+ (+ 1 {cond-c2})) ,(make-word +cons+ #o0) ; address 20 {cond-c2}
+          ,(make-word +app1+ (+ 2 {cond-c2})) ,(make-word +argL+ {cond-c3}) ; address 21
+          ,(make-word +loc+ #o0)    ,(make-word +cdr+ #o0) ; address 22
+          ,(make-word +loc+ #o1)    ,(make-word +glo+ {app-glo}) ; address 23 {cond-c3}
           ))
 
   ;; when appropriate set interrupt routine pointer to 2,

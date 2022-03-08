@@ -1,6 +1,6 @@
 # Scheme-79 Chip Reimplimentation in Simulation and FPGA
 
-Time-stamp: <2022-02-18 17:12:31 gorbag>
+Time-stamp: <2022-03-08 12:27:39 gorbag>
 
 This is a "first cut" at a software simulation/emulation of the
 SCHEME-79 chip (by GLS, also Jack Holloway, Jerry Sussman and Alan
@@ -31,7 +31,9 @@ have a common parent directory).
 
 ### Run
 
-Generally after compiling and loading, I do something like
+Generally after compiling and loading, I do something like (where the
+number supplied to the test function corresponds to the specfic test
+set, q.v.)
 
 ``` 
     (test :n 0)
@@ -85,7 +87,7 @@ Control Wire | Description
 ------------ | -----------
 from-displacement | added to *val* to support their &val-displacement-to-exp-displacement u-op
 from-frame | added to *val* to support their &val-frame-to-exp-frame u-op
-from-type | added to *exp* to support dispatch-on-exp-allowing-interrupts
+from-type | added to *exp* to support dispatch-on-exp-allowing-interrupts. Note that from-type will shift the bits into the low order bits suitable for loading directly into the micro-pc; this may change to something more distinguished in the future so the library knows to specify a multiplexor.
 not-mark-bit | added to *bus* to allow direct detection of this state. I'm sure inverters are cheap even on an FPGA, but I need some way to actually force the issue (so this may change in the future).
 mark! unmark! | controls added to bus to set the appropriate bits (set/unset the mark-bit)
 type! pointer! | controls added to bus to set the appropriate bits (set/unset the type-not-pointer bit)
@@ -98,6 +100,27 @@ left off due to a constraint on bonded pads or packaging. For the most
 part, this is to allow a simple interface to a button on the FPGA
 later.
 
+### Instructions
+
+While the microcode is well documented, not all of the specific
+instructions are. I'm particularly confused about eval-exp-popj-to (also
+see S-Code, below), and currently expand it into:
+
+``` 
+(progn
+    (&set-type *stack* <tag>)
+    (dispatch (fetch *exp*)))
+```
+
+The first statement sets up the continuation from the dispatch on EXP
+which is pointing to the symbol-cell for our function, and the second
+interprets it (so it should get the GLOBAL value for the symbol) and
+then continues into internal-apply (typically). That's going to do
+another dispatch-on-exp-allowing-interrupts so we should get the CLOSURE
+at that point but we may not have the correct continuation set up for
+that to be interpreted (TBD). Which means we might really have been
+better off by starting out with slamming the CLOSURE there in the first
+place?
 
 ## Test Sets:
 
@@ -118,6 +141,67 @@ Filename | Description
 test-0 | boot function replicates the initial boot in terms of setting *memtop* from the initial memory and then gets a stack pointer from a simulated interrupt. Then it does a push and pop to reverse two items that were in our initial stack (directly placed into memory). This tests register assignment, fetching car and cdr of a location from memory, incrementing registers, getting a pointer from an interrupt, and doing basic stack operations. 
 test-1 | boot function extended to do the initial GC which should consolodate free space and set up the register pointers correctly to allow CONSing. (Note CONS was tested in test-0). Some initial garbage is put into memory to make sure it is ignored by the mark/sweep algorithm.
 test-2 | hand-compiled APPEND function run on a couple list structures (from the AIM's description of APPEND's S-Code). This is the first test of the chip's ability to actually interpret Scheme S-Code rather than just the internal microcode, and I expect future tests to be more elaborated to exercise all of the various microcoded functions. Note that at the time this test was written we do not yet have an S-Code compiler, so a future test may check an APPEND function output by that (future) compiler!
+
+## S-Code Notes
+
+So neither AIM directly documents S-Code (compiled scheme code directly
+executed by the machine) but does give a (partial) example for APPEND
+(which appears in test-2). Additionaly, while the representation for
+the APPEND function itself is sketched out, only AIM 514 shows the
+representation of how it might be invoked. Needless to say, the tags
+used for AIM 514 don't directly map to AIM 559, and further the
+specific representation doesn't work if we try to copy it. So the
+following are some notes on what I've discovered through trial and
+error and some analysis.
+
+### Invoking the top-level function
+After BOOT-LOAD runs, we have *stack* pointing to the top of the stack
+(the function to be evaluated) with a type of BOOT-LOAD-RETURN, which
+is entered after the initial GC completes.  We then assign *EXP* to the
+car of the stack (the car of the cons cell the stack points to) and
+evaluate that as our top-level function. Since the CDR of that cell
+will be ignored, we have to make sure it's something valid if it only
+has a valid CAR, which means it can't be type FIRST-ARGUMENT (which
+would start collecting arguments for a function call) because the CDR
+is the continuation after the first argument is set. So I beleive we
+are required to use SEQUENCE here as a NIL rest of sequence can be
+successfully ignored (we will see DONE, presumably as set up by
+BOOT-LOAD-RETURN when we've finished evaluating the first sequence
+element).
+
+### The general form of a function call
+Test-2 shows a general invocation of a function; the initial SEQUENCE
+points to a CONS cell whose CAR is of type FIRST-ARGUMENT which points
+to a single element list of our first argument. The CDR of the SEQUENCE
+target cell is NIL (or in this case could be DONE since we won't have
+anything else to do). The cell 1st-arg points to has a CAR that points
+to the list struction that is our first argument, while the CDR is of
+type LAST-ARG and points to another CONS whose CAR is a pointer to the
+actual list that is our second argument to append and whose CDR points
+to our APPEND function itself as the continuation. [At this point I'm
+not yet certain if it should point to the symbol for the append function
+or to the global value cell, or to the closure; I'm betting on the
+latter but will try the former first as that gives us more flexibility,
+but thinking that this is already compiled code it's probably the latter
+:-)]
+
+Anyway, the key insight is to understand the processor will do recursive
+descent on the EXP (expression to be evaluated), expecting the arguments
+to a function first, and then looking in the CDR of the last thing
+processed for the continuation (the next thing to do) rather than what
+you might expect from a standard lisp interpreter.
+
+[Insert picture here]
+
+What I'm not sure yet is how the continuation into a (user) function
+should be represented. For the moment, I'm putting in a SYMBOL pointer
+to the GLOBAL cell (car is a pointer to the closure in the case of a
+function, while cdr is the property list for the symbol) and seeing if
+that's what makes sense (since the authors didn't precisely define
+eval-exp-popj-to I seem to have some flexibility). At any rate, if not
+the SYMBOL, I can then try the GLOBAL and last the CLOSURE. I suspect
+the latter is correct but the indirects have some advantage in case of
+redefinitions. 
 
 ## Status:
 
