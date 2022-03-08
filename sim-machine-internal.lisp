@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 3 9
-                                      "Time-stamp: <2022-03-08 12:14:52 gorbag>"
+                                      "Time-stamp: <2022-03-08 18:21:32 gorbag>"
                                       "redefine eval-exp-popj-to")
 
 ;; 0.3.9   3/ 8/22 ok we have enough info to start guessing what eval-exp-popj-to
@@ -315,7 +315,7 @@
 
       &set-type
 
-      dispatch)
+      dispatch eval-exp-popj-to) ; really dispatch
      from-register) ; just send back the register
     ))
 
@@ -408,11 +408,20 @@
 ;; up args. Is there anything left for this fn to do other than the
 ;; goto? Is there something we should be getting from the stack?
 
-;; so looking at the current encoding, (where we put the SYMBOL pointer on the stack for the continuation function, may want to do something else in the future which would require this function to be modified!) at the time we call this, exp has the symbol pointer to the global cell; val is not correct; stack is a SEP to (*args* . std-rtn stack-next) which is what internal-apply seems to expect (other than something useful in val). So we need to set dispatch on the exp (maybe without allowing interrupts?) which will set val up to the global (again might be we want the closure there, we'll see (TBD)). BUT that also means we need to set up a retpc on the stack register so the exp evaluation has a continuation. 
+;; so looking at the current encoding, (where we put the SYMBOL pointer on the
+;; stack for the continuation function, may want to do something else in the
+;; future which would require this function to be modified!) at the time we
+;; call this, exp has the symbol pointer to the global cell; val is not
+;; correct; stack is a SEP to (*args* . std-rtn stack-next) which is what
+;; internal-apply seems to expect (other than something useful in val). So we
+;; need to set dispatch on the exp (maybe without allowing interrupts?) which
+;; will set val up to the global (again might be we want the closure there,
+;; we'll see (TBD)). BUT that also means we need to set up a retpc on the stack
+;; register so the exp evaluation has a continuation.
 
 (defufn eval-exp-popj-to (tag)
  (note-if *debug-compiler* "eval-exp-popj-to turned into dispatch-on-exp,  (for now)")
-  ;; `(((go-to ,tag)))) ; at least goto the tag?
+  ;; `(((go-to ,tag))) ; at least goto the tag?
   (compile-embedded-expression
    `(microlisp:progn
       (&set-type *stack* ,tag)
