@@ -1,8 +1,19 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme-79 Nanocode" 0 3 1
-                                      "Time-stamp: <2022-01-19 12:13:41 gorbag>"
-                                      "fix symbols of form <reg>-to-<field>")
+(scheme-79:scheme-79-version-reporter "S79 Nanocode" 0 3 3
+                                      "Time-stamp: <2022-02-11 13:41:39 gorbag>"
+                                      "line disambiguation")
+
+;; 0.3.3   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
+
+;; 0.3.2   1/25/22 add do-decrement-frame and do-decrement-displacement
+;;                     nanocodes
 
 ;; 0.3.1   1/13/21 fix symbols of form <reg>-to-<field>; should be
 ;;                     to-<field>-<reg> following TR
@@ -125,17 +136,17 @@
 ;; so first let's define the terms that can come inside of a defnano
 ;; form: from* and to* are anaphors for the from and to fields of the
 ;; current microcode instruction, while other things are operations
-;; that trigger control lines to be set and then shifted out at the
+;; that trigger control wires to be set and then shifted out at the
 ;; right time based on the clock.  We'll incorporate the example,
 ;; above into our definitions.
 
 ;; from* - anaphor for whatever register is in the FROM field of the
 ;;         current microinstruction. It should be moved to the bus,
-;;         so set the from control line for that register.
+;;         so set the from control wire for that register.
 
 ;; to*   - anaphor for whatever register is in the TO field of the
 ;;         current microinstruction. It should be filled from the bus,
-;;         so set the to control line for that register.
+;;         so set the to control wire for that register.
 
 ;; ale   - put the current content of the bus into the *address*
 ;;         register, set *address-pads* at the right time, and set
@@ -160,8 +171,8 @@
 ;; from-stack
 ;; to-address-stack
 ;; to-type-stack
-;;       - these all specify a control line and a particular register,
-;;         i.e. a particular control line.
+;;       - these all specify a control wire and a particular register,
+;;         i.e. a particular control wire.
 
 ;; gc-needed
 ;;       - set *gc-needed* output and latch high
@@ -220,6 +231,7 @@
 
 ;; note that the notes in the GC section indicate that rplaca/rplacd operations (below) always clear the mark bit.
 
+;; only generated in rplaca
 (defnano (microlisp-shared::write-car)
   ((from-to*) (ale))
   ((from* unmark!-bus) (write)))
@@ -244,6 +256,7 @@
    ((from*) (ale))    
   ((to*) (read cdr)))
 
+;; only generated in rplacd
 (defnano (microlisp-shared::write-cdr :force-add t) ; distinguish from write-and-unmark-cdr for debugging
     ((from-to*) (ale))
   ((from* unmark!-bus) (write cdr)))
@@ -293,7 +306,7 @@
 ;; conditionals. When we have a conditional, if there is a FROM
 ;; register it gets loaded onto the bus (allowing comparison). The TO
 ;; field in the microcode is taken as the condition(s) instead of a
-;; register. These sense lines are ORed together and affect the low
+;; register. These sense wires are ORed together and affect the low
 ;; order bit of the microcontroller's NEXT field (what it's PC will be
 ;; loaded to for the next instruction). For symmetry, the
 ;; nanocontroller does this setup.
@@ -337,6 +350,12 @@
 (defnano (microlisp-shared::do-decrement-scan-down)
     (() (from-decremented-exp to-frame-exp to-type-exp to-displacement-exp))) ; scan-down is alias for exp
 
+(defnano (microlisp-shared::do-decrement-frame)
+    (() (from-decremented-frame-exp to-frame-exp)))
+
+(defnano (microlisp-shared::do-decrement-displacement)
+    (() (from-decremented-displacement-exp to-displacement-exp)))
+
 ;; I believe Scheme-79 had a PADS source/destination so read would have PADS in the from field
 
 (defnano (microlisp-shared::do-read-from-pads)
@@ -352,7 +371,7 @@
     (() (clear-gc)))
 
 ;; dispatch. This pulls from a register onto the bus then sets a
-;; control line that will push the appropriate field into the
+;; control wire that will push the appropriate field into the
 ;; *micro-pc* (which maybe should be a register itself?)
 (defnano (microlisp-shared::type-dispatch)
     ;; want to use the microcode's FROM register but pull out the type

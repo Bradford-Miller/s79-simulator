@@ -1,7 +1,9 @@
-Time-stamp: <2022-01-18 13:06:38 gorbag>
+Time-stamp: <2022-02-21 13:25:38 gorbag>
 
 Migrating items that should be done generally to the TODO.txt file under support... 10/21/2021. Those items that appear
 on BOTH lists have a * mark.
+
+Note that there may be more detailed notes (or minor issues not captured here) in individual source files marked with (TBD).
 
 Next:   
         

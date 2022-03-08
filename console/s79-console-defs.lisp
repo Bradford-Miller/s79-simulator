@@ -1,8 +1,25 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 0
-                                      "Time-stamp: <2022-01-14 13:22:08 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 4
+                                      "Time-stamp: <2022-03-08 11:47:04 gorbag>"
+                                      "reorg register order to make useful registers easier to find")
+
+;; 0.3.4   3/ 3/22 reorder the registers to the ones that change more often
+;;                    (typically) are further up the list.  except the PC which
+;;                    is on the bottom to make it easy to find. (May also want
+;;                    to color code at some point (TBD)
+
+;; 0.3.3   2/23/22 make the code columns wider to accomodate larger numbers
+
+;; 0.3.2   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
+
+;; 0.3.1   1/24/22 add mask-interrupt button
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -18,16 +35,16 @@
 ;;                   *micro-pc*; move defn for
 ;;                   sense-and-control-total-height so we can use the
 ;;                   length of *s79-register-metadata*
-;;                use *control-lines* and *sense-lines* to help automate 
+;;                use *control-wires* and *sense-wires* to help automate 
 ;;                   updates to them
 
 ;; 0.1.2 10/25/21 make *micro-pc* display as a register too, add
-;;                   from-type as a sense-and-control line.
-;;                Rename *sense-and-control-total-lines* as
+;;                   from-type as a sense-and-control wire.
+;;                Rename *sense-and-control-total-wires* as
 ;;                   -total-columns* to avoid confusion
 
-;; 0.1.1  9/24/21 Update *sense-and-control-total-lines* for the
-;;                   additional lines added (automate? TBD)
+;; 0.1.1  9/24/21 Update *sense-and-control-total-wires* for the
+;;                   additional wires added (automate? TBD)
 
 ;; 0.1.0  9/13/21 Split from s79-console for compilation issues.
 
@@ -46,7 +63,7 @@
 (defparameter *sense-and-control-total-columns* 22) ; to, to-type, to-adr, etc.
 
 (defparameter *sense-and-control-total-column-width*
-  (* *sense-and-control-column-width* *sense-and-control-total-columns*)) ; multiply by number of sense and control lines displayed
+  (* *sense-and-control-column-width* *sense-and-control-total-columns*)) ; multiply by number of sense and control wires displayed
 
 (defparameter *sense-and-control-height* 30)
 
@@ -68,11 +85,11 @@
    (flags :initform 0 :accessor register-metadata-flags :type fixnum)))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (eval `(defflags register-metadata ,@*control-lines* ,@*sense-lines*)))
+  (eval `(defflags register-metadata ,@*control-wires* ,@*sense-wires*)))
 
-(defparameter *ucode-offset-column-width* 150)
+(defparameter *ucode-offset-column-width* 200)
 
-(defparameter *ucode-value-column-width* 250)
+(defparameter *ucode-value-column-width* 260)
 
 (defparameter *ucode-symbolic-column-width* 650)
 
@@ -93,7 +110,7 @@
 
 (defparameter *ncode-name-column-width* 360)
 
-(defparameter *ncode-value-column-width* 150)
+(defparameter *ncode-value-column-width* 260)
 
 (defparameter *control-column-width* 450)
 
@@ -108,15 +125,25 @@
 (defparameter *ncode-total-height* (* (1+ *ncode-depth*) *ucode-height*))
 
 (defparameter *s79-register-metadata*
+  ;; 3/3/22 reorganize for debugging purposes; stuff that changes more is
+  ;; toward the top and stuff that's relatively static (e.g. NIL, Memtop) are
+  ;; toward the bottom
   (list (make-instance 'register-metadata
                        :name "Bus"
                        :symbol '*bus*)
+
         (make-instance 'register-metadata
-                       :name "Memtop"
-                       :symbol '*memtop*)
+                       :name "Intermediate-Argument"
+                       :symbol '*intermediate-argument*)
+
+        ;; these are the primary registers used for evaluation
         (make-instance 'register-metadata
                        :name "Newcell / scan-up"
                        :symbol '*newcell*)
+        (make-instance 'register-metadata
+                       :name "Stack"
+                       :symbol '*stack*)
+
         (make-instance 'register-metadata
                        :name "Exp / scan-down"
                        :symbol '*exp*)
@@ -124,33 +151,42 @@
                        :name "Val / stack-top / rel-tem-2"
                        :symbol '*val*)
         (make-instance 'register-metadata
-                       :name "Retpc-Count-Mark"
-                       :symbol '*retpc-count-mark*)
-        (make-instance 'register-metadata
                        :name "Args / Leader / rel-tem-1"
                        :symbol '*args*)
+        
         (make-instance 'register-metadata
-                       :name "Stack"
-                       :symbol '*stack*)
+                       :name "Retpc-Count-Mark"
+                       :symbol '*retpc-count-mark*)
+
         (make-instance 'register-metadata
                        :name "Display / node-pointer"
                        :symbol '*display*)
-        (make-instance 'register-metadata
-                       :name "Intermediate-Argument"
-                       :symbol '*intermediate-argument*)
-        ;; not sure we need this one... I guess to see the From control
-        (make-instance 'register-metadata
-                       :name "Nil (Pseudo-Reg)"
-                       :symbol '*nil*)
+
+        ;; pseudo-registers are together
+
         (make-instance 'register-metadata
                        :name "Address (Pseudo-Reg)"
                        :symbol '*address*)
         (make-instance 'register-metadata
                        :name "Memory (Pseudo-Reg)"
                        :symbol '*memory*)
+
         (make-instance 'register-metadata
                        :name "Interrupt (Pseudo-Reg)"
                        :symbol '*interrupt*)
+
+        ;; not sure we need this one... I guess to see the From control
+        (make-instance 'register-metadata
+                       :name "Nil (Pseudo-Reg)"
+                       :symbol '*nil*)
+
+        ;; set during boot then a constant more or less (not futzed with during
+        ;; normal S79 operations)
+        (make-instance 'register-metadata
+                       :name "Memtop"
+                       :symbol '*memtop*)
+
+        ;; put this at the bottom so it's easy to find
         (make-instance 'register-metadata
                        :name "Micro PC"
                        :symbol '*micro-pc*
@@ -161,36 +197,36 @@
 
 (defparameter *sense-and-control-total-height* (* *numregs-to-display* (1+ *sense-and-control-height*))) 
 
-(defun line-name-to-fn-symbol (line-name-symbol)
-  (intern (format nil "REGISTER-~A-FUNCTION" line-name-symbol) (find-package :s79-console)))
+(defun wire-name-to-fn-symbol (wire-name-symbol)
+  (intern (format nil "REGISTER-~A-FUNCTION" wire-name-symbol) (find-package :s79-console)))
 
 ;; each flag has it's own reader/writer, such as 
 ;; register-metadata-to-type-p, and the actual value in the simulation is register-to-p
 
-(defmacro register-check-box-fn (line-name-symbol)
-  "generate a function for the :check-box-function below depending on the control line we are interested in"
-  (let ((fn-symbol (line-name-to-fn-symbol line-name-symbol)) ;new
-        (accessor (register-flag-accessor line-name-symbol))) ; should have been defined already
+(defmacro register-check-box-fn (wire-name-symbol)
+  "generate a function for the :check-box-function below depending on the control wire we are interested in"
+  (let ((fn-symbol (wire-name-to-fn-symbol wire-name-symbol)) ;new
+        (accessor (register-flag-accessor wire-name-symbol))) ; should have been defined already
     `(defun ,fn-symbol (register-metadata &optional (value nil valp))
-       (let ((enabled-p (member ',line-name-symbol (valid-control-lines (register-symbol register-metadata)))))
+       (let ((enabled-p (member ',wire-name-symbol (valid-control-wires (register-symbol register-metadata)))))
          (if enabled-p
              (if valp
                  (setf (,accessor (register-symbol register-metadata)) value)
                  (,accessor (register-symbol register-metadata)))
              :disabled)))))
 
-;; similarly we want something for sense lines, but no need to have a
+;; similarly we want something for sense wires, but no need to have a
 ;; setter (as that is an effect of stepping the machine and having the
 ;; state determined). Rather than just using the flag function
-;; directly, we want to detect if the sense line is present, so set up
-;; a similar macro as register-check-box-fn for sense lines
+;; directly, we want to detect if the sense wire is present, so set up
+;; a similar macro as register-check-box-fn for sense wires
 
-(defmacro register-sense-fn (line-name-symbol)
-  "generate a function for the :check-box-function below depending on the control line we are interested in"
-  (let ((fn-symbol (line-name-to-fn-symbol line-name-symbol)) ;new
-        (accessor (register-flag-accessor line-name-symbol))) ; should have been defined already
+(defmacro register-sense-fn (wire-name-symbol)
+  "generate a function for the :check-box-function below depending on the control wire we are interested in"
+  (let ((fn-symbol (wire-name-to-fn-symbol wire-name-symbol)) ;new
+        (accessor (register-flag-accessor wire-name-symbol))) ; should have been defined already
     `(defun ,fn-symbol (register-metadata)
-       (let ((enabled-p (member ',line-name-symbol (valid-sense-lines (register-symbol register-metadata)))))
+       (let ((enabled-p (member ',wire-name-symbol (valid-sense-wires (register-symbol register-metadata)))))
          (if enabled-p
              (,accessor (register-symbol register-metadata))
              :disabled)))))
@@ -199,7 +235,7 @@
   (declare (ignore args))
   (values))
 
-(defvar *all-indicators* '(:frz :nano :rst :ale :rd :wr :cdr :int-rq :rdi :gcr :rd-state :ld-state)
+(defvar *all-indicators* '(:frz :nano :rst :ale :rd :wr :cdr :int-rq :rdi :m-int :gcr :rd-state :ld-state)
   "used for redraw")
 
 

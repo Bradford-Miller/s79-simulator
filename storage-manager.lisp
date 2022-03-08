@@ -1,13 +1,28 @@
 ;; AIM-514 separates out the storage manager
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 1
-                                      "Time-stamp: <2022-01-19 12:15:04 gorbag>"
-                                      "cleanup obsolete code")
+(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 5
+                                      "Time-stamp: <2022-02-09 12:37:55 gorbag>"
+                                      "line disambiguation")
 
-;; 0.3.1   1/18/22 cleanup obsolete code: removing special treatment of registers
-;;                    which required multiple control lines for TO as new covering
-;;                    set computation deals with it.
+;; 0.3.5   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
+
+;; 0.3.4   2/ 2/22 updates for &car and &cdr and various &rplacd (via macro)
+
+;; 0.3.3   1/31/22 &car and &cdr now check for constituent-fn
+
+;; 0.3.2   1/28/22 &cons now checks for constitutent-highlevel code to generate
+;;                    code to copy result.
+
+;; 0.3.1   1/18/22 cleanup obsolete code: removing special treatment of
+;;                    registers which required multiple control wires for TO as
+;;                    new covering set computation deals with it.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -57,7 +72,7 @@
 ;;                  specialized instructions
 
 ;; 0.0.4 2-27-21 specialized instructions for &rplaca and &rplacd for
-;;                  registers with TO-ADDRESS lines
+;;                  registers with TO-ADDRESS wires
 
 ;; 0.0.3 2-24-21 &cons expansion statistics
 
@@ -139,7 +154,8 @@
         (&rplaca (fetch *newcell*) ,car-expression) ; update the cons cell
         (&rplacd (fetch *newcell*) ,cdr-expression) ; both halves
         ;; update the TO register to point to the new cons cell address
-        (assign ,*to-register* (fetch *newcell*))
+        ,(assign-constituent-highlevel '(fetch *newcell*)) ; to support more complex assignments
+        ;(assign ,*to-register* (fetch *newcell*))
         ;; newcell has the address of the free cell. If that's
         ;; equal to *memtop* it's a problem, because we won't have
         ;; anymore!
@@ -147,32 +163,45 @@
                           (microlisp-shared::gc-needed!))))))
   
 ;; &car
-(defufn &car (address-expression :constituent t) ; generally address-expression is a fetch from a register
+(defufn &car (address-expression :constituent t :args-last t) ; generally address-expression is a fetch from a register
   ;; *from-register* should be set up by the address-expression
   ;; if we're inside of an assign, we can use that as the to-register, unless we have an enclosing opcode
-  (declare (ignore address-expression)) ; don't need it yet...
+  ;(declare (ignore address-expression)) ; don't need it yet...
 
-  (ecase *enclosing-opcode*
-    (assign ; have a *to-register*
-     `(((from ,*from-register*) (to ,*to-register*) microlisp-shared::do-car)))
-    ((&rplaca &rplacd &rplaca-and-mark!) ; the *to-register* is a pointer to where we are really writing
-     ;; all we should do is load the bus (or IA, no?)
-     (with-intermediate-argument ; make sure we're not inside another IA use
-       `(((from ,*from-register*) (to *intermediate-argument*) microlisp-shared::do-car))))
-    ))
+  (cond
+   ((eql *enclosing-opcode* 'assign)
+    ;; get the from-register
+    (compile-parameter nil address-expression nil)
+    (write-generated-code *upla-stream* nil
+                          `(((from ,*from-register*) (to ,*to-register*) microlisp-shared::do-car))
+                          "&car")
+    nil) ; code written so return nil
+   (*constituent-assignment-fn*
+    ;; expand and then do the assignment
+    (let ((rewritten-fn (assign-constituent-highlevel `(&car ,address-expression)))
+          (*constituent-assignment-fn* nil))
+      (compile-embedded-expression rewritten-fn)))
+   (t
+    (error "&car not handled"))))
 
 ;; &cdr
-(defufn &cdr (address-expression :constituent t) ; like &car, but separate nanocode
-  (declare (ignore address-expression)) ; don't need it yet...
+(defufn &cdr (address-expression :constituent t :args-last t) ; like &car, but separate nanocode
+  ;(declare (ignore address-expression)) ; don't need it yet...
 
-  (ecase *enclosing-opcode*
-    (assign ; have a *to-register*
-     `(((from ,*from-register*) (to ,*to-register*) microlisp-shared::do-cdr)))
-    ((&rplaca &rplacd &rplaca-and-mark!) ; the *to-register* is a pointer to where we are really writing
-     ;; all we should do is load the bus (or IA, no?)
-     (with-intermediate-argument
-       `(((from ,*from-register*) (to *intermediate-argument*) microlisp-shared::do-cdr))))
-    ))
+  (cond
+   ((eql *enclosing-opcode* 'assign)
+    (compile-parameter nil address-expression nil) ; get the to-register
+    (write-generated-code *upla-stream* nil
+                          `(((from ,*from-register*) (to ,*to-register*) microlisp-shared::do-cdr))
+                          "&cdr")
+    nil) ; code written so return nil
+   (*constituent-assignment-fn*
+    ;; expand and then do the assignment
+    (let ((rewritten-fn (assign-constituent-highlevel `(&cdr ,address-expression)))
+          (*constituent-assignment-fn* nil))
+      (compile-embedded-expression rewritten-fn)))
+   (t
+    (error "&cdr not handled"))))
 
 ;; &rplaca
 (defrplacop &rplaca (microlisp-shared::write-car))
@@ -202,27 +231,27 @@
 (defufn &mark-car-trace-over! (from-register :expansion ((:to *intermediate-argument*)
                                                          (:from *intermediate-argument*)))
   (with-intermediate-argument
-      (compile-embedded-expression
-       `(microlisp:progn
-          (assign *intermediate-argument* (&cdr (fetch ,from-register)))
-          (&rplacd-and-mark-car-trace-over! (fetch ,from-register) (fetch *intermediate-argument*))))))
+    (compile-embedded-expression
+     `(microlisp:progn
+        (assign *intermediate-argument* (&cdr (fetch ,from-register)))
+        (&rplacd-and-mark-car-trace-over! (fetch ,from-register) (fetch *intermediate-argument*))))))
 
 ;; &mark-in-use! ;; mark bit stored in car
 (defufn &mark-in-use! (from-register)
   (with-intermediate-argument
-      (compile-embedded-expression
-       `(microlisp:progn
-          (assign *intermediate-argument* (&car (fetch ,from-register)))
-          (&rplaca-and-mark! (fetch ,from-register) (fetch *intermediate-argument*))))))
+    (compile-embedded-expression
+     `(microlisp:progn
+        (assign *intermediate-argument* (&car (fetch ,from-register)))
+        (&rplaca-and-mark! (fetch ,from-register) (fetch *intermediate-argument*))))))
 
 ;; &unmark!
 (defufn &unmark! (from-register :expansion ((:to *intermediate-argument*)
                                             (:from *intermediate-argument*)))
   (with-intermediate-argument
-      (compile-embedded-expression
-       `(microlisp:progn
-          (assign *intermediate-argument* (&car (fetch ,from-register)))
-          (&rplaca-and-unmark! (fetch ,from-register) (fetch *intermediate-argument*))))))
+    (compile-embedded-expression
+     `(microlisp:progn
+        (assign *intermediate-argument* (&car (fetch ,from-register)))
+        (&rplaca-and-unmark! (fetch ,from-register) (fetch *intermediate-argument*))))))
 
 ;; gc-needed!
 (defufn gc-needed! ()

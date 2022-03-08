@@ -2,7 +2,7 @@
 (in-package :s79-console)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Diag. Panel" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:09:51 gorbag>"
+                                      "Time-stamp: <2022-01-31 17:57:41 gorbag>"
                                       "0.3 release!")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -199,7 +199,7 @@
                                    :data-writer 'test-run-p-check-box
                                    ;:check-box-function 'test-run-p-check-box
                                    :drawing-function 'run-p-drawing-function
-                                   :print-function nil ; supress printing as we will use the drawing function to show an icon
+                                   :print-function nil ; suppress printing as we will use the drawing function to show an icon
                                    :size *test-state-column-width*)
                     (make-instance 'grid-display-column
                                    :name :result

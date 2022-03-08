@@ -1,8 +1,38 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 3
-                                      "Time-stamp: <2022-01-13 14:26:31 gorbag>"
-                                      "handle display of non-standard registers")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 10
+                                      "Time-stamp: <2022-03-02 15:19:12 gorbag>"
+                                      "add offset and tag to uaddr in ucode state info")
+
+;; 0.3.10  3/ 2/22 add tag and offset to UAddr column in Ucode State Info pane
+
+;; 0.3.9   2/24/22 use get-address-bits fn when printing stack addresses (strips
+;;                    type)
+;;                 call clear-register-description-pane on reset
+
+;; 0.3.8   2/23/22 add tick (*tick*) to ucode-status panel. Useful when
+;;                    comparing to last update of memory panel!
+
+;; 0.3.7   2/18/22 add :before method on set-micro-pc to clear the breakpoint
+;;                    message if needed (or rather rewrite it to 
+;;                    "Last breakpoint.."
+;;                 add "memory" button to start memory viewer
+
+;; 0.3.6   2/15/22 add note-breakpoint-reached so we redraw the console
+;;                    after a breakpoint
+
+;; 0.3.5   2/10/22 separate pad redraw into a (compilable) fn
+
+;; 0.3.4 2/ 9/22 way too many things (fns, variables) with "line" in
+;;                 their name and it's ambiguous.  Splitting so "line"
+;;                 refers to, e.g. an output (log) line, "expression"
+;;                 refers to a 'line' of code (single expression in
+;;                 nano or microcode land typically, and because we
+;;                 used (READ) it wasn't confined to a single input
+;;                 line anyway) and "wire" to refer to, e.g., a
+;;                 control or sense 'line' on a register.
+
+;; 0.3.3   1/24/22 add mask-interrupt button
 
 ;; 0.3.2   1/17/22 handle display of non-standard registers
 
@@ -26,7 +56,7 @@
 
 ;; 0.1.17 11/ 2/21 clear-register-description-pane
 
-;; 0.1.16 10/26/21 use *control-lines* and *sense-lines* instead of
+;; 0.1.16 10/26/21 use *control-wires* and *sense-wires* instead of
 ;;                     individual declarations to help automate
 ;;                     changing them.
 
@@ -76,7 +106,7 @@
 ;;                    machine declarations)
 
 ;; 0.1.4   9/ 9/21 use type=type and type=pointer instead of TNP sense
-;;                    line (reality is we'd use an inverter in
+;;                    wire (reality is we'd use an inverter in
 ;;                    hardware, but we can't specify that yet
 
 ;; 0.1.3   9/ 7/21 only use address portion of stack to print top N entries
@@ -168,25 +198,39 @@
 
 ;; 0.0.14   2/ 2/21     fix per-tick updates to show more low level changes
 
-;; 0.0.13   2/ 1/21     show 3 words at and following the content of the *address* pseudo register
+;; 0.0.13   2/ 1/21     show 3 words at and following the content of the *address*
+;;                          pseudo register
 
 ;; 0.0.12   1/26/21     update external bits on each nano cycle (yeah it's expensive but you think channeling
 ;;                        all that information to old-time consoles was cheap? ;-)
+
 ;; 0.0.11   1/20/21     when focused on a register with a pointer, show what's in memory (car and cdr)
 ;;                        fixup nanocode display, add PC (state) to nanocode and ucode displays,
 ;;                        fix focus function for ucode and nanocode (ignore)
+
 ;; 0.0.10   1/19/21     when focused on a register, also display the type symbolically
+
 ;; 0.0.9    1/15/21     also start to add current ncode display (may make it optional since not sure will be
 ;;                        needed once mapping debugged!)
+
 ;; 0.0.8    1/12/21     start to add a new grid showing the current ucode instruction and some symbolic
 ;;                        information on state
+
 ;; 0.0.7    1/ 9/21     invalidate register presentations after step/micro-step so they get updated
+
 ;; 0.0.6    1/ 6/21     implement step and micro-step buttons
+
 ;; 0.0.5    1/ 4/21     prompt for new values for registers when focused; add additional panels for external interfaces
-;; 0.0.4    1/ 4/21     also allow sense lines to be declared disabled (well not enabled anyway) and supress printing them
+
+;; 0.0.4    1/ 4/21     also allow sense wires to be declared disabled (well not
+;;                        enabled anyway) and suppress printing them
+
 ;; 0.0.3    1/ 3/21     add disabled feature for checkboxes and macro-ize building functions
-;; 0.0.2    1/ 2/21     change control lines to checkboxes and allow user to set them (still not validated)
+
+;; 0.0.2    1/ 2/21     change control wires to checkboxes and allow user to set them (still not validated)
+
 ;; 0.0.1   12/28/20     Add (start-console) function
+
 ;; 0.0.0   12/26/2020   New
 
 ;; define a CAPI console to help with debugging the microcode simulation
@@ -309,7 +353,7 @@
       (describe-register interface)
 
       (when (and writer
-                 ;; make sure we clicked on a register and not a control line else we'll get the "wrong" writer function
+                 ;; make sure we clicked on a register and not a control wire else we'll get the "wrong" writer function
                  (eql (name displayer) :value))
         ;; might want to let the read base be configurable - hex may be more convenient in the future?
         (let ((new-value (capi:prompt-for-string "Enter a new value for the register (in octal)"
@@ -327,7 +371,7 @@
             (redraw-cell row column)))))))
 
         
-;; this allows the user to interactively set the control lines and
+;; this allows the user to interactively set the control wires and
 ;; single step the machine to see what would happen. Specific existing
 ;; microcode instructions may or may not exist for the combination
 ;; selected, of course!
@@ -335,16 +379,16 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (mapc #'(lambda (control)
             (eval `(register-check-box-fn ,control))) ; a macro that creates a defun...
-        *control-lines*)
+        *control-wires*)
   (mapc #'(lambda (sense)
-            ;; ignore some of the sense lines as we implement them specially
+            ;; ignore some of the sense wires as we implement them specially
             (unless (member sense '(type-not-pointer mark-bit not-mark-bit))
               (eval `(register-sense-fn ,sense))))
-        *sense-lines*))
+        *sense-wires*))
 
 ;; common macro won't generate the sense needed for this
 (defun register-mark-bit-function (register-metadata)
-  (cl:if (member 'mark-bit (valid-sense-lines (register-symbol register-metadata)))
+  (cl:if (member 'mark-bit (valid-sense-wires (register-symbol register-metadata)))
          (plusp (mark-bit (symbol-value (register-symbol register-metadata))))
          :disabled))
 
@@ -440,10 +484,10 @@
                                                                "")))))
               
      ;; The third columnm section is a button grid conveying the
-     ;; control and sense line states of the register
+     ;; control and sense wire states of the register
      (flet ((make-button-column (control-p name-string
                                  &optional (name-symbol (make-keyword (string-upcase name-string))))
-              (let ((fn-symbol (line-name-to-fn-symbol name-symbol)))
+              (let ((fn-symbol (wire-name-to-fn-symbol name-symbol)))
                 (make-instance 'grid-display-column
                                :name name-symbol
                                :header-title name-string
@@ -460,13 +504,13 @@
                       :bands
                       (list
                        ;; so far, this can't be "automated" based on
-                       ;; *control-lines* and *sense-lines* so we can
+                       ;; *control-wires* and *sense-wires* so we can
                        ;; define abbreviations. Once we move that data
                        ;; into the metadata (or definition structure),
                        ;; though... (TBD)
 
                        ;; (Key: ADR = address DSP = displacement FRAM = frame INC = incremented DEC = decremented)
-                       ;; control lines
+                       ;; control wires
                        (make-button-column t "To")
                        (make-button-column t "To-Type")
                        (make-button-column t "To-ADR" :to-address)
@@ -481,7 +525,7 @@
                        (make-button-column t "FR-INC" :from-incremented)
                        (make-button-column t "FR-Type" :from-type)
 
-                       ;; sense lines
+                       ;; sense wires
                        (make-button-column nil "ADR=Bus" :address=bus)
                        (make-button-column nil "Typ=Bus" :type=bus)
                        (make-button-column nil "=Bus")
@@ -556,7 +600,7 @@
   (let ((*warn-when-beyond-memtop* nil))
     (cond
       ((plusp (bit-vector->integer x))
-       (format nil "~o:(~o . ~o)" (bit-vector->integer x) (read-address x nil t) (read-address x t t)))
+       (format nil "~o:(~o . ~o)" (bit-vector->integer (get-address-bits x)) (read-address x nil t) (read-address x t t)))
       (t
        "NIL"))))
 
@@ -583,8 +627,10 @@
                                            :right-border-spec 1
                                            :size *ucode-offset-column-width*
                                            :print-function #'(lambda (x)
-                                                               (let ((tag (microop-symbol x)))
-                                                                 (format nil "~o:~a" x (if tag tag "")))))))
+                                                               (mlet (tag adder) (find-likely-microcode-tag x)
+                                                                 (format nil "~o:~a+~d" x tag adder))))))
+                                                               ;(let ((tag (microop-symbol x)))
+                                                               ;  (format nil "~o:~a" x (if tag tag "")))))))
 
 
 
@@ -800,10 +846,13 @@
     (set-button-selected i *console* (member i (status *console*)))))
 
 (defun halt-processing (interface)
-  (declare (special *test-suite*)) ; we have to refer to the diagnostics interface so we use the global
-  "The original scheme-79 chip doesn't have a HALT instruction, but just loops (generally in the microcode
-at location DONE). This is to do some extra work when we notice we are at DONE, e.g. to mark the test has 
-been run (if any) and check if it was successful (if such an evaluation function was declared)"
+  "The original scheme-79 chip doesn't have a HALT instruction, but just
+loops (generally in the microcode at location DONE). This is to do some extra
+work when we notice we are at DONE, e.g. to mark the test has been run (if any)
+and check if it was successful (if such an evaluation function was declared)"
+  ;; we have to refer to the diagnostics interface so we use the global
+  (declare (special *test-suite* *diagnostics-interface*)) 
+
   (when (and (not (null *halt-address*))
              (eql (bit-vector->integer *micro-pc*) *halt-address*))
     (note "We have reached the halt address!")
@@ -824,13 +873,37 @@ been run (if any) and check if it was successful (if such an evaluation function
       (setq *test-suite* nil)) ; so we don't keep doing this unless we rerun the test
     t))  ; we should halt
 
-;;    :PH1   :PH2 :FRZ :NANO :ALE    :RD :WR :CDR :RDI :int-rq :GCR :RST :RD-State :LD-State
+(defmethod set-micro-pc :before (new-pc-value)
+  "If we had a breakpoint and we've moved away from that breakpoint, then update the note"
+  (let*-non-null ((interface *console*))
+    (when (display-breakpoint-p interface)
+      (let ((new-pc-integer (if (integerp new-pc-value)
+                              new-pc-value
+                              (bit-vector->integer new-pc-value))))
+        (when (not (= new-pc-integer (last-breakpoint-reached interface)))
+          (update-register-description-pane 
+           interface 
+           (format nil "*** Last Breakpoint Reached: ~o ***" 
+                   (last-breakpoint-reached interface)))
+          (setf (display-breakpoint-p interface) nil)))))) ; so we can overwrite if needed.
+
+(defun note-breakpoint-reached ()
+  "called when a breakpoint is reached"
+  (let ((interface *console*))
+    (when interface
+      (let ((bp (bit-vector->integer *micro-pc*)))
+        (update-register-description-pane interface (format nil "*** Breakpoint Reached: ~o ***" bp))
+        (setf (last-breakpoint-reached interface) bp)
+        (setf (display-breakpoint-p interface) t)
+        (redraw-console)))))
+
+;;    :PH1   :PH2 :FRZ :NANO :ALE    :RD :WR :CDR :int-rq :RDI :m-int :GCR :RST :RD-State :LD-State
 ;;    :Step  :Run :Run-until :Stop :Freeze :RD-State :LD-State :INT-RQ
 
 (defun get-breakpoint-input-internal (pane)
   (let* ((text (text-input-pane-text pane))
          (result (parse-integer text :junk-allowed t)))
-    (and (typep result '(integer 0 *)) result))) ; might want to narrow to valid addresses
+    (and (typep result '(integer 0 *)) result))) ; might want to narrow to valid addresses (TBD)
 
 (defun get-breakpoint-input-internal-1 (layout)
   ;; we're ok if any of the values passes
@@ -867,7 +940,10 @@ been run (if any) and check if it was successful (if such an evaluation function
     (dso-update-and-redraw))
   (let ((diagnostics-interface (diagnostics-running-p)))
     (when diagnostics-interface
-      (redraw-diagnostics diagnostics-interface))))
+      (redraw-diagnostics diagnostics-interface)))
+  (let ((mem-window (mem-running-p)))
+    (when mem-window
+      (redraw-mem mem-window))))
 
 (defun s79-button-selection-callback (data interface)
   (ecase data
@@ -891,7 +967,7 @@ been run (if any) and check if it was successful (if such an evaluation function
      (redraw-console))
 
     (:freeze ; toggle on/off
-     ;; should be a toggle switch, but for now it's momentary on - off
+     ;; should be a toggle switch, but for now it's momentary on - off button
      (if (check-pad 'microlisp-shared:*freeze*)
        (clear-pad 'microlisp-shared:*freeze*)
        (set-pad 'microlisp-shared:*freeze*))
@@ -899,7 +975,8 @@ been run (if any) and check if it was successful (if such an evaluation function
      (set-button-selected :frz interface (check-pad 'microlisp-shared:*freeze*)))
 
     (:reset ; momentary on
-     ;; should be momentary-on
+     ;; should be momentary-on, though I wish we could give more feedback it was pressed
+     (clear-register-description-pane interface)
      (reset)) ; simulates the pad being raised for one clock
 
     (:stop
@@ -944,6 +1021,9 @@ been run (if any) and check if it was successful (if such an evaluation function
     
     (:diagnostics
      (start-diagnostics))
+
+    (:memory
+     (start-mem))
 
     ;; for debugging window (temporary)
     (:debug
@@ -998,7 +1078,7 @@ been run (if any) and check if it was successful (if such an evaluation function
 
 (defun update-data-status ()
   (let ((address-data-panel (slot-value *console* 'address-data-panel))
-        (*warn-when-beyond-memtop* nil)) ; supress warnings
+        (*warn-when-beyond-memtop* nil)) ; suppress warnings
     (mlet (mark ptr type disp frame) (break-out-bits-as-integers microlisp-shared:*memory-pads*)
           ;; also want to show next three addresses - not necessarily in same list!
           (let* ((a1 (logand (bit-vector->integer microlisp-shared:*address*) *address-field-mask*))
@@ -1067,10 +1147,11 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
     (capi:modify-editor-pane-buffer   ucode-state-panel
                                       :contents               
                                       (setf (ucode-data-text *console*)
-                                            (format nil " Micro PC: ~o (~a: ~a)~%~A~A"
+                                            (format nil " Micro PC: ~o (~a: ~a)  Tick: ~D~%~A~A"
                                                     (bit-vector->integer *micro-pc*)
                                                     pc-class
                                                     pc-symbolic-name
+                                                    *tick*
                                                     ;; add reminders - we could just note the indicators near the bottom, but
                                                     ;; they're easy to miss...
                                                     (if (test-pad-immediate 'microlisp-shared:*freeze*)
@@ -1094,7 +1175,7 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
               *run-external-data-transfer*
               *run-nanocontroller-p1*
               *run-register-controls*
-              *update-sense-lines*
+              *update-sense-wires*
               *run-nanocontroller-p2*)))
     results))
 
@@ -1139,6 +1220,10 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
                         :accessor ncode-display-array)
    (focused-register :initform nil
                      :accessor focused-register)
+   (last-breakpoint-reached :initform 0
+                            :accessor last-breakpoint-reached)
+   (display-breakpoint-p :initform nil
+                         :accessor display-breakpoint-p)
    )
   
   (:panes
@@ -1217,15 +1302,21 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
     :print-function 'capitalize-if-symbol
     :enabled nil)
 
+   (int-rq
+    capi:check-button
+    :data :int-rq
+    :print-function 'capitalize-if-symbol
+    :enabled nil)
+
    (rdi
     capi:check-button
     :data :rdi
     :print-function 'capitalize-if-symbol
     :enabled nil)
 
-   (int-rq
+   (m-int
     capi:check-button
-    :data :int-rq
+    :data :m-int
     :print-function 'capitalize-if-symbol
     :enabled nil)
 
@@ -1255,10 +1346,12 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
 
    (push-button-panel
     capi:push-button-panel
-    :items '(:Step :Run :Run-until :Stop :Freeze :RD-State :LD-State :INT-RQ :u-Step :reset :dso :diagnostics :debug)
+    :items '(:Step :Run :Run-until :Stop :Freeze :RD-State :LD-State :INT-RQ
+                   :u-Step :reset :dso :diagnostics :memory #||:debug ||#)
     :print-function 'capitalize-if-symbol
     :callback-type :data-interface
     :selection-callback 's79-button-selection-callback
+    ;; doesn't work on MacOS
     #|| :alternative-action-callback 's79-button-alternate-callback ||#
     :layout-args '(:x-uniform-size-p t))
     )
@@ -1337,7 +1430,7 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
                    ()
                    '*all-ph-list*)
 
-;; sense lines are updated on ph2 falling
+;; sense wires are updated on ph2 falling
 
 (defun translate-pad-to-indicator (pad-name)
   (case pad-name
@@ -1363,6 +1456,8 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
      :cdr)
     ('microlisp-shared:*read-interrupt*
      :rdi)
+    ('microlisp-shared:*mask-interrupts*
+     :m-int)
     ('microlisp-shared:*gc-needed*
      :gcr)))
 
@@ -1376,22 +1471,25 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
             (delete indicator (status *console*))))
     pad-logical-value))
 
+(defun redraw-pads ()
+  (when *console*
+    (check-pad 'microlisp-shared:*freeze*)
+    (check-pad 'microlisp-shared:*run-nano*)
+    (check-pad 'microlisp-shared:*ale*)
+    (check-pad 'microlisp-shared:*read*)
+    (check-pad 'microlisp-shared:*write*)
+    (check-pad 'microlisp-shared:*cdr*)
+    (check-pad 'microlisp-shared:*read-interrupt*)
+    (check-pad 'microlisp-shared:*interrupt-request*)
+    (check-pad 'microlisp-shared:*gc-needed*)
+    (check-pad 'microlisp-shared:*reset*)
+    (check-pad 'microlisp-shared:*read-state*)
+    (check-pad 'microlisp-shared:*load-state*)
+    ;; force redraw
+    (redraw-indicators)))
+
 (add-initialization "update-pad settings"
-                    '(when *console*
-                      (check-pad 'microlisp-shared:*freeze*)
-                      (check-pad 'microlisp-shared:*run-nano*)
-                      (check-pad 'microlisp-shared:*ale*)
-                      (check-pad 'microlisp-shared:*read*)
-                      (check-pad 'microlisp-shared:*write*)
-                      (check-pad 'microlisp-shared:*cdr*)
-                      (check-pad 'microlisp-shared:*read-interrupt*)
-                      (check-pad 'microlisp-shared:*interrupt-request*)
-                      (check-pad 'microlisp-shared:*gc-needed*)
-                      (check-pad 'microlisp-shared:*reset*)
-                      (check-pad 'microlisp-shared:*read-state*)
-                      (check-pad 'microlisp-shared:*load-state*)
-                      ;; force redraw
-                      (redraw-indicators))
+                    '(redraw-pads)
                     ()
                     '*all-ph-list*)     ; this is going to be expensive if 8x per clock, so
                                         ; we might want to make this conditional on pressing

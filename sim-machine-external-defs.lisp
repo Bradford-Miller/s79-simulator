@@ -1,8 +1,10 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme-79 Sim Ext Defs" 0 3 0
-                                      "Time-stamp: <2022-01-11 16:56:34 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "S79 Sim Ext Defs" 0 3 1
+                                      "Time-stamp: <2022-02-24 11:50:08 gorbag>"
+                                      "*word-size*")
+
+;; 0.3.1   2/24/22 use new constant for *word-size*
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -109,9 +111,12 @@
 ;(defureg *memory* (to from) ())
 
 ;; [but we treat the pads as separate so we can enforce timing constraints on them]
-(defchip-pads *memory-pads* 32 :io *put-memory-content-onto-pads* *get-memory-content-from-pads* 1)
+(defchip-pads *memory-pads* *word-size* :io
+  *put-memory-content-onto-pads* *get-memory-content-from-pads* 1)
 
-(defchip-pads *address-pads* 24 :io *put-memory-content-onto-pads*  *get-address-from-pads* 1 *memory-pads*) ; since we reuse the low order bits, just pretend they're the same
+(defchip-pads *address-pads* *address-field-length* :io
+  ;; since we reuse the low order bits, just pretend they're the same
+  *put-memory-content-onto-pads*  *get-address-from-pads* 1 *memory-pads*) 
 
 ;; "One more external register, INTERRUPT, which can be read onto the
 ;; bus, contains the address of a global symbol whose value (its CAR)
@@ -120,7 +125,8 @@
 ;(defchip-reg *interrupt*)
 ;(defureg *interrupt* (from) ())
 
-(defchip-pads *interrupt-pads* 24 :input *put-memory-content-onto-pads* *get-address-from-pads* 1 *memory-pads*) ; like the address pads
+(defchip-pads *interrupt-pads* *address-field-length* :input
+  *put-memory-content-onto-pads* *get-address-from-pads* 1 *memory-pads*) ; like the address pads
 
 ;; ale; address-latch-enable; 24 bit node address on low-order bits of
 ;;   chip bus and ALE asserted, then a following cycle asserts either
@@ -176,10 +182,10 @@
 ;; make it easier to load/dump as well, but for now we just establish
 ;; enough for the boot sequence.
 
-(defparameter *maximum-memory-size* (expt 2 15) ; 16 bits
+(defparameter *maximum-memory-size* (expt 2 15) ; 16 bits ;(expt 2 *address-field-length*)
   "Maximum number of cons cells. Should not exceed 24 bits (8,388,608) based on scheme79 representation limits")
 
-(defparameter *maximum-memory-content* (1- (expt 2 32))
+(defparameter *maximum-memory-content* (1- (expt 2 *word-size*))
   "Maximum (integer) value that can be stored in the CAR or CDR")
 
 (defparameter *initial-memtop* (expt 2 7)) ; start with 8 bits of cons memory  for debugging
