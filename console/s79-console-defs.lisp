@@ -1,7 +1,7 @@
 (in-package :s79-console)
 
 (scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 4
-                                      "Time-stamp: <2022-03-03 14:44:13 gorbag>"
+                                      "Time-stamp: <2022-03-08 11:47:04 gorbag>"
                                       "reorg register order to make useful registers easier to find")
 
 ;; 0.3.4   3/ 3/22 reorder the registers to the ones that change more often
@@ -162,6 +162,8 @@
                        :name "Display / node-pointer"
                        :symbol '*display*)
 
+        ;; pseudo-registers are together
+
         (make-instance 'register-metadata
                        :name "Address (Pseudo-Reg)"
                        :symbol '*address*)
@@ -173,13 +175,16 @@
                        :name "Interrupt (Pseudo-Reg)"
                        :symbol '*interrupt*)
 
-        (make-instance 'register-metadata
-                       :name "Memtop"
-                       :symbol '*memtop*)
         ;; not sure we need this one... I guess to see the From control
         (make-instance 'register-metadata
                        :name "Nil (Pseudo-Reg)"
                        :symbol '*nil*)
+
+        ;; set during boot then a constant more or less (not futzed with during
+        ;; normal S79 operations)
+        (make-instance 'register-metadata
+                       :name "Memtop"
+                       :symbol '*memtop*)
 
         ;; put this at the bottom so it's easy to find
         (make-instance 'register-metadata

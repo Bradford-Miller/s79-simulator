@@ -1,8 +1,10 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Memory Win" 0 3 0
-                                      "Time-stamp: <2022-03-02 17:58:57 gorbag>"
-                                      "new")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Memory Win" 0 3 4
+                                      "Time-stamp: <2022-03-04 13:59:46 gorbag>"
+                                      "make editor pane type temp")
+
+;; 0.3.4   3/ 4/22 make editor-pane temporary (will be GC'd when interface destroyed)
 
 ;; 0.3.3   3/ 2/22 rename module to fit version-reporter limit
 
@@ -78,6 +80,7 @@
   (:panes
    (content-viewer
     capi:editor-pane ; use editor-pane instead of display pane to preserve spacing (may be a font issue?)
+    :buffer :temp ; gc when we destroy the interface
     :enabled nil
     :vertical-scroll t
     :text memory-contents-text
