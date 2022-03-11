@@ -1,8 +1,10 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 4
-                                      "Time-stamp: <2022-03-08 11:47:04 gorbag>"
-                                      "reorg register order to make useful registers easier to find")
+(scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 5
+                                      "Time-stamp: <2022-03-11 16:39:50 gorbag>"
+                                      "add cnd (conditional) to all-indicators")
+
+;; 0.3.5   3/11/22 add cnd (conditional) to all-indicators
 
 ;; 0.3.4   3/ 3/22 reorder the registers to the ones that change more often
 ;;                    (typically) are further up the list.  except the PC which
@@ -235,7 +237,7 @@
   (declare (ignore args))
   (values))
 
-(defvar *all-indicators* '(:frz :nano :rst :ale :rd :wr :cdr :int-rq :rdi :m-int :gcr :rd-state :ld-state)
+(defvar *all-indicators* '(:frz :nano :rst :ale :rd :wr :cdr :cnd :int-rq :rdi :m-int :gcr :rd-state :ld-state)
   "used for redraw")
 
 

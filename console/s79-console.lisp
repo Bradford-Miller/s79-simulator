@@ -1,8 +1,12 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 10
-                                      "Time-stamp: <2022-03-02 15:19:12 gorbag>"
-                                      "add offset and tag to uaddr in ucode state info")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 11
+                                      "Time-stamp: <2022-03-11 16:58:17 gorbag>"
+                                      "use apply-in-pane-process when modifying the Register Description pane")
+
+;; 0.3.11  3/11/22 use apply-in-pane-process when modifying the Register
+;;                     Description pane
+;;                 add conditional indicator
 
 ;; 0.3.10  3/ 2/22 add tag and offset to UAddr column in Ucode State Info pane
 
@@ -306,8 +310,9 @@
 
 (defun update-register-description-pane (interface text)
   (let ((editor-pane (slot-value interface 'register-desc-pane)))
-    (capi:modify-editor-pane-buffer
-     editor-pane :contents text)))
+    (capi:apply-in-pane-process editor-pane
+                                'capi:modify-editor-pane-buffer
+                                editor-pane :contents text)))
 
 (defun clear-register-description-pane (interface)
   (update-register-description-pane interface ""))
@@ -897,7 +902,7 @@ and check if it was successful (if such an evaluation function was declared)"
         (setf (display-breakpoint-p interface) t)
         (redraw-console)))))
 
-;;    :PH1   :PH2 :FRZ :NANO :ALE    :RD :WR :CDR :int-rq :RDI :m-int :GCR :RST :RD-State :LD-State
+;;    :PH1   :PH2 :FRZ :NANO :ALE  :RD :WR :CDR :CND :int-rq :RDI :m-int :GCR :RST :RD-State :LD-State
 ;;    :Step  :Run :Run-until :Stop :Freeze :RD-State :LD-State :INT-RQ
 
 (defun get-breakpoint-input-internal (pane)
@@ -1302,6 +1307,12 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
     :print-function 'capitalize-if-symbol
     :enabled nil)
 
+   (cnd
+    capi:check-button
+    :data :cnd
+    :print-function 'capitalize-if-symbol
+    :enabled nil)
+   
    (int-rq
     capi:check-button
     :data :int-rq
@@ -1359,7 +1370,7 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
   (:layouts
    (indicator-panel
     capi:row-layout
-    '(ph1 ph2 frz nano ale rd wr cdr rdi int-rq gcr rst rd-state ld-state))
+    '(ph1 ph2 frz nano ale rd wr cdr cnd rdi int-rq gcr rst rd-state ld-state))
    (internal-status
     capi:row-layout
     '(ucode-general-state ncode-general-state))
@@ -1459,7 +1470,9 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
     ('microlisp-shared:*mask-interrupts*
      :m-int)
     ('microlisp-shared:*gc-needed*
-     :gcr)))
+     :gcr)
+    ('microlisp-shared:*conditional*
+     :cnd)))
 
 (defun check-pad (name)
   ;; don't go through test-pad since we want to see what the current pad is NOW
@@ -1485,6 +1498,7 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
     (check-pad 'microlisp-shared:*reset*)
     (check-pad 'microlisp-shared:*read-state*)
     (check-pad 'microlisp-shared:*load-state*)
+    (check-pad 'microlisp-shared:*conditional*)
     ;; force redraw
     (redraw-indicators)))
 
