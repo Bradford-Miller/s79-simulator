@@ -1,8 +1,10 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 3 2
-                                      "Time-stamp: <2022-02-09 12:34:47 gorbag>"
-                                      "line disambiguation")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 3 3
+                                      "Time-stamp: <2022-03-11 16:29:56 gorbag>"
+                                      "force conditional flag off when resetting")
+
+;; 0.3.3   3/11/22 if we are doing a reset, force the *conditional* flag to 0.
 
 ;; 0.3.2   2/ 9/22 way too many things (fns, variables) with "line" in their name
 ;;                    and it's ambiguous.  Splitting so "line" refers to,
@@ -106,7 +108,7 @@
     retval))
 
 (defun do-reset ()
-  (declare (special *halt-address* s79-console:*console*))
+  (declare (special *halt-address* s79-console:*console* *conditional*))
   
   (note "invoking do-reset T: ~D uT: ~S" *tick* *symbolic-clock-phase*)
   ;; clear the reset wire until/unless we have an external driver
@@ -119,6 +121,8 @@
 
   ;; initialize the micro-pc to boot-load
   (set-micro-pc (non-pointer-type-name->int 'microlisp::boot-load))
+  ;; if the conditional flag is set, force it clear
+  (setf (elt *conditional* 0) 0)
   ;; if there is a DONE tag, use it for the halt-address
   (let*-non-null ((halt-tag-address (non-pointer-type-name->int 'microlisp::done)))
      ;; for the console to auto-stop, and maybe kick off test validation
