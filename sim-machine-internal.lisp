@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 3 9
-                                      "Time-stamp: <2022-03-08 18:21:32 gorbag>"
+                                      "Time-stamp: <2022-03-11 17:14:24 gorbag>"
                                       "redefine eval-exp-popj-to")
 
 ;; 0.3.9   3/ 8/22 ok we have enough info to start guessing what eval-exp-popj-to
@@ -398,6 +398,9 @@
 ;; (setq exp (car clink))
 ;; (setq clink (cdr clink))
 ;; (funcall exp)
+
+;; in other words, the object to be evaluated is popped off the stack and then
+;; called.
 
 ;; here we're presented with a tag to go to (rather than a return) and
 ;; usually that tag is "internal-apply" which presumably is doing the

@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-03-08 12:17:24 gorbag>
+;; Time-stamp: <2022-03-11 16:11:00 gorbag>
 
 ;; Now that we can boot, we want to run a simple S-Code function.
 ;; The following is a hand-compiled version of figure 2 in AIM-559
@@ -104,8 +104,8 @@
 ;;        (      *         |        )
 ;;               |                       
 ;;               V                       
-;;        (SE-Pointer      | last-arg )     (SE-Pointer      | symbol  ) 
-;;        (      *         |   *------)---> (      *         |    *----)----->     [Symbol Cell of APPEND]
+;;        (SE-Pointer      | last-arg )     (SE-Pointer      | global  ) 
+;;        (      *         |   *------)---> (      *         |    *----)----->     [Global Value Cell of APPEND]
 ;;               |                                 |
 ;;               V                                 V              
 ;;        (SE-immediate    | SE-ptr )       (SE-immediate    | SE-ptr ) 
@@ -181,11 +181,11 @@
       ;; break before any call to eval-exp-popj-to:
       ;; I'm not yet clear on the semantics of eval-exp-popj-to so these breaks
       ;; deal with tags near those calls.
-      (break 'microlisp:last-argument-return)
-      (break 'microlisp:apply-1-arg-return)
-      (break 'microlisp:spread-argument-return)
-      (break 'microlisp:primitive-apply-1)
-      (break 'microlisp:primitive-apply-2)
+      ;(break 'microlisp:last-argument-return)
+      ;(break 'microlisp:apply-1-arg-return)
+      ;(break 'microlisp:spread-argument-return)
+      ;(break 'microlisp:primitive-apply-1)
+      ;(break 'microlisp:primitive-apply-2)
 
       ;; we know the boot code works from test-1, so break on that return so we can start tracing
       ;; the interpretation of our apply fn (and advance this breakpoint as we determine what works)
@@ -201,7 +201,7 @@
       ;; call eval-exp-popj-to in last-argument-return! (see break above on last-argument-return)
       
       ;; if we reach here, we should check that *args* is now correct for invoking the closure
-      (tbreak 'microlisp:closure)
+      (tbreak 'microlisp:local)
       (tbreak 'microlisp:conditional)
 
       ))
@@ -244,10 +244,10 @@
           ;; append goes into the continuation, but possibly this should be the
           ;; closure, (the value of the append symbol) at this point, i.e., we
           ;; may expect the compiler to have removed the symbol reference?
-          ,(make-word +sep+ {arg2}) ,(make-word +symbol+ {append})               ; address 7 {argnxt}
+          ,(make-word +sep+ {arg2}) ,(make-word +glo+ {app-glo})               ; address 7 {argnxt}
           ,(make-word +sei+ #o3)    ,(make-word +sep+ (1+ {arg2})) ; address 8 ({arg2})
           ,(make-word +sei+ #o4)    ,+nil+                ; address 9
-          ;; and here we define the APPEND symbol
+          ;; and here we define the APPEND symbol (note that as nothing refers to it, it will likely be gc'd away)
           ,(make-word +glo+ {app-glo}) ,+nil+             ; address 10 {append}; symbol; no plist
           ,(make-word +clos+ {app-fn}) ,+nil+             ; address 11 {app-glo}; global value cell
           ;; leading into the APPEND function
