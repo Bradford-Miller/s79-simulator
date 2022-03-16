@@ -1,8 +1,12 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Memory Win" 0 3 4
-                                      "Time-stamp: <2022-03-04 13:59:46 gorbag>"
-                                      "make editor pane type temp")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Memory Win" 0 3 5
+                                      "Time-stamp: <2022-03-15 13:50:25 gorbag>"
+                                      "add options checkboxes for dump-memory contents")
+
+;; 0.3.5   3/15/22 add options for the dump memory, preselecting show-registers.
+;;                     the hope is to make it easier to follow the display stack, 
+;;                     the control stack, etc.
 
 ;; 0.3.4   3/ 4/22 make editor-pane temporary (will be GC'd when interface destroyed)
 
@@ -58,6 +62,9 @@
     (redraw-mem interface)
   ))
 
+(defparameter *mem-dump-options*
+  '(:decode-p :show-registers :show-stack-membership :show-display-membership))
+
 (defun mem-update (interface)
   ;; get a memory dump. We should be able to select parameters (TBD),
   ;; but for now just do a generic dump.  note our intent is to
@@ -68,8 +75,14 @@
 
   ;; for now, just do a straight dump so we have something we can look
   ;; at.
-  (let ((*error-output* (make-string-output-stream))) ; memory dumps are to *error-output*
-    (dump-memory 0 :show-registers t)
+  (let ((*error-output* (make-string-output-stream)) ; memory dumps are to *error-output*
+        (options (capi:choice-selected-items (slot-value interface 'options))))
+    (let ((option-args (mapcan #'(lambda (option)
+                                   (if (member option options)
+                                     (list option t)
+                                     (list option nil)))
+                               *mem-dump-options*)))
+      (apply #'dump-memory 0 option-args))
     (update-contents interface (get-output-stream-string *error-output*))))
 
 (capi:define-interface mem-interface ()
@@ -98,6 +111,12 @@
     :callback-type :data-interface
     :selection-callback 'mem-button-selection-callback
     :layout-args '(:x-uniform-size-p t))
+   (options
+    capi:check-button-panel
+    :title "Options"
+    :items *mem-dump-options*
+    :selected-items '(:decode-p :show-registers)
+    :layout-class 'capi:row-layout)
    (status
     capi:display-pane
     :enabled nil
@@ -113,7 +132,7 @@
   (:layouts
    (status-panel 
     capi:row-layout
-    '(push-buttons status))
+    '(push-buttons options status))
    (default
     capi:column-layout
     '(status-panel content-viewer)))

@@ -310,7 +310,10 @@
         (setq row-count 0)))))
 
 (let ((all-regs nil))
-  (defun dump-memory (&optional (start 0) &key (end (bit-vector->integer microlisp-shared:*memtop*)) (decode-p t) (show-registers nil))
+  (defun dump-memory (&optional (start 0) &key (end (bit-vector->integer microlisp-shared:*memtop*)) 
+                                (decode-p t) (show-registers nil)
+                                show-stack-membership
+                                show-display-membership); not implemented yet
     "used for debugging. decode-p prints the mark bit, and type for
 each memory address in range; field specific data should use
 \(dump-memory-with-types)"
@@ -326,6 +329,18 @@ each memory address in range; field specific data should use
                          (existing-entry (cdr (assoc reg-value reg-address-alist))))
                     (update-alist reg-value (list* reg-name existing-entry) reg-address-alist)))
               all-regs))
+
+      (when show-stack-membership
+        ;; use the reg-address-alist to add indicators that the current address is on the stack
+        (let* ((stack-ptr (logand *address-field-mask* (bit-vector->integer *stack*)))
+               (existing-entry (cdr (assoc stack-ptr reg-address-alist))))
+          (while (plusp stack-ptr)
+            (update-alist stack-ptr (list* :s existing-entry) reg-address-alist)
+            (setq stack-ptr (logand *address-field-mask* (read-address stack-ptr t t)))
+            (setq existing-entry (cdr (assoc stack-ptr reg-address-alist))))))
+
+      (when show-display-membership
+        nil) ;; (TBD) .. tricky because it's saved on the stack so we have to know which elements are the display
 
       (dump-memory-internal
        start end
@@ -344,7 +359,7 @@ each memory address in range; field specific data should use
                                    " ")
                                  (int->type-name type)
                                  addr
-                                 (if (and show-registers
+                                 (if (and (or show-registers show-stack-membership)
                                           (cdr (assoc (floor (/ i 2)) reg-address-alist)))
                                    (format nil "(~{~A ~})" (cdr (assoc (floor (/ i 2)) reg-address-alist)))
                                    ""))))
