@@ -1,8 +1,11 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 11
-                                      "Time-stamp: <2022-03-11 16:58:17 gorbag>"
-                                      "use apply-in-pane-process when modifying the Register Description pane")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 12
+                                      "Time-stamp: <2022-03-16 18:33:03 gorbag>"
+                                      "when prompting for a new register value, make sure the default is octal")
+
+;; 0.3.12  3/14/22 add a print-function to the prompter for a new register 
+;;                     value so it can be forced to octal
 
 ;; 0.3.11  3/11/22 use apply-in-pane-process when modifying the Register
 ;;                     Description pane
@@ -369,6 +372,8 @@
                                                                        (values integer (or (not (integerp integer))
                                                                                            (minusp integer)
                                                                                            (> integer #xffffffff)))))
+                                                 :print-function #'(lambda (x)
+                                                                     (format nil "~o" x))
                                                  :initial-value current-value)))
           (when (and new-value ; check if aborted
                      (not (= current-value new-value)))
@@ -675,7 +680,7 @@
                       :bands
                       (list
                        (make-instance 'grid-display-column
-                                      :header-title "Info"
+                                      :header-title "uLisp"
                                       :size *ucode-comment-column-width*
                                       :data-reader #'(lambda (n) (nth n (ucode-comment-array *console*)))
                                       :print-function #'(lambda (x) (format nil "~a" x)))))
@@ -1119,7 +1124,7 @@ and check if it was successful (if such an evaluation function was declared)"
 "EXTERNAL BUS ADDRESS/DATA      EXTERNAL MEMORY                             EXTERNAL MEMORY SPECIAL CELLS
 Current        ---Address---   #o~8,'0o : #o~11,'0o . #o~11,'0o             NIL (0)   : #o~11,'0o . #o~11,'0o  
 mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
-#b~b  #b~b  #o~2,'0o #o~4,'0o #o~4,'0o   #o~8,'0o : #o~11,'0o . #o~11,'0o
+#b~b  #b~b  #o~2,'0o #o~4,'0o #o~4,'0o  #o~8,'0o : #o~11,'0o . #o~11,'0o
                                #o~8,'0o : #o~11,'0o . #o~11,'0o
                                #o~8,'0o : #o~11,'0o . #o~11,'0o"
                            a1 a1-car a1-cdr a-nil-car a-nil-cdr
