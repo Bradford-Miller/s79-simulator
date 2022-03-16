@@ -1,8 +1,11 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 3 5
-                                      "Time-stamp: <2022-02-09 12:30:04 gorbag>"
-                                      "line disambiguation")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 3 6
+                                      "Time-stamp: <2022-03-15 13:18:13 gorbag>"
+                                      "defureg: optional argument to force type field")
+
+;; 0.3.6   3/15/22 add optional argument to defureg to force the creation of a
+;;                    type field for presentation purposes by the console.
 
 ;; 0.3.5   2/ 9/22 way too many things (fns, variables) with "line" in their name
 ;;                    and it's ambiguous.  Splitting so "line" refers to,
@@ -365,7 +368,8 @@ data manipulations")
     (setf (sense-wire-register sense-wire-rn) register)
     (setq *sense-wire-encoding* (ash *sense-wire-encoding* 1)))) ; so we can specify multiple and OR them
 
-(defmacro defureg (register-name control-wires sense-wires)
+(defmacro defureg (register-name control-wires sense-wires &optional force-type-field-p)
+  "force-type-field-p creates a type field even if unneeded to allow for presentation in the console if desired"
   `(cl:progn
      (eval-when (:load-toplevel :execute)
        (setf (valid-control-wires ',register-name) ',control-wires)
@@ -373,7 +377,7 @@ data manipulations")
        (setf (valid-sense-wires ',register-name) ',sense-wires)
        (declare-register-sense-wires ',register-name ',sense-wires) ; put into alist as well
        (setf (register-flags ',register-name) 0))
-     ,@(when (intersection control-wires *control-wires-needing-type-field*)
+     ,@(when (or force-type-field-p (intersection control-wires *control-wires-needing-type-field*))
         `((defvar ,(make-register-field-symbol register-name 'type)
             (make-type-field ,register-name))
           (eval-when (:load-toplevel :execute)
