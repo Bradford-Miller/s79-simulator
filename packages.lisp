@@ -1,11 +1,14 @@
 (in-package :cl-user)
 (defvar *scheme-79-version-reporter-initializations* nil)
 
-(cl-lib:detailed-version-reporter "S79 defpackages" 0 3 7
+(cl-lib:detailed-version-reporter "S79 defpackages" 0 3 8
                                   "Time-stamp: <2022-02-24 12:27:09 gorbag>"
-                                  "export displacement and frame field parameters"
+                                  "import *stack* for external-chips (dump-memory usage)"
                                   :initialization-list-symbol
                                   *scheme-79-version-reporter-initializations*)
+
+;; 0.3.8   3/15/22 import *stack* into external-chips so dump-memory can use it to 
+;;                    trace the stack
 
 ;; 0.3.7   2/18/22 export *frame-field-length* and *displacement-field-length*
 
@@ -430,13 +433,15 @@
   (:import-from :scheme-mach #:*reset* #:*ale*
                 #:*freeze* #:*read* #:*read-state* #:*load-state* #:*interrupt-request*
                 #:*write* #:*cdr* #:*read-interrupt* #:*gc-needed* #:*run-nano*
-                
+
                 #:*input-pad-types* #:*output-pad-types* #:get-address-bits 
 
                 #:*test-ale-to-expect-address* #:*get-address-from-pads* #:*put-memory-content-onto-pads*
                 #:*get-memory-content-from-pads* #:*test-for-read-interrupt*
 
                 #:*address-field-length* #:*address-field-mask* #:data-field-length* #:*type-field-length*)
+  (:import-from :microlisp-shared #:*stack*)
+
   (:export
    ;; some debug-useful functions dealing with "external" memory
    #:*warn-when-beyond-memtop* #:compare-memory

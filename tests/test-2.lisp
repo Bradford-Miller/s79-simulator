@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-03-11 16:11:00 gorbag>
+;; Time-stamp: <2022-03-15 14:30:24 gorbag>
 
 ;; Now that we can boot, we want to run a simple S-Code function.
 ;; The following is a hand-compiled version of figure 2 in AIM-559
@@ -199,9 +199,11 @@
 
       ;; second arg seems to get set up correctly so we're good at the point we
       ;; call eval-exp-popj-to in last-argument-return! (see break above on last-argument-return)
-      
+
       ;; if we reach here, we should check that *args* is now correct for invoking the closure
-      (tbreak 'microlisp:local)
+      ;; (tbreak 'microlisp:local) ; this passed 3/15/22
+      ;; (tbreak 'microlisp:primitive-eq) ; this passed 3/15/22
+      ;; next is setting up the cond
       (tbreak 'microlisp:conditional)
 
       ))

@@ -1,13 +1,12 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "S79 ucode support ops" 0 3 4
-                                      "Time-stamp: <2022-03-11 18:03:41 gorbag>"
+                                      "Time-stamp: <2022-03-15 12:45:31 gorbag>"
                                       "special-case for frame=0 and displacement=0 preds")
 
 ;; 0.3.4   3/11/22 frame=0 and displacement=0 check the fields in the
-;;                    *bus* register but should NOT generate a load
-;;                    first (since we'd be loading the *bus* with the
-;;                    *bus*. This should be somehow declared in the
+;;                    *bus* register but should load *exp* first
+;;                    This should be somehow declared in the
 ;;                    upred definition for these, but for now we will
 ;;                    special case in simple-branch-pred (TBD)
 
@@ -186,8 +185,8 @@
          (funcall defining-fn-symbol fail-tag success-tag)) ; use it
         ((and (null pred-type) implied-register)
          (if (member real-sense-wire '(displacement=0-bus frame=0-bus)) ; hack! Should have something in the upred for this (TBD)
-           (simple-branch-noload real-sense-wire fail-tag success-tag)
-           (fetch-and-test-for-success implied-register real-sense-wire fail-tag success-tag)))
+             (fetch-and-test-for-success '*exp* real-sense-wire fail-tag success-tag)
+             (fetch-and-test-for-success implied-register real-sense-wire fail-tag success-tag)))
         ((null pred-type) ; does not need to look at memory, only register content
          (simple-branch real-sense-wire fail-tag success-tag))
         (t

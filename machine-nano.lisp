@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Nano" 0 3 6
-                                      "Time-stamp: <2022-02-09 12:27:49 gorbag>"
+                                      "Time-stamp: <2022-03-14 13:56:43 gorbag>"
                                       "line disambiguation")
 
 ;; 0.3.6   2/ 9/22 way too many things (fns, variables) with "line" in their name
@@ -886,10 +886,11 @@ which would return control to the microcontroller state machine."
                  "debug-nanocontroller: setting nano-pc to #o~o" nop)
         (copy-field (integer->bit-vector nop) *nano-pc*)) ; (tbd) should be stored as a bit vector
       (note-if *debug-nanocontroller*
-               "*** executing nanoinstruction ~a at #o~o ***"
+               "*** executing nanoinstruction ~a at #o~o (F: #o~o T: #o~o) ***"
                (car (rassoc (bit-vector->integer *nano-pc*)
                             *nanocontrol-symtab*))
-               (bit-vector->integer *nano-pc*))
+               (bit-vector->integer *nano-pc*)
+               from to)
       (exec-nano-expression
        (elt *nanocontrol-array* (bit-vector->integer *nano-pc*))
        from

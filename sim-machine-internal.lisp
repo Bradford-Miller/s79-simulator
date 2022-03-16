@@ -1,8 +1,10 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 3 9
-                                      "Time-stamp: <2022-03-11 17:14:24 gorbag>"
-                                      "redefine eval-exp-popj-to")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 3 10
+                                      "Time-stamp: <2022-03-15 12:39:52 gorbag>"
+                                      "frame=0? and displacement=0? from *exp*")
+
+;; 0.3.10  3/14/22 frame=0? and displacement=0? should get *exp* into *bus* before checking.
 
 ;; 0.3.9   3/ 8/22 ok we have enough info to start guessing what eval-exp-popj-to
 ;;                    should look like. Set up to dispatch on the type of exp
