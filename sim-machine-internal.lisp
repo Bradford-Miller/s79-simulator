@@ -1,12 +1,51 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 3 2
-                                      "Time-stamp: <2022-01-18 12:29:40 gorbag>"
-                                      "cleanup special register treatment")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:32:20 gorbag>"
+                                      "frame=0? and displacement=0? from *exp*")
 
-;; 0.3.2   1/18/22 cleanup obsolete code: removing special treatment of registers
-;;                    which required multiple control lines for TO as new covering
-;;                    set computation deals with it.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.10  3/14/22 frame=0? and displacement=0? should get *exp* into *bus* before checking.
+
+;; 0.3.9   3/ 8/22 ok we have enough info to start guessing what eval-exp-popj-to
+;;                    should look like. Set up to dispatch on the type of exp
+;;                    after stuffing the tag onto the stack for the dispatch to
+;;                    continue to. Note at this point we have a symbol-pointer in
+;;                    exp (based on our current test-2.lisp) which might really need
+;;                    to be the closure and this will help us determine.
+
+;; 0.3.8   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
+;;                  since &global-value translates into &car, it should be 
+;;                     :args-last as &car is.
+
+;; 0.3.7   1/28/22 assign now returns the actual assembly code rather
+;;                     than just setting up the to-register in order
+;;                     to simplify how we can handle complex second
+;;                     arguments
+
+;; 0.3.6   1/27/22 have &global-value call &car to get it's defn, rather
+;;                     than invoking a subcompilation.
+
+;; 0.3.5   1/26/22 add dispatch, &global-value, micro-call, micro-return
+
+;; 0.3.4   1/25/22 add new &eq-val?, &frame=0?, and &displacement=0?
+;;                     predicates
+
+;; 0.3.3   1/24/22 add mask-interrupts pseudo-pad
+
+;; 0.3.2   1/18/22 cleanup obsolete code: removing special treatment of
+;;                    registers which required multiple control wires
+;;                    for TO as new covering set computation deals
+;;                    with it.
 
 ;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
 ;;                    for consistancy with AIM
@@ -96,14 +135,20 @@
 ;; instructions NOT directly related to storage management:
 
 ;; pseudo pad to deal with conditionals - really switches MUX on least
-;; order bit of micro-pc to OR of relevant conditional lines
+;; order bit of micro-pc to OR of relevant conditional wires
 
 ;nano runs on :ph2-rising, and we keep high until we update PC on :ph1-falling
-(defchip-pad *conditional* :pseudo *run-nanocontroller-p1* *update-sense-lines* 7)
+(defchip-pad *conditional* :pseudo *run-nanocontroller-p1* *update-sense-wires* 7)
 
 ;; pseudo pad for the internal version of freeze. So we can distinguish between an internally
 ;; driven freeze (nanocode) and external (generally memory cycle delay)
+
+;; Renamed to run-nano to be consistent with the AIM (1/13/22 BWM)
 (defchip-pad *run-nano* :latched-io *run-nanocontroller-p1* :any 8) ; full clock cycle as we may reassert
+
+;; instruction DISPATCH-ON-EXP-ALLOWING-INTERRUPTS implies there is some mask of the interrupt-request
+;; pad, so we create this pseudo-pad to suppress interrupts.
+(defchip-pad *mask-interrupts* :latched-io :any :any 3) ; should match up with *interrupt-request*
 
 ;; bus conditions mark-bit type-not-pointer frame=0 displacement=0 address=0
 
@@ -128,14 +173,10 @@
 ;  "similar to &in-use but checks the mark bit of the cdr"
   
 ;; &frame=0? ;; bus operation
-
-;(defufn &frame=0? ()
-;  (zerop-field *bus-frame*))
+(defupred &frame=0? (frame=0 nil *bus*))
 
 ;; &displacement=0? ;; bus operation
-
-;(defufn &displacement=0? ()
-;  (zerop-field *bus-displacement*))
+(defupred &displacement=0? (displacement=0 nil *bus*))
 
 ;;
 ;; not sure what instruction is related to (bus) address=0 but will
@@ -155,7 +196,7 @@
 ;; so not sure how they dealt with constants that are part of the
 ;; instruction; I'm going to use the from field since it tends to be
 ;; larger than the to field (there are more from registers than to
-;; register control lines, so it's less of a loss of extra bits).
+;; register control wires, so it's less of a loss of extra bits).
 (defufn &set-type (reg type-constant-or-register)
   (let ((real-register (translate-alias reg))
         (source-register (cl:if (register-p type-constant-or-register)
@@ -191,6 +232,7 @@
 ;; to-type because it can be the target of &set-type (q.v.)
 
 ;; &eq-val
+(defupred &eq-val (=bus :arg *val*))
 
 ;; &val=0?
 
@@ -216,10 +258,18 @@
 ;; &set-global-values
 
 ;; &global-value
+(defufn &global-value (reg-ref :constituent t :args-last t) ; args-last because &car is
+  ;; register reference should be to address of a symbol, and the &car
+  ;; of that symbol is the global-value cell
+  (&car reg-ref)) ; redirect
 
 ;; &decrement-displacement
+(defufn &decrement-displacement () ; decrements the displacement field of *exp*
+  `((microlisp-shared::do-decrement-displacement)))
 
 ;; &decrement-frame
+(defufn &decrement-frame () ; decrements the frame field of *exp*
+  `((microlisp-shared::do-decrement-frame)))
 
 ;; pointer bit - this instruction fetches onto the bus and checks the bit
 ;; &pointer?
@@ -234,10 +284,26 @@
 (defupred &=type? (type=bus nil))
 
 ;; assign
-(defufn assign (to-register from :args-last t) ; args-last functions get special handling in compile-line & compile-parameter
-  ;; set up the to field, then we'll evaluate the rest of the expression inside of compile-line
-  (declare (ignore from))
-  (setq *to-register* to-register)) ; there can be more than one, but lets only allow one for now
+(defufn assign (to-register from :args-last t) ; args-last functions get
+                                               ; special handling in
+                                               ; compile-expression &
+                                               ; compile-parameter
+  (let ((*enclosing-opcode* 'assign)
+        (*to-register* to-register)
+        (*constituent-assignment-fn* `(assign ,to-register)))
+    ;; if our current expression is the same as the assignment fn, clear it to
+    ;; prevent loops
+    (cond-binding-predicate-to foo 
+      ((from-direct-register-p from 'assign)
+       (let ((foo (write-generated-code *upla-stream* *current-expression*
+                                        `(((:to ,to-register) (:from ,foo) microlisp-shared::mover))
+                                        "assign defufn")))
+         (if *upla-stream*
+           nil ; we generated the code so don't return it
+           foo)))
+
+      (t
+       (compile-parameter *upla-stream* from nil))))) ; let *constituent-assignment-fn* do it's job
 
 ;; fetch
 (defufn fetch (from-register :constituent t)
@@ -253,7 +319,9 @@
       &rplacd &rplacd-and-mark-car-being-traced! &rplacd-and-mark-car-trace-over! 
       &mark-car-being-traced! &mark-car-trace-over! 
 
-      &set-type)
+      &set-type
+
+      dispatch eval-exp-popj-to) ; really dispatch
      from-register) ; just send back the register
     ))
 
@@ -263,8 +331,9 @@
     `(((to ,register) microlisp-shared::do-restore))))
 
 ;; save
-(defufn save (thingo :args-last t :expansion ((:from *stack*))) ; thingo should have already been evaluated
-  (let ((*to-register* '*stack*)) ; ignore that this is a hidden to register since it has to be handled special anyway
+(defufn save (thingo :args-last t :expansion ((:from *stack*) (:to *stack*))) ; thingo should have already been evaluated
+  (let ((*to-register* '*stack*) ; ignore that this is a hidden to register since it has to be handled special anyway
+        (*constituent-assignment-fn* `(assign *stack*)))
     ;; inefficient & temporary? should generate an address
     
     (compile-embedded-expression `(&cons ,thingo (fetch *stack*))))) ; &cons is :args-last but that's ok
@@ -289,8 +358,6 @@
   `(((go-to ,tag))))
   ;(generate-ucode 'no-op nil nil tag))
 
-;; dispatch-on-exp-allowing-interrupts
-
 ;; dispatch-on-stack as far as I can tell this takes the TYPE field
 ;; from the stack pointer and converts that to our uPC via the tags
 ;; declared in **non-pointer-types** (and maybe **pointer-types**). So
@@ -303,16 +370,85 @@
 (defufn dispatch-on-stack ()
   `(((from *stack*) microlisp-shared::type-dispatch)))
 
+;; dispatch-on-exp-allowing-interrupts
+(defufn dispatch-on-exp-allowing-interrupts ()
+  `(((from *exp*) (clear-mask-interrupts) microlisp-shared::type-dispatch)))
+
 ;; dispatch
+;; general form of above?
+(defufn dispatch (reg-ref)
+  (declare (ignore reg-ref)) ; should already be in the *from-register*
+  `(((from ,*from-register*) microlisp-shared::type-dispatch)))
+
+;; "There is a register for the current expression, EXP. When the
+;; value of an expression is determined it is put into the VAL
+;; register. When the arguments for a procedure call are being
+;; evaluated at each step the result in VAL is added to the list of
+;; already evaluated arguments kept in ARGS. When the arguments are
+;; all evaluated, the procedure is invoked. This requires that the
+;; formal parameters of the procedure be bound to the actual
+;; pareameters computed. This binding occurs by the DISPLAY register
+;; getting the contents of the ARGS register prefixed to the
+;; environment pointer of the closed procedure being applied. When
+;; evaluating the arguments to a procedure, the evaluator may have to
+;; recurse to obtain the value of a sub-expresson. The state of the
+;; evaluator will have to be restored when the subexpression returns
+;; with a value. This requires that the state be saved before
+;; recursion. The evaluator maintains a pointer to the stack of
+;; pending returns and associated state in the register called STACK."
 
 ;; eval-exp-popj-to
 
+;; in AIM 514, popj-return is defined as:
+;;
+;; (setq exp (car clink))
+;; (setq clink (cdr clink))
+;; (funcall exp)
+
+;; in other words, the object to be evaluated is popped off the stack and then
+;; called.
+
+;; here we're presented with a tag to go to (rather than a return) and
+;; usually that tag is "internal-apply" which presumably is doing the
+;; work of the evaluation of the next exp from val. So what is this
+;; function doing?
+
+;; The internal-apply (tag) sets up exp and dispatches as well as sets
+;; up args. Is there anything left for this fn to do other than the
+;; goto? Is there something we should be getting from the stack?
+
+;; so looking at the current encoding, (where we put the GLOBAL pointer on the
+;; stack for the continuation function, may want to do something else in the
+;; future which could require this function to be modified!) at the time we
+;; call this, exp has the pointer to the global cell; val is not correct; stack
+;; is a SEP to (*args* . std-rtn stack-next) which is what internal-apply seems
+;; to expect (other than something useful in val). So we need to set dispatch
+;; on the exp (maybe without allowing interrupts?) which will set val up to the
+;; global. BUT that also means we need to set up a retpc on the stack register
+;; so the exp evaluation has a continuation.
+
+(defufn eval-exp-popj-to (tag)
+  ;; `(((go-to ,tag))) ; at least goto the tag?
+  (compile-embedded-expression
+   `(microlisp:progn
+      (&set-type *stack* ,tag)
+      (dispatch (fetch *exp*)))))
+      
+
+;; "Micro-call is a microcode macro operation which stashes the (micro
+;; code) return address specified by its second argument in the type
+;; field of *retpc-count-mark* and then goes to the micro-code address
+;; specified by its first argument. Micro-return is used to dispatch
+;; on this saved type field."
+
 ;; micro-call
+(defufn micro-call (target-tag return-address-tag)
+  (compile-embedded-expression
+   `(microlisp:progn
+      (&set-type *retpc-count-mark* ,return-address-tag)
+      (go-to ,target-tag))))
 
 ;; micro-return
-
-;; if
-
-
-
+(defufn micro-return ()
+  `(((from *retpc-count-mark*) microlisp-shared::type-dispatch)))
 

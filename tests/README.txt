@@ -1,4 +1,4 @@
-Time-stamp: <2021-10-13 13:28:43 gorbag>
+Time-stamp: <2022-03-18 15:21:55 gorbag>
 
 This directory contains what should be increasingly complex (in that it exercises more
 nanoinstructions) microcode files. These are loaded by test number in the function
@@ -32,4 +32,10 @@ are run and metered.
          show the stack got compacted into low memory with the highest memory location
          used for the stack also being where the pointer to the next allocatable CONS is.
          
- 
+ test-2: Implement APPEND as described in the AIM. We append together two lists '(1 2) and
+         '(3 4), which because they deal with immediate constants, allows us to avoid the
+         issue of needing an OBTAB for symbols. We also make the memory large enough to
+         avoid GC (already tested in test-1, but we don't yet have the handler/interrupt
+         mechanism set up needed to detect the GC-Needed pin is high and send an interrupt
+         to the GC handler). Our output (the list '(1 2 3 4) ) is left as a pointer in
+         *args* when DONE is reached.

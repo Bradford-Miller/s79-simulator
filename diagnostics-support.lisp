@@ -1,8 +1,14 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Diagnostics" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:13:17 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Diagnostics" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:27:14 gorbag>"
+                                      "0.4 release!")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; xxxxx   1/19/22 remove some TBDs in the comments (they were done already)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -38,7 +44,7 @@
 ;; 0.0.2 08/14/21 Mark both conditional branches as run when we run a
 ;;                   conditional. Later we should check which
 ;;                   particular branch was run to insure complete
-;;                   coverage (TBD)
+;;                   coverage (done: 0.1.3)
 
 ;; 0.0.1 08/13/21 Add focus-function to test suites to call (test);
 ;;                   update-diagnostics fn
@@ -217,7 +223,7 @@
         ;; annotation associated with the pc
 
         ;; note that conditionals will have to be handled specially since it matters if we took the success or fail
-        ;; branch! (TBD)
+        ;; branch!
 
         (mapc #'(lambda (fn)
                   ;; does it name a predicate?

@@ -1,8 +1,46 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 0
-                                      "Time-stamp: <2022-01-13 14:57:35 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:29:06 gorbag>"
+                                      "force type field on intermediate-argument for console presentation")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.9   3/15/22 force type field on intermediate-argument for console
+;;                     presentation purposes (debugging)
+
+;; 0.3.8   2/24/22 add get-type-bits, get-frame-bits, get-displacement-bits,
+;;                     get-address-bits
+
+;; 0.3.7   2/23/22 add from-type to retpc-count-mark
+
+;;         2/21/22 add comment about FROM-TYPE specialness
+
+;; 0.3.6   2/18/22 break out displacement and frame field lengths as parameters
+;;                    add from-type to *exp*
+
+;; 0.3.5   2/11/22 increase micro-pc size to 11 bits (from 10) to support larger
+;;                    microprogram of test-2.
+
+;; 0.3.4   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
+
+;; 0.3.3   1/26/22 add *breakpoint-descs* to have different kinds of
+;;                     breakpoints
+
+;; 0.3.2   1/24/22 add from-decremented-frame and
+;;                     from-decremented-displacement to *exp*
+
+;; 0.3.1   1/24/22 add from-displacement and from-frame to *val*
+;;                     register to implement &val-frame-to-exp-frame
+;;                     and &val-displacement-to-exp-displacement.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -15,7 +53,7 @@
 
 ;; 0.1.13 11/12/21 move break-out-bits-as-integers here (from s79-console)
 
-;; 0.1.12 10/26/21 set up *control-lines* *sense-lines* to help
+;; 0.1.12 10/26/21 set up *control-wires* *sense-wires* to help
 ;;                     "automate" some definition generation
 
 ;; 0.1.11 10/21/21 nano-pc now a bit vector
@@ -51,7 +89,7 @@
 
 ;; 0.1.0   8/20/21 "official" 0.2 release: test-0 passed!
 
-;; 0.0.17     8-16-21 *nanocontrol-line-next-initial-value* instead of a constant
+;; 0.0.17     8-16-21 *nanocontrol-wire-next-initial-value* instead of a constant
 
 ;; 0.0.16     7-20-21 *input-pad-types* *output-pad-types*
 
@@ -80,7 +118,7 @@
 ;;                      types (from microcode defschip declarations)
 
 ;; 0.0.5      1-16-21 move pseudo register declarations here to insure
-;;                      correct reset of nanocontrol lines and expansion
+;;                      correct reset of nanocontrol wires and expansion
 
 ;; 0.0.4      1-12-21 PCs for micro and nano machines, as well as access
 ;;                       functions for the micro and nano code (skeletal)
@@ -116,31 +154,22 @@ machine was in the RUN state")
   "List of microcode addresses that should cause a break. This is
 similar to a HALT but does not attempt to update statistics, warn
 about further processing, etc. Set a breakpoint using the 'Run-Until'
-button.")
+button or the set-breakpoint fn.")
+
+(defvar *breakpoint-descs* nil
+  "List of breakpoint descriptors. This is to allow us to set 
+'permanent' breakpoints in the microcode for debugging certain ufns.")
 
 ;; pointer is 32 bits with 3 fields: 24 bit data, 7 bit type, and 1
 ;; bit (in-use mark) used by storage allocator.
 
-;; NB: the sbit/bit operation puts the high order bit (the one with the largest offset) into the lowest bit based on integer->bit-vector.
-;;     SO we try to be consistent here:
+;; NB: the sbit/bit operation puts the high order bit (the one with the largest
+;;     offset) into the lowest bit based on integer->bit-vector.  SO we try to
+;;     be consistent here:
 ;;
 ;; (s)BIT: 0     1 .. 7   8     ..  19  20-31
 ;;       Mark  ~ptr      DISPLACEMENT  FRAME
 ;;               -TYPE-   ----  ADDRESS  ----
-
-;; to help print out 32 bit values as separate fields
-(defun break-out-bits-as-integers (value)
-  ;; if input is an integer, convert to bit-vector
-  (let ((raw-value (cl:if (integerp value)
-                     (integer->bit-vector value :result-bits *register-size*)
-                     value)))
-    (let ((mark (mark-bit raw-value))
-          (ptr (pointer-bit raw-value))
-          (type (bit-vector->integer (subseq raw-value 1 8))) ; include pointer bit
-          (disp (bit-vector->integer (subseq raw-value 8 20)))
-          (frame (bit-vector->integer (subseq raw-value 20)))
-          (addr (bit-vector->integer (subseq raw-value 8))))
-      (values mark ptr type disp frame addr))))
 
 ;; note that these create aliases (displaced arrays) so you can set
 ;; bits in these and they will set the appropriate bits in the
@@ -150,24 +179,67 @@ button.")
 (defparameter *type-field-length* 7)
 
 (defun make-type-field (x)
-  (make-array *type-field-length* :element-type 'bit :displaced-to x :displaced-index-offset 1))
+  (make-array *type-field-length* :element-type 'bit
+                                  :displaced-to x
+                                  :displaced-index-offset 1))
 
-(defparameter *address-field-length* 24)
+(defparameter *displacement-field-length* 12)
+
+(defparameter *frame-field-length* 12)
+
+(defparameter *address-field-length* (+ *displacement-field-length* *frame-field-length*))
 
 (defparameter *address-field-mask* #0xffffff)
 
 (defparameter *data-field-length* *address-field-length*)
 
+(defparameter *type-bit-field-end* (- *word-size* *address-field-length*))
+
+(defparameter *displacement-bit-field-end* (- *word-size* *frame-field-length*))
+
 (defun make-data-field (x)
   "Also used for the address field"
-  (make-array *data-field-length* :element-type 'bit :displaced-to x :displaced-index-offset 8))
+  (make-array *data-field-length* :element-type 'bit
+                                  :displaced-to x
+                                  :displaced-index-offset 8))
 
 ;; for those registers that have it
 (defun make-displacement-field (x)
-  (make-array 12 :element-type 'bit :displaced-to x :displaced-index-offset 8))
+  (make-array *displacement-field-length* :element-type 'bit
+                                          :displaced-to x
+                                          :displaced-index-offset 8))
 
 (defun make-frame-field (x)
-  (make-array 12 :element-type 'bit :displaced-to x :displaced-index-offset 20))
+  (make-array *frame-field-length* :element-type 'bit
+                                   :displaced-to x
+                                   :displaced-index-offset 20))
+
+;; for when we don't have fields
+(defun get-type-bits (x)
+  (subseq x 1 *type-bit-field-end*))
+
+(defun get-displacement-bits (x)
+  (subseq x *type-bit-field-end* *displacement-bit-field-end*))
+
+(defun get-frame-bits (x)
+  (subseq x *displacement-bit-field-end*))
+
+(defun get-address-bits (x)
+  (subseq x *type-bit-field-end*))
+
+;; to help print out 32 bit values as separate fields
+(defun break-out-bits-as-integers (value)
+  ;; if input is an integer, convert to bit-vector
+  (let ((raw-value (cl:if (integerp value)
+                     (integer->bit-vector value :result-bits *register-size*)
+                     value)))
+    (let ((mark (mark-bit raw-value))
+          (ptr (pointer-bit raw-value))
+          (type (bit-vector->integer (get-type-bits raw-value))) ; include pointer bit
+          (disp (bit-vector->integer (get-displacement-bits raw-value)))
+          (frame (bit-vector->integer (get-frame-bits raw-value)))
+          (addr (bit-vector->integer (get-address-bits raw-value))))
+      (values mark ptr type disp frame addr))))
 
 ;; list node (a cons) has two pointers (called CAR and CDR). This is
 ;; the unit of memory allocation!
@@ -190,7 +262,7 @@ button.")
 ;; building process... so we can be free to configure these for our
 ;; FPGA process here (or in a new FPGA project-specific file... TBD)
 
-;; 10/26/21 write up the names of the sense and control lines
+;; 10/26/21 write up the names of the sense and control wires
 ;; separately so we can refer to them in other parts of the code (and
 ;; move toward having only one place to establish a new control or
 ;; sense)
@@ -199,18 +271,19 @@ button.")
 ;; of the bus using nanocode
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *control-lines*
+  (defparameter *control-wires*
     '(to to-type to-displacement to-frame to-address from
-      from-decremented from-incremented from-type mark! unmark! pointer!
-      type!))
+      from-decremented from-incremented from-decremented-frame
+      from-decremented-displacement
+      from-type mark! unmark! pointer! type!))
 
-  (defparameter *sense-lines*
+  (defparameter *sense-wires*
     '(address=bus type=bus =bus mark-bit not-mark-bit type-not-pointer
       type=pointer type=type frame=0 displacement=0 address=0))
 
-  (eval `(defflags register ,@*control-lines* ,@*sense-lines*))
+  (eval `(defflags register ,@*control-wires* ,@*sense-wires*))
 
-  ;; note that many of these control lines define covering sets for
+  ;; note that many of these control wires define covering sets for
   ;; others.  so if we want to write TO a register, but it only has
   ;; TO-TYPE and TO-ADDRESS controls, we can use the latter to
   ;; substitute for the former. Declare those relationships here.
@@ -218,19 +291,30 @@ button.")
   (declare-covering-set 'to 'to-type 'to-address) ; ignore mark-bit - handled separately regardless
   
   (declare-covering-set 'to-address 'to-displacement 'to-frame)
+  ;; NB: we don't cover FROM because every registers from which we can legit
+  ;; copy the whole register already has FROM declared. And from-type takes
+  ;; advantage of that to copy bits directly to the low order bits on the bus!
+  ;; (TBD: in the chip these bits were handled separately from the bus with
+  ;; their own MUX into the Micro-PC register. The current version of the
+  ;; emulator doesn't do that to take advantage of the existing infrastructure
+  ;; but we should add that to a future release, effectively setting up a
+  ;; parallel bus (and we'll want to handle multiple buses in the future
+  ;; anyway!))
   )
 
 ;; if we're recompiling this file, we need to reset the counter for nanocontrol bits, lest they get out of hand
 (eval-when (:compile-toplevel)
-  (setq *nanocontrol-line-next* *nanocontrol-line-next-initial-value*)
+  (setq *nanocontrol-wire-next* *nanocontrol-wire-next-initial-value*)
   (reset-sense-wire-encoding))
 
 (defchip-reg *bus*)
-;; added control lines for setting/unsetting special bits on the bus
+;; added control wires for setting/unsetting special bits on the bus
 ;; also add not-mark-bit (presumably we'd have an inverter in the fpga
-;; so wouldn't need another sense line, but this is closer than using
+;; so wouldn't need another sense wire, but this is closer than using
 ;; logic)
-(defureg *bus* (mark! unmark! type! pointer!) (mark-bit not-mark-bit type=pointer type=type frame=0 displacement=0 address=0))
+(defureg *bus*
+    (mark! unmark! type! pointer!)
+  (mark-bit not-mark-bit type=pointer type=type frame=0 displacement=0 address=0))
 
 ;; bus doesn't really have proper declarations
 (defvar *bus-frame* (make-frame-field *bus*))
@@ -264,21 +348,26 @@ button.")
 (defchip-reg *exp*)
 (defchip-reg *scan-down* *exp*)
 
-(defureg *exp* (to-type to-displacement to-frame from from-decremented) ())
+;; BWM add from-decremented-frame and from-decremented-displacement 1/24/22
+;; BWM add from-type 2/18/22
+(defureg *exp* (to-type to-displacement to-frame
+                from from-decremented from-decremented-frame from-decremented-displacement from-type) ())
 
 ;; VAL the value of the expression when determined
 (defchip-reg *val*)
 (defchip-reg *rel-tem-2* *val*)
 (defchip-reg *stack-top* *val*)
 
-(defureg *val* (to-type to-address from) (type=bus address=bus =bus))
+;; added from-displacement and from-frame to implement &val-frame-to-exp-frame, etc. 1/24/22 BWM
+(defureg *val* (to-type to-address from from-displacement from-frame) (type=bus address=bus =bus))
 
 ;; RETPC-COUNT-MARK "used in increment operations to store
 ;; intermediate values because our registers are not dual rank. It is
 ;; also used for storing microcode return addresses for use in
 ;; microcode subroutines"
 (defchip-reg *retpc-count-mark*)
-(defureg *retpc-count-mark* (to-type to-address from) ())
+(defureg *retpc-count-mark* (to-type to-address from
+                                     from-type) ()) ;; added 2/23/22
 
 ;; ARGS when args for a procedure call are being evaluated at each
 ;; step the result in VAL is added to the list of already evaluaged
@@ -312,7 +401,7 @@ button.")
 
 ;; INTERMEDIATE-ARGUMENT used by microcode compiler for storing anonymous temporaries
 (defchip-reg *intermediate-argument*)
-(defureg *intermediate-argument* (to from) ())
+(defureg *intermediate-argument* (to from) () t) ; force type field for debugging (will present in console)
 
 ;; NIL a pointer to nil - it's a dummy register and can't be set (in the hardware, anyway).
 (defchip-reg *nil*)
@@ -363,7 +452,8 @@ button.")
 ;; 10/20/21 - make the micro-pc a register for conformance to hardware implementation
 ;;            and to support loading it from the nanocode (e.g. dispatch) to get the
 ;;            timing right
-(defparameter *micro-pc-size* 10
+;;  2/11/22 - increase from 10 to 11 bits to support test-2.
+(defparameter *micro-pc-size* 11
   "bits in the micropc")
 
 (defparameter *micro-pc-max-address*
@@ -400,11 +490,12 @@ is more efficient."
       (get-pc-ucode symbol)))
 
 (defun get-nanocode (symbol)
-  "given the symbolic opcode for a bit of naocode, this retreives the associated offset into the code/controller table"
+  "given the symbolic opcode for a bit of naocode, this retreives the
+associated offset into the code/controller table"
   ;; similar to get-microcode, this is not exactly how the real
   ;; hardware would work. We'll get to that level of emulation soon I
   ;; hope, but this has the advantage of being able to present the
   ;; actual source code and then the machine version of that
-  ;; (essentially setting control lines to be emulated that moves data
+  ;; (essentially setting control wires to be emulated that moves data
   ;; around the registers and pads)
   (cdr (assoc symbol *nanocontrol-symtab*)))

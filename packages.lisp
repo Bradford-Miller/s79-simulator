@@ -1,11 +1,38 @@
 (in-package :cl-user)
 (defvar *scheme-79-version-reporter-initializations* nil)
 
-(cl-lib:detailed-version-reporter "Scheme 79 defpackages" 0 3 1
-                                  "Time-stamp: <2022-01-13 14:00:53 gorbag>"
-                                  "internal-freeze -> run-nano"
+(cl-lib:detailed-version-reporter "S79 defpackages" 0 4 0
+                                  "Time-stamp: <2022-03-18 15:30:31 gorbag>"
+                                  "import *stack* for external-chips (dump-memory usage)"
                                   :initialization-list-symbol
                                   *scheme-79-version-reporter-initializations*)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.9   3/18/22 make sure we create the *stack* symbol since we haven't loaded the file that does so yet
+
+;; 0.3.8   3/15/22 import *stack* into external-chips so dump-memory can use it to 
+;;                    trace the stack
+
+;; 0.3.7   2/18/22 export *frame-field-length* and *displacement-field-length*
+
+;; 0.3.6   2/15/22 note-breakpoint-reached
+
+;; 0.3.5   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
+
+;; 0.3.4   1/26/22 *breakpoint-descs*
+
+;; 0.3.3   1/24/22 *mask-interrupts*
+
+;; 0.3.2   1/21/22 new s-code package for the (future) s-code compiler
 
 ;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
 ;;                    for consistancy with AIM
@@ -39,8 +66,8 @@
 
 ;; 0.1.28 12/ 2/21 moving some defns from :scheme-mach to :fpga-pla-build-tools
 
-;; 0.1.27 10/26/21 export from-type stuff and new *control-lines*
-;;                   *sense-lines*
+;; 0.1.27 10/26/21 export from-type stuff and new *control-wires*
+;;                   *sense-wires*
 
 ;; 0.1.26 10/21/21 export *nano-pc-size*, *nano-pc-max-address*
 ;;                   import :fpga-plas where it will be needed
@@ -62,7 +89,7 @@
 ;;                    (won't need to say cl:if anymore which is the
 ;;                    far more common case than scheme-79-mcr:if)
 
-;; 0.1.18  9/24/21 export mark! etc as control lines (so console sees
+;; 0.1.18  9/24/21 export mark! etc as control wires (so console sees
 ;;                    them). Should automate on declaration (TBD)
 
 ;; 0.1.18  9/20/21 move clock support init lists to :fpga-clocked
@@ -75,7 +102,7 @@
 ;; 0.1.15  9/14/21 add new support packages: fpga-combinatorics and
 ;;                    fpga-clocked
 
-;; 0.1.14  9/13/21 debug-compile-line: a debug version of compile line
+;; 0.1.14  9/13/21 debug-compile-expression: a debug version of compile expression
 ;;                    exported from :scheme-79 and writes to
 ;;                    *standard-output* instead of the intermediate
 ;;                    file to check if the compiler is working. Note,
@@ -216,7 +243,7 @@
 
            ;; for debugging
            #:disassemble-microcontrol-array
-           #:debug-compile-line
+           #:debug-compile-expression
            #:dump-memory #:dump-memory-with-types #:clear-memory
 
            ;; debug flags
@@ -282,7 +309,7 @@
    #:*cold-boot-memory-array*
 
    ;; not part of the original scheme-79 chip, but useful!
-   #:*halt-address* #:*breakpoints*
+   #:*halt-address* #:*breakpoints* #:*breakpoint-descs*
    ))
 
 ;; while this was originally intended to be limited to stuff specific
@@ -302,10 +329,12 @@
 
   (:export
    #:*address-field-length* #:*address-field-mask* #:data-field-length* #:*type-field-length*
+   #:*displacement-field-length* #:*frame-field-length*
    
    #:*maximum-memory-size* #:*maximum-memory-content*
 
    ;; parsing out words
+   #:get-type-bits #:get-displacement-bits #:get-frame-bits #:get-address-bits
    #:break-out-bits-as-integers
 
    ;; internal version of the clock
@@ -330,19 +359,21 @@
    ;; all the registers pads & &forms should be automatically
    ;; exported, but sometimes there are ordering difficulties...
    #:*reset* #:*ale* #:*freeze* #:*read* #:*read-state* #:*load-state*
-   #:*interrupt-request* #:*run-nano* #:*write* #:*cdr*
+   #:*interrupt-request* #:*write* #:*cdr* 
    #:*read-interrupt* #:*gc-needed*
+   ;; pseudo pads
+   #:*conditional* #:*run-nano* #:*mask-interrupts*
 
    ;; names of the control and sense wires
    #:to #:to-type
    #:to-displacement #:to-frame #:to-address #:from #:from-decremented
    #:from-incremented #:from-type #:mark! #:unmark! #:type! #:pointer!
-   #:*control-lines*
+   #:*control-wires*
 
    #:address=bus #:type=bus #:=bus #:mark-bit
    #:pointer-bit #:type-not-pointer #:frame=0 #:displacement=0
    #:address=0 #:type=pointer #:type=type
-   #:*sense-lines*
+   #:*sense-wires*
 
    #:from-type-const ;; special
 
@@ -368,7 +399,7 @@
 
    ;; internal timing
    #:*run-microcontroller* #:*run-external-data-transfer* #:*run-nanocontroller-p1*
-   #:*run-register-controls* #:*update-sense-lines* #:*run-nanocontroller-p2*
+   #:*run-register-controls* #:*update-sense-wires* #:*run-nanocontroller-p2*
 
    ;; microcode and nanocode compilation support - sets up bit
    ;; encoding for register references, for instance
@@ -392,6 +423,11 @@
    #:machine-ready-p
    ))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  ;; this symbol isn't defined when we first load this file, so create it here so we can import it
+  (export (list (intern "*STACK*" (find-package 'microlisp-shared))) (find-package 'microlisp-shared)))
+
+
 ;; while this is mostly specific to the scheme-79 chip, it is
 ;; specifically about external support chips (like memory) that are
 ;; supporting using the chip (decoding the pads, and pretending to act
@@ -408,13 +444,15 @@
   (:import-from :scheme-mach #:*reset* #:*ale*
                 #:*freeze* #:*read* #:*read-state* #:*load-state* #:*interrupt-request*
                 #:*write* #:*cdr* #:*read-interrupt* #:*gc-needed* #:*run-nano*
-                
-                #:*input-pad-types* #:*output-pad-types*
+
+                #:*input-pad-types* #:*output-pad-types* #:get-address-bits 
 
                 #:*test-ale-to-expect-address* #:*get-address-from-pads* #:*put-memory-content-onto-pads*
                 #:*get-memory-content-from-pads* #:*test-for-read-interrupt*
 
                 #:*address-field-length* #:*address-field-mask* #:data-field-length* #:*type-field-length*)
+  (:import-from :microlisp-shared #:*stack*)
+
   (:export
    ;; some debug-useful functions dealing with "external" memory
    #:*warn-when-beyond-memtop* #:compare-memory
@@ -464,27 +502,37 @@
   (:shadowing-import-from :scheme-79-mcr-i #:find-likely-microcode-tag #:microcodes-used
                           #:get-uc-annotation)
 
-  (:export #:*halt-address*
+  (:export 
+   #:*halt-address*
+   #:note-breakpoint-reached
+   
+   #:*dso* #:*console*
 
-           #:*dso* #:*console*
-
-           #:clear-register-description-pane
+   #:clear-register-description-pane
            
-           #:update-microinstruction-metrics
-           #:*diagnostics-interface* #:redraw-diagnostics
-           #:update-diagnostics #:reset-uinstruction-metrics
-           #:update-predicates #:update-test-suites
-           #:update-microtests #:update-nanotests
-           #:dw1-tests #:dw2-tests #:dw3-tests #:dw4-tests))
+   #:update-microinstruction-metrics
+   #:*diagnostics-interface* #:redraw-diagnostics
+   #:update-diagnostics #:reset-uinstruction-metrics
+   #:update-predicates #:update-test-suites
+   #:update-microtests #:update-nanotests
+   #:dw1-tests #:dw2-tests #:dw3-tests #:dw4-tests))
 
 ;; while i'm not curently using this package yet, the intent is this
 ;; is where the scheme langage and ->s-code functions would go,
 ;; essentially giving us a higher level interface to an abstract
 ;; "scheme machine" which then gets implemented by the scheme-79 chip.
 ;; as well as a cross-compiler to the machine
+(defpackage :s-code
+  ;; internal code for the s-code compiler
+  (:use :cl-lib common-lisp)
+  (:export
+   ))
+
 (defpackage :scheme
-  ;; public face we want to define our own special set of scheme-lisp
-  ;; fns - this prevents us from using the standard packages
+  ;; public face for scheme itself (upon which we can call the s-code
+  ;; compiler to prepare code for the chip) we want to define our own
+  ;; special set of scheme-lisp fns - this prevents us from using the
+  ;; standard packages
   (:use :fpga-project-defs :common :scheme-79) 
   (:export
    ))

@@ -1,8 +1,23 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme-79 Nanocode" 0 3 1
-                                      "Time-stamp: <2022-01-18 12:28:23 gorbag>"
-                                      "fix symbols of form <reg>-to-<field>")
+(scheme-79:scheme-79-version-reporter "S79 Nanocode" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:30:57 gorbag>"
+                                      "disambiguate")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.3   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
+
+;; 0.3.2   1/25/22 add do-decrement-frame and do-decrement-displacement
+;;                     nanocodes
 
 ;; 0.3.1   1/13/21 fix symbols of form <reg>-to-<field>; should be
 ;;                     to-<field>-<reg> following TR
@@ -125,17 +140,17 @@
 ;; so first let's define the terms that can come inside of a defnano
 ;; form: from* and to* are anaphors for the from and to fields of the
 ;; current microcode instruction, while other things are operations
-;; that trigger control lines to be set and then shifted out at the
+;; that trigger control wires to be set and then shifted out at the
 ;; right time based on the clock.  We'll incorporate the example,
 ;; above into our definitions.
 
 ;; from* - anaphor for whatever register is in the FROM field of the
 ;;         current microinstruction. It should be moved to the bus,
-;;         so set the from control line for that register.
+;;         so set the from control wire for that register.
 
 ;; to*   - anaphor for whatever register is in the TO field of the
 ;;         current microinstruction. It should be filled from the bus,
-;;         so set the to control line for that register.
+;;         so set the to control wire for that register.
 
 ;; ale   - put the current content of the bus into the *address*
 ;;         register, set *address-pads* at the right time, and set
@@ -160,8 +175,8 @@
 ;; from-stack
 ;; to-address-stack
 ;; to-type-stack
-;;       - these all specify a control line and a particular register,
-;;         i.e. a particular control line.
+;;       - these all specify a control wire and a particular register,
+;;         i.e. a particular control wire.
 
 ;; gc-needed
 ;;       - set *gc-needed* output and latch high
@@ -205,51 +220,9 @@
 (defnano (microlisp-shared::mover) ; move between registers (specified by the microcode)
     ((from* to*) ()))
 
-;; specialized versions (can't use to* because they don't support a TO
-;; control).  presumably I can figure out how to simplify these later,
-;; but they are unique control lines... [8/27/21 BWM seems like that
-;; ORing concept isn't so bad since this kind of promiscuous use of
-;; different nanocodes could be avoided... [TBD]]
-;(defnano (microlisp-shared::move-to-stack)
-;  ((from*) (to-address-stack to-type-stack)))
-
-;(defnano (microlisp-shared::move-to-newcell)
-;  ((from*) (to-address-newcell to-type-newcell)))
-
-;(defnano (microlisp-shared::move-to-exp)
-;  ((from*) (to-type-exp to-frame-exp to-displacement-exp)))
-
-;(defnano (microlisp-shared::move-to-val)
-;  ((from*) (to-type-val to-address-val)))
-
-;(defnano (microlisp-shared::move-to-retpc-count-mark)
-;  ((from*) (to-type-retpc-count-mark to-address-retpc-count-mark)))
-
 (defnano (microlisp-shared::do-car)
   ((from*) (ale))
   ((to*) (read)))
-
-#||
-(defnano (microlisp-shared::do-car-to-stack)
-    ((from*) (ale))
-  ((to-address-stack to-type-stack) (read)))
-
-(defnano (microlisp-shared::do-car-to-retpc-count-mark)
-    ((from*) (ale))    
-  ((to-address-retpc-count-mark to-type-retpc-count-mark) (read)))
-
-(defnano (microlisp-shared::do-car-to-val)
-    ((from*) (ale))    
-  ((to-address-val to-type-val) (read)))
-
-(defnano (microlisp-shared::do-car-to-exp)
-    ((from*) (ale))    
-  ((to-frame-exp to-displacement-exp to-type-exp) (read)))
-
-(defnano (microlisp-shared::do-car-to-newcell)
-    ((from*) (ale))    
-  ((to-address-newcell to-type-newcell) (read)))
-||#
 
 ;; should be able to automatically generate this within defnano (microlisp-shared::TBD)
 (defparameter *from-to-nano-operations* '(microlisp-shared::write-car
@@ -262,41 +235,15 @@
 
 ;; note that the notes in the GC section indicate that rplaca/rplacd operations (below) always clear the mark bit.
 
+;; only generated in rplaca
 (defnano (microlisp-shared::write-car)
   ((from-to*) (ale))
   ((from* unmark!-bus) (write)))
-
-#||
-(defnano (microlisp-shared::writei-car-of-stack)
-    ((from-stack) (ale))
-  ((from* unmark!-bus) (write)))
-
-(defnano (microlisp-shared::writei-car-of-newcell)
-    ((from-newcell) (ale))
-  ((from* unmark!-bus) (write)))
-
-(defnano (microlisp-shared::writei-car-of-exp)
-    ((from-exp) (ale))
-  ((from* unmark!-bus) (write)))
-
-(defnano (microlisp-shared::writei-car-of-val)
-    ((from-val) (ale))
-  ((from* unmark!-bus) (write)))
-
-(defnano (microlisp-shared::writei-car-of-retpc-count-mark)
-    ((from-retpc-count-mark) (ale))
-  ((from* unmark!-bus) (write)))
-||#
 
 (defnano (microlisp-shared::write-and-mark-car)
   ((from-to*) (ale clear-gc)) ; setting mark means we can clear the gc-needed pad
   ((from* mark!-bus) (write)))
 
-#||
-(defnano (microlisp-shared::writei-and-mark-car-of-newcell) ; going to generate these specialized versions on an as-needed basis now until I can automate
-  ((from-newcell) (ale))
-  ((from* mark!-bus) (write)))
-||#
 (defnano (microlisp-shared::write-and-unmark-car :force-add t) ; technically not needed but distinguish for debugging
   ((from-to*) (ale))
   ((from* unmark!-bus) (write)))
@@ -313,79 +260,18 @@
    ((from*) (ale))    
   ((to*) (read cdr)))
 
-#||
-(defnano (microlisp-shared::do-cdr-to-stack)
-    ((from*) (ale))    
-  ((to-address-stack to-type-stack) (read cdr)))
-
-(defnano (microlisp-shared::do-cdr-to-retpc-count-mark)
-    ((from*) (ale))    
-  ((to-address-retpc-count-mark to-type-retpc-count-mark) (read cdr)))
-
-(defnano (microlisp-shared::do-cdr-to-val)
-    ((from*) (ale))    
-  ((to-address-val to-type-val) (read cdr)))
-
-(defnano (microlisp-shared::do-cdr-to-exp)
-    ((from*) (ale))    
-  ((to-frame-exp to-displacement-exp to-type-exp) (read cdr)))
-
-(defnano (microlisp-shared::do-cdr-to-newcell)
-    ((from*) (ale))    
-  ((to-address-newcell to-type-newcell) (read cdr)))
-||#
-
+;; only generated in rplacd
 (defnano (microlisp-shared::write-cdr :force-add t) ; distinguish from write-and-unmark-cdr for debugging
     ((from-to*) (ale))
   ((from* unmark!-bus) (write cdr)))
-
-#||
-(defnano (microlisp-shared::writei-cdr-of-stack)
-    ((from-stack) (ale))
-  ((from*) (write cdr)))
-
-(defnano (microlisp-shared::writei-cdr-of-newcell)
-    ((from-newcell) (ale))
-  ((from*) (write cdr)))
-
-(defnano (microlisp-shared::writei-cdr-of-exp)
-    ((from-exp) (ale))
-  ((from*) (write cdr)))
-(defnano (microlisp-shared::writei-cdr-of-val)
-    ((from-val) (ale))
-  ((from*) (write cdr)))
-
-(defnano (microlisp-shared::writei-cdr-of-retpc-count-mark)
-    ((from-retpc-count-mark) (ale))
-  ((from*) (write cdr)))
-||#
 
 (defnano (microlisp-shared::do-restore) ; pop the stack
    (() (from-stack ale))
    ((to*) (read))
   (() (read cdr to-address-stack to-type-stack)))
 
-#||
-(defnano (microlisp-shared::do-restore-retpc-count-mark)
-    (() (from-stack ale))
-  (() (read to-address-retpc-count-mark to-type-retpc-count-mark))
-  (() (read cdr to-address-stack to-type-stack)))
-
-(defnano (microlisp-shared::do-restore-val)
-    (() (from-stack ale))
-  (() (read to-address-val to-type-val))
-  (() (read cdr to-address-stack to-type-stack)))
-
-(defnano (microlisp-shared::do-restore-exp)
-    (() (from-stack ale))
-  (() (read to-displacement-exp to-frame-exp to-type-exp))
-  (() (read cdr to-address-stack to-type-stack)))
-
-(defnano (microlisp-shared::do-restore-newcell)
-    (() (from-stack ale))
-  (() (read to-address-newcell to-type-newcell))
-  (() (read cdr to-address-stack to-type-stack)))
-||#
+;; note these are destination specific; we probably should add
+;; mechanism to allow them to be handled via to* destination. (TBD)
 
 (defnano (microlisp-shared::do-set-type-exp)
     ((from*) (to-type-exp)))
@@ -424,7 +310,7 @@
 ;; conditionals. When we have a conditional, if there is a FROM
 ;; register it gets loaded onto the bus (allowing comparison). The TO
 ;; field in the microcode is taken as the condition(s) instead of a
-;; register. These sense lines are ORed together and affect the low
+;; register. These sense wires are ORed together and affect the low
 ;; order bit of the microcontroller's NEXT field (what it's PC will be
 ;; loaded to for the next instruction). For symmetry, the
 ;; nanocontroller does this setup.
@@ -468,6 +354,14 @@
 (defnano (microlisp-shared::do-decrement-scan-down)
     (() (from-decremented-exp to-frame-exp to-type-exp to-displacement-exp))) ; scan-down is alias for exp
 
+(defnano (microlisp-shared::do-decrement-frame)
+    (() (from-decremented-frame-exp to-frame-exp)))
+
+(defnano (microlisp-shared::do-decrement-displacement)
+    (() (from-decremented-displacement-exp to-displacement-exp)))
+
+;; I believe Scheme-79 had a PADS source/destination so read would have PADS in the from field
+
 (defnano (microlisp-shared::do-read-from-pads)
   ((to*) (read))) ; no address - the pads are loaded by external circuitry for debugging
 
@@ -481,13 +375,13 @@
     (() (clear-gc)))
 
 ;; dispatch. This pulls from a register onto the bus then sets a
-;; control line that will push the appropriate field into the
+;; control wire that will push the appropriate field into the
 ;; *micro-pc* (which maybe should be a register itself?)
 (defnano (microlisp-shared::type-dispatch)
     ;; want to use the microcode's FROM register but pull out the type
     ;; field and set our micro-pc to that (which should be a jump
     ;; table)
-  ((from*-type) (to-micro-pc)))
+    ((from*-type) (to-micro-pc)))
 
 ;; that's all the nano definitions - finalize the array in bitvector form
 (eval-when (:load-toplevel)

@@ -1,18 +1,48 @@
 (in-package :scheme-mach) ; pull into scheme-mach so all the defufn can see them
 
-(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 1
-                                      "Time-stamp: <2022-01-18 12:47:12 gorbag>"
-                                      "cleanup special register treatment")
+(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:26:47 gorbag>"
+                                      "fix status message from defrplacop")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.9   2/24/22 defrplacop status message had typo in operative clause
+
+;; 0.3.8   2/14/22 &global-value is an alias for &car so
+;;                    from-direct-register-p should treat it that way.
+
+;; 0.3.7   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
+
+;; 0.3.6   2/ 4/22 mostly revoke 9/14/21 patch in light of other
+;;                   rewrites, it was overly ambitious
+
+;; 0.3.5   2/ 2/22 use intentional upla fns
+
+;; 0.3.4   1/31/22 refreplacop - leverage *constituent-assignment-fn* so
+;;                    &cons does the right thing.
+
+;; 0.3.3   1/27/22 generate-ucode: when asserting nano-op not defined, report
+;;                    which one
+
+;; 0.3.2   1/24/22 compile-expression now errors out when an undefined opcode is used.
 
 ;; 0.3.1   1/18/22 cleanup obsolete code: removing special treatment of registers
-;;                    which required multiple control lines for TO as new covering
-;;                    set computation deals with it.
+;;                    which required multiple control wires for TO as new
+;;                    covering set computation deals with it.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; 0.1.12  1/ 7/22 moved method for compile-line here; toplevel is now
+;; 0.1.12  1/ 7/22 moved method for compile-expression here; toplevel is now
 ;;                    in support files and this is the "interface" fn to
 ;;                    the project (for now)
 
@@ -47,7 +77,7 @@
 ;; 0.1.5   9/27/21 scheme-79-mcr:progn, if, cond
 
 ;; 0.1.4   9/14/21 Compile-parameter: detect if code already written (so
-;;                   return value supressed from function application)
+;;                   return value suppressed from function application)
 ;;                   and if so, don't try to write the NIL to the
 ;;                   upla-stream!
 
@@ -166,32 +196,37 @@
 ;; [44: MARK-NODE-3] CONDITION-BIT CLEAR (even) - typically 'fail'
 ;; [45: MARK-NODE-1] CONDITION-BIT SET (odd) - typically 'success'
 
-;; for the current release, compile-line is the primary interface to
-;; the project-specific code to compile the microlisp. The second
-;; interface is to the assembler passes. See ulisp-assembler.lisp and
-;; upla-assembler.lisp
-(defmethod compile-line (line)
+;; for the current release, compile-expression is the primary interface to the
+;; project-specific code to compile the microlisp. The second interface is to
+;; the assembler passes. See ulisp-assembler.lisp and upla-assembler.lisp
+(defmethod compile-expression (expression)
+  (declare (type list expression)) ; so we remember it's not a string
   (let* ((*from-register* nil)
          (*to-register* nil)
-         (*line-opcode* (car line))
-         (opcode-fn (opcode-fn *line-opcode*))
-         (opcode-fn-type (ucode-precedence *line-opcode*)))
+         (*expression-opcode* (car expression))
+         (opcode-fn (opcode-fn *expression-opcode*))
+         (opcode-fn-type (ucode-precedence *expression-opcode*)))
     
     (cl:cond
-      ((eql opcode-fn-type :args-first)
-       (write-generated-code *upla-stream* line
-                             ;; supress internal code generation 9/13/21 BWM
-                             (let ((*upla-stream* nil))
-                               (apply opcode-fn (mapcar #'(lambda (x) (compile-parameter *upla-stream* x)) (cdr line))))
-                             "compile-line"))
-      (t
-       (compile-parameter-args-last *upla-stream* *line-opcode* opcode-fn (cdr line))
-       ))))
+     ((null opcode-fn)
+      (error "Opcode ~s has not been defined!" *expression-opcode*))
+     ((eql opcode-fn-type :args-first)
+      (write-generated-code *upla-stream* expression
+                            ;; suppress internal code generation 9/13/21 BWM
+;                            (let ((*upla-stream* nil))
+                            (apply opcode-fn (mapcar #'(lambda (x)
+                                                         (compile-parameter *upla-stream* x))
+                                                     (cdr expression)))
+                            "compile-expression"))
+     (t
+      (compile-parameter-args-last *upla-stream* *expression-opcode* opcode-fn (cdr expression) expression)
+      ))))
 
-;; useful for calling compile-line interactively
-(defun debug-compile-line (line)
+;; useful for calling compile-expression interactively
+(defun debug-compile-expression (exp)
+  (declare (type list exp)) ; so we remember it's not a string
   (let ((*upla-stream* cl:*standard-output*))
-    (compile-line line)))
+    (compile-expression exp)))
 
 ;; this is specific to Scheme-79 I think
 (defvar *intermediate-in-use* nil)
@@ -213,7 +248,7 @@
     (setq to (translate-alias (car to))))
 
   (let ((nano-op (cdr (assoc nano-operation *nanocontrol-symtab*))))
-    (assert nano-op (nano-operation) "Nano operation not defined?")
+    (assert nano-op (nano-operation) "Nano operation ~s not defined?" nano-operation)
     (list
      tag ;; will be next-ustate if this is a multi-u-instruction op
      nano-op
@@ -285,42 +320,44 @@ this one."
      (get-sense-wire-encoding sense-bit)))) ;to (overloaded with condition)
 
 ;; probably a better way to do this, but wait until I get things
-;; working then refactor! (i.e. make all work like &cons)
-(defun compile-parameter-args-last (stream opcode opcode-fn parameter-list)
-  (let ((line `(,opcode ,@parameter-list))) ; probably should just pass it...
+;; working then refactor! (e.g., make all work like &cons ?)
+(defvar *current-expression* nil
+  "The current expression we are working on")
+
+(defun compile-parameter-args-last (stream opcode opcode-fn parameter-list original-parameter)
+  (declare (ignore stream)) ; for now
+  (let ((*current-expression* original-parameter))
     (ecase opcode
       ;; these do own compilation (may want to make adding to this
       ;; list declaration-based)
       ((&cons microlisp:progn microlisp:cond microlisp:if)
        ;; may want to pass stream too... for now use the bound *upla-stream*
        (apply opcode-fn parameter-list))
-      (save
+      ((assign &rplaca &rplacd
+                &rplaca-and-mark! &rplaca-and-unmark! 
+                &rplacd-and-mark-car-being-traced! &rplacd-and-mark-car-trace-over!) ; moved assign here 1/28/22 BWM
+       (let ((*upla-suppress-annotation* *upla-suppress-annotation*))
+         (unless (from-direct-register-p (cadr parameter-list) opcode)
+           (upla-write-code-annotation original-parameter)
+           (setq *upla-suppress-annotation* t))
+         (funcall opcode-fn (car parameter-list) (cadr parameter-list))))
+      ((save)
        ;; code gets generated recursively
-       (upla-write-comment "~s:" line) ; make sure the save itself gets into the log
+       (upla-write-code-annotation original-parameter) ; make sure the save itself gets into the log
        (funcall opcode-fn (car parameter-list))) ; will generate the code
-      (assign
-       (funcall opcode-fn (car parameter-list) (cadr parameter-list)) ; sets up special vars
-       (let ((*enclosing-opcode* 'assign))
-         (write-generated-code stream line (compile-parameter stream (cadr parameter-list)) "cpal assign")))
-      ((&rplaca &rplacd
-        &rplaca-and-mark! &rplaca-and-unmark! 
-        &rplacd-and-mark-car-being-traced! &rplacd-and-mark-car-trace-over!)
-       ;; treat as :args-last so we can capture the arguments
-       (write-generated-code stream
-                             line
-                             (funcall opcode-fn
-                                      (car parameter-list)
-                                      (cadr parameter-list)))))))
+      ((&global-value &car &cdr) ; already captures the expression in the output file
+       (funcall opcode-fn (car parameter-list))))))
   
 (defun compile-parameter (stream arg &optional (check-args-first-p t))
-  "Similar to compile line, but while a 'line' is toplevel, an 'arg'
+  "Similar to compile expression, but while a 'expression' is toplevel, an 'arg'
 is an argument to another opcode (but may itself be an function)"
   (cl:cond
     ((consp arg)
-     (let* ((opcode (car arg)) ; maintain the globals from compile-line
+     (let* ((opcode (car arg)) ; maintain the globals from compile-expression
             (opcode-fn (opcode-fn opcode))
             (opcode-fn-type (ucode-precedence opcode))
             (opcode-constituent-p (ucode-constituent opcode))
+            (opcode-suppress-logging-p (ucode-suppress-logging opcode))
             (*enclosing-opcode* (cl:cond
                                   ;; ignore macro-fns like cond
                                   ((member *enclosing-opcode* *defumac-macros*)
@@ -328,7 +365,8 @@ is an argument to another opcode (but may itself be an function)"
                                   ((not (null *enclosing-opcode*))
                                    *enclosing-opcode*)
                                   (t
-                                   *line-opcode*))))
+                                   *expression-opcode*)))
+            )
        (assert opcode-fn (arg) "compile-parameter: ~s is not a defined opcode!" opcode)
        (assert opcode-fn-type (arg) "compile-parameter: ~s does not have a valid precence!" opcode)
        (cl:cond
@@ -339,55 +377,68 @@ is an argument to another opcode (but may itself be an function)"
             ;; if we already generated the code, the result will be nil and we can go on
             (when code
               (write-generated-code
-               (cl:if opcode-constituent-p
-                 nil ; this will supress writing to the pass0 file if it is a constitutent - we're called recursively.
+               (cl:if (or opcode-constituent-p opcode-suppress-logging-p)
+                 nil ; this will suppress writing to the pass0 file if it is a constitutent - we're called recursively.
                  stream)
                arg
                code
                "cp"))))
          (check-args-first-p
-          (error "compile-parameter: embedded args-last opcode?! ~s (fn: ~s line: ~s)"
-                 arg *function-being-compiled* *line-opcode*))
+          (error "compile-parameter: args-first expected; embedded args-last opcode?! ~s (fn: ~s expression: ~s)"
+                 arg *function-being-compiled* *expression-opcode*))
          (t ; args-last
-          (let ((*enclosing-opcode* opcode))
-            (compile-parameter-args-last stream opcode opcode-fn (cdr arg)))))))
+          (let ((*enclosing-opcode* (or *enclosing-opcode* opcode)))
+            (compile-parameter-args-last stream opcode opcode-fn (cdr arg) arg))))))
     (t
      arg)))
 
 (defun compile-embedded-expression (exp)
   "this is the case where the defufn expands into more code (essentially a macro)"
-  (let ((opcode-constituent-p (ucode-constituent (car exp))))
+  (let ((opcode-constituent-p (ucode-constituent (car exp)))
+        (opcode-suppress-logging-p (ucode-suppress-logging (car exp))))
     (cl:cond
-      (opcode-constituent-p
-       (cl:cond
-         ((and *upla-stream*
-               (eql (car exp) 'microlisp:progn))
-          (upla-write-comment  "(PROGN):" exp) ;; minimum for annotation
-          (upla-write-comment  "~s---" exp)) ;; note trailing --- means it won't be used for annotation, just log
-         (*upla-stream*
-          (upla-write-comment  "~s:" exp))) ;; stuff like &cons is worth putting in annotation
-       (compile-parameter *upla-stream* exp nil)) ;pass stream so the members can be written
-      (t
-       (let ((retval (write-generated-code *upla-stream* exp (compile-parameter nil exp nil) "cee")))
-         (cl:if *upla-stream* nil retval)))))) ; we wrote it, don't rewrite it
+     ((and opcode-suppress-logging-p *upla-stream* (eql (car exp) 'microlisp:progn))
+      (upla-write-code-annotation  '(microlisp:PROGN)) ;; minimum for annotation
+      (upla-write-local-comment exp) ;; not used for annotation (too long)
+      (compile-parameter *upla-stream* exp nil)) ;pass stream so the members can be written
+     ((and opcode-constituent-p *upla-stream*)
+      (upla-write-code-annotation exp) ;; stuff like &cons is worth putting in annotation
+      (compile-parameter *upla-stream* exp nil)) ;pass stream so the members can be written
+     (t
+      (let ((retval (write-generated-code *upla-stream* exp (compile-parameter nil exp nil) "cee")))
+        (cl:if *upla-stream* nil retval))))))
 
 (defun from-direct-register-p (from-reference enclosing-opcode)
   "Returns non-nil if the passed reference is to a register and not
 indirect on the register."
   ;; collect some info about this call
-  (note-if *debug-compiler* "from-direct-register-p: from-reference: ~s" from-reference) 
+  ;; (note-if *debug-compiler* "from-direct-register-p: from-reference: ~s" from-reference) 
 
-  ;; this is the slow way to do it
-  (let* ((*enclosing-opcode* enclosing-opcode)
-         (from-code (compile-parameter *upla-stream* from-reference nil)))
-    ;; what we did was compile the reference to see if we get a
-    ;; register back that's the most certain, but expensive way to do
-    ;; it.  Easier and cheaper is just to parse the from-reference to
-    ;; see if it's a simple fetch of a register or something like &car
-    ;; or &cdr of a register. (TBD)
-    (cl:if (register-p from-code)
-           from-code
-           nil)))
+  (cl:cond
+   ((not (consp from-reference))
+    (cl:if (register-p from-reference)
+      from-reference
+      nil))
+   ((member (car from-reference) '(&car &cdr &cons &get-interrupt-routine-pointer &global-value))
+    nil) ; indirect
+   (t ;; a cons
+      (or (and 
+           (eql (car from-reference) 'fetch)
+           (register-p (cadr from-reference))
+           (cadr from-reference))
+          ;; this is the slow way to do it
+          (progn
+            (note-if *debug-compiler* "from-direct-register-p:slow  ~s" from-reference)
+            (let* ((*enclosing-opcode* enclosing-opcode)
+                   (from-code (compile-parameter *upla-stream* from-reference nil)))
+              ;; what we did was compile the reference to see if we get a
+              ;; register back that's the most certain, but expensive way to do
+              ;; it.  Easier and cheaper is just to parse the from-reference to
+              ;; see if it's a simple fetch of a register or something like &car
+              ;; or &cdr of a register. (TBD)
+              (cl:if (register-p from-code)
+                from-code
+                nil)))))))
 
 (defmacro defrplacop (name (core-uop-symbol))
   "&rplac* operations all are pretty much the same. Simplest to macroize them"
@@ -399,12 +450,25 @@ indirect on the register."
        (assert (and (consp ,cons)
                     (eql (car ,cons) 'fetch)) (,cons)
                     "Passed cons reference didn't look like (fetch <register-name>)")
-       (let ((,value-ref (from-direct-register-p ,value ',name)))
-         (cl:if (not (null ,value-ref))
-                `(((from ,,value-ref) (to ,(cadr ,cons)) ,',core-uop-symbol))
-                ;; value was complex, so use IA
-                (with-intermediate-argument
-                  (compile-embedded-expression
-                   `(microlisp:progn
-                      (assign *intermediate-argument* ,,value)
-                      (,',name ,,cons (fetch *intermediate-argument*))))))))))
+       (let ((,value-ref (from-direct-register-p ,value ',name))
+             (*constituent-assignment-fn* `(,',name ,,cons)))
+         (cl:cond
+           ((not (null ,value-ref))
+            ;; generate assembly code directly
+            (write-generated-code *upla-stream* *current-expression* 
+                                  `(((from ,,value-ref) (to ,(cadr ,cons)) ,',core-uop-symbol))
+                                  ,(string name))
+            nil) ; wrote it so don't return it
+           ((and (consp ,value) (member (car ,value) '(&car &cdr &global-value)))
+            ;; generate an intermediate argument to store the result of the car or cdr and then assign it
+            (setq *constituent-assignment-fn* nil) ; clear this
+            (with-intermediate-argument
+              (compile-embedded-expression
+               `(microlisp:progn
+                  (assign *intermediate-argument* ,,value)
+                  (,',name ,,cons (fetch *intermediate-argument*))))))
+           (t
+            (note-if *debug-compiler* "complex argument to rplac* form: ~s" ,value)
+            ;; *constituent-assignment-fn* should generate the right thing
+            (compile-embedded-expression ,value))
+            )))))

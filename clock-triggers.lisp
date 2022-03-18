@@ -1,8 +1,20 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Clock Trig" 0 3 1
-                                      "Time-stamp: <2022-01-13 13:56:10 gorbag>"
-                                      "internal-freeze -> run-nano")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Clock Trig" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:26:18 gorbag>"
+                                      "line disambiguation")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.2   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
 
 ;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
 ;;                    for consistancy with AIM
@@ -51,7 +63,7 @@
 ;; should be on :ph2-rising not :ph1-rising 7/15/21
 (defparameter *run-nanocontroller-p1* :ph2-rising
   "P1 of nanocontroller decodes the microcode state, sets the nano-pc
-  and executes the first nano line")
+  and executes the first nano expression")
 
 ;; this is :ph1-high because we want external-data transfer to happen
 ;; the various controls get set up first.
@@ -59,25 +71,25 @@
   "This is when register *from-controls* and *to-controls* are run -
   e.g. register copies via the bus happens.")
 
-;; update sense lines
-(defparameter *update-sense-lines* :ph1-falling
+;; update sense wires
+(defparameter *update-sense-wires* :ph1-falling
   "Note that as ph2 is when the chip transitions to the new state, it
-  makes sense that we set the sense lines after any data movement
+  makes sense that we set the sense wires after any data movement
   between registers (see *run-register-controls*).  These should not
-  be affected by any changes to the control lines (only
+  be affected by any changes to the control wires (only
   run-register-controls) so should be OK to be same as
   run-nanocontroller-p2.")
 
-;; 7/20/21 BWM try ph1-falling so register control lines are valid
+;; 7/20/21 BWM try ph1-falling so register control wires are valid
 ;;             during READ and WRITE this shouldn't screw up
 ;;             nanoncontroller-ph1 as it runs on ph2-rising, but may
 ;;             need run-nano true to keep the microcode from
 ;;             changing out from under us during ph1-rising (?) though
 ;;             nanocode should already have decoded it and set the
-;;             right control lines so maybe not...
+;;             right control wires so maybe not...
 (defparameter *run-nanocontroller-p2* #|| :ph2-falling ||# :ph1-falling 
   "P2 of nanocontroller reruns register controls (in case they were
-  changed from external pad sync) then cleans up the register lines
+  changed from external pad sync) then cleans up the register wires
   set by run-nanocontroller-p1 and if there is a subsequent
   nanoinstruction, gets that set up for the next nanocontroller P1.")
 

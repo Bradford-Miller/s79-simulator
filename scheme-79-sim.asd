@@ -1,6 +1,7 @@
-;; Time-stamp: <2022-01-11 13:23:24 gorbag>
+;; Time-stamp: <2022-02-18 16:18:26 gorbag>
 
-;; 10/8/21: flip order of core-support and ucode-defs as we introduce a dependency
+;;  2/18/21: add memory window
+;; 10/ 8/21: flip order of core-support and ucode-defs as we introduce a dependency
 
 (cl:in-package :asdf)
 
@@ -12,7 +13,7 @@
 
 (defsystem :scheme-79-sim
   :serial t ; inefficient but simple. 
-  :depends-on (named-readtables fpga-support)
+  :depends-on (named-readtables fpga-support :cl-lib :fiveam) ;adding fiveam for regression tests
   :components
   (
    (:file "packages")
@@ -68,22 +69,29 @@
                               ; chip (though note much of this will be
                                         ; part of our FPGA!)
    
-   ;; (:file "interpreter") ; not ready yet (interprets scheme in terms of S-CODE for the chip to execute)
-   
-   ;; console has only been implemented under LispWorks CAPI
    #+capi
    (:module "console" :serial t
     :components
-    ((:file "diagnostics-panel") ; a generalized simple grid for presenting test results (or just tracking them if manually operated)
+    (;; console, memory window, and DSO have only been implemented under LispWorks CAPI
      (:file "s79-console-defs")
      (:file "s79-console")
-     (:file "dso")))
-   
+     (:file "dso")
+     (:file "mem")
+     ;; similarly for diagnostics panel: a generalized simple grid for
+     ;; presenting test results (or just tracking them if manually
+     ;; operated):
+     (:file "diagnostics-panel") ))
    #+capi
    (:file "diagnostics-support")
 
+   ;; scheme->s-code compiler
+   (:module "s-code" :serial t
+    :components
+    ((:file "s-code"))) ; more to come
+
    (:module "tests" :serial t
     :components
-    ((:file "test-support"))) ; functions used by the test suites not defined as part of diagnostics (machine specific)
+    ((:file "test-support")  ; functions used by the test suites not defined as part of diagnostics (machine specific)
+     (:file "compiler-regression-tests"))) ; 5am tests just on the compiler output
    
    (:file "load-last")))

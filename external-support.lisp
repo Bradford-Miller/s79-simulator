@@ -1,8 +1,26 @@
 (in-package :external-chips)
 
-(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 3 1
-                                      "Time-stamp: <2022-01-14 15:06:20 gorbag>"
-                                      "have debug message for read report what was read")
+(scheme-79:scheme-79-version-reporter "Scheme Storage Manager" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:28:29 gorbag>"
+                                      "*word-size* get-address-bits")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.6   3/14/22 more enhancements to dump-memory to show which
+;;                    locations are part of the stack
+
+;; 0.3.5   2/24/22 use new *word-size* parameter, get-address-bits fn
+
+;; 0.3.4   2/23/22 enhance dump-memory to show which registers refer to a 
+;;                    given memory location
+
+;; 0.3.3   2/18/22 dump-memory cosmetics
+
+;; 0.3.2   2/ 4/22 add a decode-p arg to dump-memory. It will report the
+;;                    mark bit and type for the car and cdr without also 
+;;                    being as verbose as dump-memory-with-types
 
 ;; 0.3.1   1/14/22 have the debug message for memory read report what was read
 ;;                    fix dump-memory to write final cdr (fencepost error)
@@ -217,104 +235,159 @@
 
 ;; code to simulate an external RAM
 
-(defparameter *format-car-for-dm* "M=~o P=~o T=~A ~47tD=~o F=~o A=~o~68t  .  ")
+(defparameter *format-car-for-dm-with-types* "M=~o P=~o T=~A ~48tD~4,'0o F~4,'0o A~8,'0o~58t . ")
 
-(defparameter *format-cdr-for-dm* "M=~o P=~o T=~A ~102tD=~o F=~o A=~o")
+(defparameter *format-cdr-for-dm-with-types* "M=~o P=~o T=~A ~110tD~4,'0o F~4,'0o A~8,'0o")
 
-(let ((memory-vector (make-array scheme-mach:*maximum-memory-size* :element-type 'fixnum :initial-element 0)))
-  (defun invalid-address-p (address &optional error-p)
-    (let ((int-address (cl:if (bit-vector-p address)
-                           (bit-vector->integer address)
-                           address)))
-      (unless (< int-address scheme-mach:*maximum-memory-size*)
-        (cl:if error-p
-            (error "Address ~24,'0o is outside attached memory bounds" int-address)
-            :memory-bounds-exceeded))
-      (unless (<= int-address (bit-vector->integer microlisp-shared:*memtop*)) ; we're doing this for debug, not effect so OK to reference internal register...
-        (cl:if error-p
-            (error "accessing memory at ~24,'0o which is beyond *memtop* at ~24,'0o!" int-address (bit-vector->integer microlisp-shared:*memtop*))
-            :memtop-exceeded))
-      nil)); means ok.
+(defparameter *format-car-for-dm-decode-p* "~A~A ~40t~8,'0o~49t . ")
+
+(defparameter *format-cdr-for-dm-decode-p* "~A~A ~80t~8,'0o ~A")
+
+(defvar *memory-vector* (make-array scheme-mach:*maximum-memory-size* :element-type 'fixnum :initial-element 0)
+  "The simulator's memory for the machine. Segregated so we don't clear it when recompiling the following")
+
+(defun invalid-address-p (address &optional error-p)
+  (let ((int-address (cl:if (bit-vector-p address)
+                       (bit-vector->integer address)
+                       address)))
+    (unless (< int-address scheme-mach:*maximum-memory-size*)
+      (cl:if error-p
+        (error "Address ~24,'0o is outside attached memory bounds" int-address)
+        :memory-bounds-exceeded))
+    (unless (<= int-address (bit-vector->integer microlisp-shared:*memtop*)) ; we're doing this for debug, not effect so OK to reference internal register...
+      (cl:if error-p
+        (error "accessing memory at ~24,'0o which is beyond *memtop* at ~24,'0o!" int-address (bit-vector->integer microlisp-shared:*memtop*))
+        :memtop-exceeded))
+    nil)); means ok.
   
-  (defun read-address (address cdr-p &optional as-integer-p)
-    "return the car (or cdr) at the address"
-    (let ((int-address (logand *address-field-mask* ; only use the address, not the type or mark bit
-                               (cl:if (bit-vector-p address)
-                                 (bit-vector->integer address)
-                                 address))))
+(defun read-address (address cdr-p &optional as-integer-p)
+  "return the car (or cdr) at the address"
+  (let ((int-address (logand *address-field-mask* ; only use the address, not the type or mark bit
+                             (cl:if (bit-vector-p address)
+                               (bit-vector->integer address)
+                               address))))
 
-      ;; do our own validation here to drop into the debugger
-      (assert (< int-address scheme-mach:*maximum-memory-size*) (int-address)
-              "Address ~24,'0o is outside attached memory bounds" int-address)
-      (when (and *warn-when-beyond-memtop* (> int-address (bit-vector->integer microlisp-shared:*memtop*)))
-        (warn "reading memory at ~24,'0o which is beyond *memtop* at ~24,'0o!"
-              int-address (bit-vector->integer microlisp-shared:*memtop*)))
+    ;; do our own validation here to drop into the debugger
+    (assert (< int-address scheme-mach:*maximum-memory-size*) (int-address)
+      "Address ~24,'0o is outside attached memory bounds" int-address)
+    (when (and *warn-when-beyond-memtop* (> int-address (bit-vector->integer microlisp-shared:*memtop*)))
+      (warn "reading memory at ~24,'0o which is beyond *memtop* at ~24,'0o!"
+            int-address (bit-vector->integer microlisp-shared:*memtop*)))
+    (let ((actual-address (+ (* 2 int-address) (cl:if cdr-p 1 0))))
+      (cl:if as-integer-p ;; used for display typically
+        (elt *memory-vector* actual-address)
+        (integer->bit-vector (elt *memory-vector* actual-address) :result-bits *word-size*))))) ; add pad
+
+(defun write-address (address cdr-p new-value)
+  "write to (car/cdr) of the address"
+  (let ((int-address (logand *address-field-mask* ; only use the address, not the type or mark bit
+                             (cl:if (bit-vector-p address)
+                               (bit-vector->integer address)
+                               address))))
+
+    ;; do our own validation here to drop into the debugger
+    (assert (< int-address scheme-mach:*maximum-memory-size*) (int-address)
+      "Address ~24,'0o is outside attached memory bounds" int-address)
+    (when (and *warn-when-beyond-memtop* (> int-address (bit-vector->integer microlisp-shared:*memtop*)))
+      (warn "writing memory at ~24,'0o which is beyond *memtop* at ~24,'0o!"
+            int-address (bit-vector->integer microlisp-shared:*memtop*)))
+    (let ((new-value-as-integer (cl:if (bit-vector-p new-value)
+                                  (bit-vector->integer new-value)
+                                  new-value)))
+      (assert (< new-value-as-integer scheme-mach:*maximum-memory-content*) (new-value)
+        "Value ~o is outside the attached memory content capabilities" new-value)
       (let ((actual-address (+ (* 2 int-address) (cl:if cdr-p 1 0))))
-        (cl:if as-integer-p ;; used for display typically
-            (elt memory-vector actual-address)
-            (integer->bit-vector (elt memory-vector actual-address) :result-bits 32))))) ; add pad
+        (setf (elt *memory-vector* actual-address) new-value-as-integer)))))
 
-  (defun write-address (address cdr-p new-value)
-    "write to (car/cdr) of the address"
-    (let ((int-address (logand *address-field-mask* ; only use the address, not the type or mark bit
-                               (cl:if (bit-vector-p address)
-                                 (bit-vector->integer address)
-                                 address))))
+(defun clear-memory ()
+  "used for debugging"
+  (dotimes (i scheme-mach:*maximum-memory-size*)
+    (setf (elt *memory-vector* i) 0)))
 
-      ;; do our own validation here to drop into the debugger
-      (assert (< int-address scheme-mach:*maximum-memory-size*) (int-address)
-              "Address ~24,'0o is outside attached memory bounds" int-address)
-      (when (and *warn-when-beyond-memtop* (> int-address (bit-vector->integer microlisp-shared:*memtop*)))
-        (warn "writing memory at ~24,'0o which is beyond *memtop* at ~24,'0o!"
-              int-address (bit-vector->integer microlisp-shared:*memtop*)))
-      (let ((new-value-as-integer (cl:if (bit-vector-p new-value)
-                                      (bit-vector->integer new-value)
-                                      new-value)))
-        (assert (< new-value-as-integer scheme-mach:*maximum-memory-content*) (new-value)
-                "Value ~o is outside the attached memory content capabilities" new-value)
-        (let ((actual-address (+ (* 2 int-address) (cl:if cdr-p 1 0))))
-          (setf (elt memory-vector actual-address) new-value-as-integer)))))
+(defun dump-memory-internal (start end print-fn row-leader-print-fn)
+  (let ((row-count 0))
+    (do ((i (* 2 start) (1+ i))) ; array offset
+        ((> i (1+ (* 2 (min scheme-mach:*maximum-memory-size* end)))))
+      (when (= row-count 0)
+        (funcall row-leader-print-fn i))
+      (funcall print-fn i)
+      (incf row-count)
+      (when (>= row-count *dump-values-per-row*)
+        (terpri *error-output*)
+        (setq row-count 0)))))
 
-  (defun clear-memory ()
-    "used for debugging"
-    (dotimes (i (* 2 scheme-mach:*maximum-memory-size*))
-      (setf (elt memory-vector i) 0)))
+(let ((all-regs nil))
+  (defun dump-memory (&optional (start 0) &key (end (bit-vector->integer microlisp-shared:*memtop*)) 
+                                (decode-p t) (show-registers nil)
+                                show-stack-membership
+                                show-display-membership); not implemented yet
+    "used for debugging. decode-p prints the mark bit, and type for
+each memory address in range; field specific data should use
+\(dump-memory-with-types)"
+    (let ((reg-address-alist nil)) ; clear each time so we get LAG
 
-  (defun dump-memory-internal (start end print-fn row-leader-print-fn)
-    (let ((row-count 0))
-      (do ((i (* 2 start) (1+ i))) ; array offset
-          ((> i (1+ (* 2 (min scheme-mach:*maximum-memory-size* end)))))
-        (when (= row-count 0)
-          (funcall row-leader-print-fn i))
-        (funcall print-fn i)
-        (incf row-count)
-        (when (>= row-count *dump-values-per-row*)
-          (terpri *error-output*)
-          (setq row-count 0)))))
+      (unless all-regs
+        ;; we defer this until **machine-registers** is available
+        (setq all-regs (mapcan #'(lambda (x) (if (endp (cdr x)) (list (car x)))) **machine-registers**)))
 
-  (defun dump-memory (&optional (start 0) (end (bit-vector->integer microlisp-shared:*memtop*)))
-    "used for debugging"
-    (dump-memory-internal
-     start end
-     #'(lambda (i) (format *error-output* "~11,'0o " (elt memory-vector i)))
-     #'(lambda (i) (format *error-output* "~8,'0o: " (/ i 2)))))
+      (when show-registers
+        (mapc #'(lambda (reg-name)
+                  (let* ((reg-value (bit-vector->integer (get-address-bits (symbol-value reg-name))))
+                         (existing-entry (cdr (assoc reg-value reg-address-alist))))
+                    (update-alist reg-value (list* reg-name existing-entry) reg-address-alist)))
+              all-regs))
 
-  (defun dump-memory-with-types (&optional (start 0) (end (bit-vector->integer microlisp-shared:*memtop*)))
-    (let ((*dump-values-per-row* 2)) ; override if needed
+      (when show-stack-membership
+        ;; use the reg-address-alist to add indicators that the current address is on the stack
+        (let* ((stack-ptr (logand *address-field-mask* (bit-vector->integer *stack*)))
+               (existing-entry (cdr (assoc stack-ptr reg-address-alist))))
+          (while (plusp stack-ptr)
+            (update-alist stack-ptr (list* :s existing-entry) reg-address-alist)
+            (setq stack-ptr (logand *address-field-mask* (read-address stack-ptr t t)))
+            (setq existing-entry (cdr (assoc stack-ptr reg-address-alist))))))
+
+      (when show-display-membership
+        nil) ;; (TBD) .. tricky because it's saved on the stack so we have to know which elements are the display
+
       (dump-memory-internal
        start end
-       #'(lambda (i) (mlet (mark ptr type disp frame addr) (scheme-mach:break-out-bits-as-integers (elt memory-vector i))
-                           (format *error-output* 
-                                   (cl:if (evenp i)
-                                     *format-car-for-dm* ; left value (CAR)
-                                     *format-cdr-for-dm*) ; right value (CDR)
-                                   mark ptr 
-                                   (cl:if (< type microlisp-shared:**pointer**)
-                                     (string (int->pointer-type-name type))
-                                     (string (int->non-pointer-type-name type)))
-                                   disp frame addr)))
-       #'(lambda (i) (format *error-output* "~8,'0o: " (/ i 2))))))
-  )
+       (cl:if decode-p
+         #'(lambda (i) (mlet (mark ptr type disp frame addr)
+                           (scheme-mach:break-out-bits-as-integers (elt *memory-vector* i))
+                         (declare (ignore ptr disp frame)) ; run dump-memory-with-types if you want 
+                                                           ; these broken out 
+                                                           ; (included in fields printed!)
+                         (format *error-output* 
+                                 (cl:if (evenp i)
+                                   *format-car-for-dm-decode-p* ; left value (CAR)
+                                   *format-cdr-for-dm-decode-p*) ; right value (CDR)
+                                 (cl:if (plusp mark)
+                                   "*"
+                                   " ")
+                                 (int->type-name type)
+                                 addr
+                                 (if (and (or show-registers show-stack-membership)
+                                          (cdr (assoc (floor (/ i 2)) reg-address-alist)))
+                                   (format nil "(~{~A ~})" (cdr (assoc (floor (/ i 2)) reg-address-alist)))
+                                   ""))))
+         #'(lambda (i) (format *error-output* "~11,'0o " (elt *memory-vector* i))))
+       #'(lambda (i) (format *error-output* "~8,'0o: " (/ i 2)))))))
+
+(defun dump-memory-with-types (&optional (start 0) &key (end (bit-vector->integer microlisp-shared:*memtop*)))
+  "similar to (dump-memory) but prints out each field separately"
+  (let ((*dump-values-per-row* 2)) ; override if needed
+    (dump-memory-internal
+     start end
+     #'(lambda (i) (mlet (mark ptr type disp frame addr)
+                       (scheme-mach:break-out-bits-as-integers (elt *memory-vector* i))
+                     (format *error-output* 
+                             (cl:if (evenp i)
+                               *format-car-for-dm-with-types* ; left value (CAR)
+                               *format-cdr-for-dm-with-types*) ; right value (CDR)
+                             mark ptr 
+                             (int->type-name type)
+                             disp frame addr)))
+     #'(lambda (i) (format *error-output* "~8,'0o: " (/ i 2))))))
 
 ;; Memory comparison function for testing
 

@@ -1,11 +1,25 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 3 1
-                                      "Time-stamp: <2022-01-18 11:57:51 gorbag>"
-                                      "cleanup special register treatment")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:32:07 gorbag>"
+                                      "force conditional flag off when resetting")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.3   3/11/22 if we are doing a reset, force the *conditional* flag to 0.
+
+;; 0.3.2   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
 
 ;; 0.3.1   1/18/22 cleanup obsolete code: removing special treatment of registers
-;;                    which required multiple control lines for TO as new covering
+;;                    which required multiple control wires for TO as new covering
 ;;                    set computation deals with it.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -98,10 +112,10 @@
     retval))
 
 (defun do-reset ()
-  (declare (special *halt-address* s79-console:*console*))
+  (declare (special *halt-address* s79-console:*console* *conditional*))
   
   (note "invoking do-reset T: ~D uT: ~S" *tick* *symbolic-clock-phase*)
-  ;; clear the reset line until/unless we have an external driver
+  ;; clear the reset wire until/unless we have an external driver
   ;; 7-25-21 note that reset will clear automatically at the end of the cycle so leave it alone for now.
   ;;(clear-pad '*reset* t)
   (machine-ready-p t) ; we reset regardless, but issue warnings if relevant
@@ -111,6 +125,8 @@
 
   ;; initialize the micro-pc to boot-load
   (set-micro-pc (non-pointer-type-name->int 'microlisp::boot-load))
+  ;; if the conditional flag is set, force it clear
+  (setf (elt *conditional* 0) 0)
   ;; if there is a DONE tag, use it for the halt-address
   (let*-non-null ((halt-tag-address (non-pointer-type-name->int 'microlisp::done)))
      ;; for the console to auto-stop, and maybe kick off test validation
@@ -126,7 +142,7 @@
   (format hcl:*background-output* "~&~%Initial memory contents~%")
   (let ((*error-output* hcl:*background-output*))
     ;; may have garbage in the registers, so set range to dump
-    (dump-memory 0 *initial-memtop*))
+    (dump-memory 0 :end *initial-memtop*))
   
   (note "*micro-pc* set to boot-load: good luck!"))
 
@@ -137,7 +153,9 @@
 
   (ecase *enclosing-opcode*
     (assign ; better have a *to-register*...
-     `(((to ,*to-register*) microlisp-shared::do-simple-get-interrupt-pointer)))))
+     (write-generated-code *upla-stream* nil
+                           `(((to ,*to-register*) microlisp-shared::do-simple-get-interrupt-pointer))
+                           "&get-interrupt-routine-pointer"))))
 
 ;; &read-from-pads
 

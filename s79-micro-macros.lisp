@@ -3,9 +3,18 @@
 ;; for now we put this into :scheme-mach but due to collision with CL we may want a more restricted package in the
 ;; future (so not all :scheme-mach packages have to reference "cl:cond" for instance)
 
-(scheme-79:scheme-79-version-reporter "Scheme Microcode Macros" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:17:21 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Microcode Macros" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:30:45 gorbag>"
+                                      "use intentional upla fns")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.2   2/ 2/22 use intentional upla fns
+
+;; 0.3.1   1/31/22 use :suppress-logging instead of :constituent on defufn if
+;;                     that's what we mean
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -112,7 +121,7 @@
 ;; tags (particularly if the COND will never "fall through"), but we
 ;; can clean that up in an intermediate pass before PASS-5 if needed
 ;; (do some basic block code analysis)
-(defumac microlisp:cond (&rest cond-expressions :args-last t :constituent t)
+(defumac microlisp:cond (&rest cond-expressions :args-last t :suppress-logging t)
   (let ((remaining-expressions cond-expressions)
         (proposed-code nil)
         (end-cond-tag (gensym "$COND-DONE")))
@@ -143,13 +152,13 @@
         (setq proposed-code (append proposed-code proposed-clause))))
     ;; something for the log
     (when *upla-stream*
-      (upla-write-comment "(COND):") ; so something shows up on the console
-      (upla-write-comment "~s---" `(cond ,@cond-expressions)))
+      (upla-write-code-annotation '(microlisp:COND)) ; so something shows up on the console
+      (upla-write-local-comment `(microlisp:cond ,@cond-expressions)))
 
     (compile-embedded-expression `(microlisp:progn ,@proposed-code))))
 
 ;; if
-(defumac microlisp:if (predicate-clause success-clause &optional failure-clause :args-last t :constituent t)
+(defumac microlisp:if (predicate-clause success-clause &optional failure-clause :args-last t :suppress-logging t)
   (let ((fail-tag (gensym "$IF-FAIL"))
         (fail-clause-tag (gensym "$IF-FAIL-CLAUSE"))
         (success-tag (gensym "$IF-SUCCEED"))
@@ -170,10 +179,11 @@
 
 ;; progn
 
-(defumac microlisp:progn (&rest ucode-expressions :args-last t :constituent t) ; not really constituent but this will supress printing output
+(defumac microlisp:progn (&rest ucode-expressions :args-last t :suppress-logging t) 
   ;; just collect the results of compiling the expressions
-  (mapcan #'(lambda (expression)
-              (let ((compiled-expression (compile-embedded-expression expression))) ; supress check
-                (copy-list compiled-expression)))
-          ucode-expressions)) ; do the copy to prevent munging constants
+  (let ((*upla-suppress-annotation* nil)) ;; allow annotations for the broken-apart progn instructions
+    (mapcan #'(lambda (expression)
+                (let ((compiled-expression (compile-embedded-expression expression))) ; suppress check
+                  (copy-list compiled-expression))) ;avoid corruption
+            ucode-expressions))) ; do the copy to prevent munging constants
 

@@ -1,8 +1,31 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 3 1
-                                      "Time-stamp: <2022-01-13 13:57:08 gorbag>"
-                                      "internal-freeze -> run-nano")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:29:20 gorbag>"
+                                      "make set-micro-pc generic so we can hook it")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.6   2/18/22 make set-micro-pc generic so we can hook it (e.g.
+;;                    with an :around method)
+
+;; 0.3.5   2/15/22 call note-breakpoint-reached so console can refresh 
+;;                    properly
+
+;; 0.3.4   2/ 3/22 when we detect that the micro-pc is being set to the
+;;                    same address and we are running (not single
+;;                    stepping) we execute (stop).
+
+;; 0.3.3   1/26/22 add register use for micro-call, micro-return
+;;                 support "permanent" breakpoints in clear-breakpoints,
+;;                   set-breakpoint, etc.
+
+;; 0.3.2   1/25/22 separate out uops in analyze-code that have implicit
+;;                    register references and add those to our counts
+
+;; xxxxx   1/19/22 remove some TBDs in the comments (they were done already)
 
 ;; 0.3.1   1/13/22 change references from internal-freeze to run-nano
 ;;                    for consistancy with AIM
@@ -35,7 +58,7 @@
 ;; 0.1.8  10/ 7/21 add support for breakpoints (based on uaddresses)
 
 ;; 0.1.7  10/ 5/21 since we don't have actual continuous update until a
-;;                     latch operation (TBD??)  some actions have to
+;;                     latch operation, some actions have to
 ;;                     be rerun on phase changes or other events to
 ;;                     correctly reflect their state. In this case we
 ;;                     add a run-sense-controls immediately before
@@ -164,11 +187,11 @@ fields, for instance)"
   ;; relevant to an instruction can be co-located in the source.
   (unless (symbolp expression) ; ignore symbols - we already analyzed the enclosing form
     (cl:cond
-      ((consp (car expression)) ; thanks to cond
+      ((consp (car expression))         ; thanks to cond
        (mapc #'analyze-expression expression))
       (t
-       (case (car expression) ; the instruction
-         ((assign ; <to> <from>
+       (case (car expression)           ; the instruction
+         ((assign                       ; <to> <from>
            &rplaca
            &rplacd
            &rplaca-and-mark!
@@ -178,11 +201,11 @@ fields, for instance)"
           (analyze-from (caddr expression)))
 
          ((&cons
-           &=type?)  ; in case it's a fetch
+           &=type?)                     ; in case it's a fetch
           (analyze-from (cadr expression))
           (analyze-from (caddr expression)))
         
-         ((fetch ; <from>
+         ((fetch                        ; <from>
            &write-to-pads
            &eq-val
            dispatch
@@ -199,7 +222,7 @@ fields, for instance)"
          (&in-use?
           (analyze-from `(&car ,(cadr expression)))) ; implicit car to get the bit
 
-         ((&mark-car-being-traced!  ; <from> - register pointing to memory so FROM register to *address* and then read
+         ((&mark-car-being-traced! ; <from> - register pointing to memory so FROM register to *address* and then read
            &mark-in-use!
            &mark-car-trace-over!
            &car-being-traced?
@@ -212,26 +235,49 @@ fields, for instance)"
          ((and or microlisp:if microlisp:progn)
           (mapc #'analyze-expression (cdr expression)))
 
-         ((go-to ; N/A
-           &increment-scan-up
-           &increment-scan-up-to-val
-           &clear-gc-needed
-           &decrement-scan-down
-           &decrement-scan-down-to-val
-           &decrement-frame
-           &decrement-displacement
-           &scan-up=scan-down?
-           &scan-down=0?
+         ;; implicit register uses
+         (&increment-scan-up
+          (mark-register-use :from '*scan-up*)
+          (mark-register-use :to '*scan-up*))
+         (&increment-scan-up-to-val
+          (mark-register-use :from '*scan-up*)
+          (mark-register-use :to '*val*))
+         (&decrement-scan-down
+          (mark-register-use :from '*scan-down*)
+          (mark-register-use :to '*scan-down*))
+         (&scan-up=scan-down?
+          (mark-register-use :from '*scan-down*)
+          (mark-register-use :from '*scan-up*))
+         (&scan-down=0?
+          (mark-register-use :from '*scan-down*))
+         (&decrement-scan-down-to-val
+          (mark-register-use :from '*scan-down*)
+          (mark-register-use :to '*val*))
+         (&val=0?
+          (mark-register-use :from '*val*))
+         (&val-displacement-to-exp-displacement
+          (mark-register-use :from '*val*)
+          (mark-register-use :to '*exp*))
+         (&val-frame-to-exp-frame
+          (mark-register-use :from '*val*)
+          (mark-register-use :to '*exp*))
+         (dispatch-on-stack
+          (mark-register-use :from '*stack*))
+         ((dispatch-on-exp-allowing-interrupts
+           eval-exp-popj-to
            &frame=0?
-           &val=0?
-           &displacement=0?
-           &val-displacement-to-exp-displacement
-           &val-frame-to-exp-frame
-           micro-return
-           micro-call
-           dispatch-on-stack
-           dispatch-on-exp-allowing-interrupts
-           eval-exp-popj-to)
+           &displacement=0?)
+          (mark-register-use :from '*exp*))
+         ((&decrement-frame
+           &decrement-displacement)
+          (mark-register-use :from '*exp*)
+          (mark-register-use :to '*exp*))
+         (micro-call
+          (mark-register-use :to '*retpc-count-mark*))
+         (micro-return
+          (mark-register-use :from '*retpc-count-mark*))
+         ((go-to                        ; N/A
+           &clear-gc-needed)            ; pad not register
           ;; nothing to do
           nil)
 
@@ -242,9 +288,9 @@ fields, for instance)"
          (t
           ;; ok was it really t, or is this default
           (cl:if (eql (car expression) t)
-              ;; probably a cond clause
-              (mapc #'analyze-expression (cdr expression))
-              (warn "unhandled case analyze-expression: ~s" expression)))
+                 ;; probably a cond clause
+                 (mapc #'analyze-expression (cdr expression))
+                 (warn "unhandled case analyze-expression: ~s" expression)))
          )))))
 
 (defun analyze-to (to-form)
@@ -337,7 +383,6 @@ a given offset. Currently does not directly handle conditionals (TBD)"
          )
        (nreverse result)))))
 
-
 (defun get-condition (pc)
   (declare (bit-vector pc))
   ;; pc points to a BRANCH instruction, determine the condition function
@@ -351,7 +396,10 @@ a given offset. Currently does not directly handle conditionals (TBD)"
             (when *debug-microcontroller*
               (note "checking sense-wire ~A : ~S" sense-wire-symbol foo)))))))
     
-(defun set-micro-pc (new-pc-value)
+(defgeneric set-micro-pc (new-pc-value)
+  (:documentation "setting up the micro-pc for a new value, of interest to debugging tools too"))
+
+(defmethod set-micro-pc (new-pc-value)
   (let* ((new-pc-integer (if (integerp new-pc-value)
                             new-pc-value
                             (bit-vector->integer new-pc-value)))
@@ -360,6 +408,7 @@ a given offset. Currently does not directly handle conditionals (TBD)"
                           new-pc-value))
          (conditional-p (test-pad-immediate '*conditional*))
          (condition-holds-p (when conditional-p (funcall (get-condition *micro-pc*)))))
+    
     (when conditional-p
       (setq *last-conditional-result* condition-holds-p)) ; so we can update diagnostics later
     
@@ -394,33 +443,45 @@ a given offset. Currently does not directly handle conditionals (TBD)"
           (note "*** Microfunction Start: ~A (Condition holds) ***" annotation))))
       (note "*************************************************"))
     
-    (when (and *halt-address*
+    (when (and *halt-address* ; note we always check this and before we check
+                              ; for a loop (typical halt address is a loop on
+                              ; that address)
                (= new-pc-integer *halt-address*))
-      (note-banner '("HALT ADDRESS REACHED!") 3))
-  
-    ;; if we are testing a conditional, we need to OR in the low order bit of the new address with the condition
-    (cl:cond
-      ((and conditional-p
-            (not (test-pad-immediate '*reset*))) ; if we're resetting just get on with it
+      (note-banner '("HALT ADDRESS REACHED!") 3)
+      (stop))
 
-       (note-if *debug-microcontroller* "evaluating conditional effect on pc")
-     
-       (copy-field
-        ;; now that we've changed our representation to bit-vector, it
-        ;; should be easier to just deal with the low order bit, no?
-        ;; That's how the FPGA will do it!! (TBD)
-        (integer->bit-vector 
-         (cl:cond
+    (flet ((set-new-pc (bits)
+             (cl:cond
+              ((and *debug-microcontroller* ; add a tight loop test when debugging
+                    (running-p)
+                    (equalp bits *micro-pc*)) ;trying to set to current address
+               (note-banner '("Loop at micro address #o~o detected! Stopping"))
+               (stop))
+              (t
+               (copy-field bits *micro-pc*)))))
+      ;; if we are testing a conditional, we need to OR in the low order bit of the new address with the condition
+      (cl:cond
+       ((and conditional-p
+             (not (test-pad-immediate '*reset*))) ; if we're resetting just get on with it
+
+        (note-if *debug-microcontroller* "evaluating conditional effect on pc")
+
+        (set-new-pc
+         ;; now that we've changed our representation to bit-vector, it
+         ;; should be easier to just deal with the low order bit, no?
+         ;; That's how the FPGA will do it!!
+         (integer->bit-vector 
+          (cl:cond
            (condition-holds-p
             ;; or in as low order bit of pc
             (progfoo (logior new-pc-integer #o1)
                      (note-if *debug-microcontroller* "condition TRUE, new pc: ~o" foo)))
            (t
             (note-if *debug-microcontroller* "condition FALSE, new pc: ~o" new-pc-integer)
-            new-pc-integer)))
-        *micro-pc*))
-    (t
-     (copy-field new-pc-bits *micro-pc*)))
+            new-pc-integer)))))
+
+       (t
+        (set-new-pc new-pc-bits)))
 
     (unless (test-pad-immediate '*reset*)
       #+capi (s79-console:update-microinstruction-metrics (bit-vector->integer *micro-pc*))) ; only if diagnostics are available (needs capi since we store the tests on the panel)
@@ -428,17 +489,28 @@ a given offset. Currently does not directly handle conditionals (TBD)"
     ;; check for breakpoint
     (when (member (bit-vector->integer *micro-pc*) *breakpoints* :test #'=)
       (note-banner '("BREAKPOINT REACHED!") 3)
-      (set-running-p nil))
+      (set-running-p nil)
+      #+capi (s79-console:note-breakpoint-reached)) ; let the console know about it
 
-    *micro-pc*))
+    *micro-pc*)))
 
 (defun clear-breakpoints ()
-  (setq *breakpoints* nil))
+  (setq *breakpoints* nil)
+  (setq *breakpoint-descs* (delete nil *breakpoint-descs* :key #'cdr)) ; get rid of all temps
+  (mapc #'(lambda (entry)
+            (pushnew (car entry) *breakpoints*)) ; reestablish permanents
+        *breakpoint-descs*))
 
 (defun clear-breakpoint (uaddress)
+  (when (assoc uaddress *breakpoint-descs*)
+    (setq *breakpoint-descs* (delete uaddress *breakpoint-descs* :key #'car)))
   (setq *breakpoints* (delete uaddress *breakpoints*)))
 
-(defun set-breakpoint (uaddress)
+(defun set-breakpoint (uaddress &optional breakpoint-type)
+  "Breakpoint-type can be nil for a temporary or :permanent for a
+permanent breakpoint (will not be cleared by (clear-breakpoints) though
+(clear-breakpoint) can still do so)"
+  (update-alist uaddress breakpoint-type *breakpoint-descs*)
   (pushnew uaddress *breakpoints*))
 
 (defun run-until-breakpoint (uaddress)
@@ -456,10 +528,14 @@ a given offset. Currently does not directly handle conditionals (TBD)"
      (let ((new-upc (car (pla-read *microcontrol-array* *micro-pc*))))
        (setq *nanocontroller-ran-p* nil)
        (set-micro-pc new-upc)
-       ;; if the instruction involves moving a constant value to the bus, we do that here
-       ;; nanocode will handle the TO expression and then the
-       ;; shift from the bus into the destination happens during
-       ;; *run-register-controls* (next tick)
+
+       ;; if the instruction involves moving a constant value to the bus, we do
+       ;; that here, though it really should happen as a result of executing
+       ;; the nanocode (TBD)
+
+       ;; nanocode will handle the TO expression and then the shift from the
+       ;; bus into the destination happens during *run-register-controls* (next
+       ;; tick)
 
        (destructuring-bind (next-ucode nop from to) (pla-read *microcontrol-array* *micro-pc*)
          (declare (ignore next-ucode to))

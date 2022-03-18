@@ -4,9 +4,13 @@
 ;; (thought it might make sense to have some kind of version number
 ;; that can be accessed from the machine!)
 
-;;(scheme-79:scheme-79-version-reporter "S79 Microcode" 0 3 1
-;;                                      "Time-stamp: <2022-01-17 14:36:47 gorbag>"
+;;(scheme-79:scheme-79-version-reporter "S79 Microcode" 0 4 0
+;;                                      "Time-stamp: <2022-03-18 15:30:18 gorbag>"
 ;;                                      "*stack* from-type")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.1 1/17/22 added from-type for type dispatch (new code paying
 ;;                   more attention to declarations!
@@ -249,12 +253,14 @@
 ;; to the corresponding field on the bus. The following expressions define
 ;; the control lines and sense wires on the registers.
 
-(defreg *exp* (to-type to-displacement to-frame from from-decremented) ())
+(defreg *exp* (to-type to-displacement to-frame from from-decremented
+               from-type from-decremented-frame from-decremented-displacement) ;; additions BWM 1/24/22, 2/18/22
+  ())
 
 (defreg *newcell* (to-type to-address from from-incremented) (address=bus))
 
 (defreg *val*
-    (to-type to-address from)
+    (to-type to-address from from-displacement from-frame) ; BWM added from-displacement and from-frame 1/24/22
     (type=bus address=bus =bus))               ;=bus is AND of type, address=bus
 
 (defreg *retpc-count-mark* (to-type to-address from) ())
@@ -562,7 +568,7 @@
                (assign *display* (&cdr (fetch *display*))) 
                (go-to count-displacement))))
 
-;;    Next come all of the various types of self-evaluating data. There arc
+;;    Next come all of the various types of self-evaluating data. There are
 ;; two different classes -- pointer data and immediate data. A symbol is
 ;; pointer data. We provide several unspecified varieties of such
 ;; self-evaluating data for the user to assign to things like fixed numbers
@@ -674,7 +680,7 @@
 
 ;;  Control points are used to implement the general "catch tags" used in
 ;;  constructing non-standard control structures. It is useful for error
-;;  exits, and multiproccss sorts of work. It is only to be used with
+;;  exits, and multiprocess sorts of work. It is only to be used with
 ;;  extreme caution since it is easy to screw oneself with constructs such
 ;;  as this which violate the expression structure of the language.
 

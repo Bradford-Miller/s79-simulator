@@ -1,9 +1,13 @@
 ;; writing this as standalone so may want own-package at some point.
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Diag. Panel" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:09:51 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Diag. Panel" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:15:43 gorbag>"
+                                      "0.4 release!")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -199,7 +203,7 @@
                                    :data-writer 'test-run-p-check-box
                                    ;:check-box-function 'test-run-p-check-box
                                    :drawing-function 'run-p-drawing-function
-                                   :print-function nil ; supress printing as we will use the drawing function to show an icon
+                                   :print-function nil ; suppress printing as we will use the drawing function to show an icon
                                    :size *test-state-column-width*)
                     (make-instance 'grid-display-column
                                    :name :result

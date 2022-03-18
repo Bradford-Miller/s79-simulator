@@ -1,8 +1,24 @@
 (in-package :microlisp-shared) ; instructions are (now) in :microlisp-shared package
 
-(scheme-79:scheme-79-version-reporter "S79 ucode Defs" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:25:15 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "S79 ucode Defs" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:32:41 gorbag>"
+                                      "line disambiguation")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.2   2/ 9/22 way too many things (fns, variables) with "line" in their name
+;;                    and it's ambiguous.  Splitting so "line" refers to,
+;;                    e.g. an output (log) line, "expression" refers to a
+;;                    'line' of code (single expression in nano or microcode
+;;                    land typically, and because we used (READ) it wasn't
+;;                    confined to a single input line anyway) and "wire" to
+;;                    refer to, e.g., a control or sense 'line' on a register.
+
+;; 0.3.1   1/26/22 defined micro-call macro, so add appropriate declarations
+
+;; xxxxx   1/19/22 remove some TBDs in the comments (they were done already)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;
@@ -93,7 +109,6 @@
           
           ,(microlisp-int:create-ulopd '&set-global-value 2) ; same as &rplaca per microcode.mcr notes
                                         ; (may depend on target)
-          ,(microlisp-int:create-ulopd '&global-value 1) ; should be car of value cell of the symbol
 
           ,(microlisp-int:create-ulopd '&rplaca-and-mark! 2)
           ,(microlisp-int:create-ulopd '&rplaca-and-unmark! 2) ; my usage in storage-manager
@@ -153,10 +168,6 @@
       
           ,(microlisp-int:create-ulopd 'eval-exp-popj-to 1 :tag)
 
-          ;; see comments in microcode file
-          ,(microlisp-int:create-ulopd 'micro-call 2 :tag :tag)
-          ,(microlisp-int:create-ulopd 'micro-return 0)
-
           ,(microlisp-int:create-ulopd 'and 2 t)
           ,(microlisp-int:create-ulopd 'or 2 t)
           ,(microlisp-int:create-ulopd 'not 1 t)
@@ -166,11 +177,13 @@
           ;; given as one of the nanocode examples in the AIM!)
           ,(microlisp-int:create-ulopd 'restore 1 :register-name)
 
+          ,(microlisp-int:create-ulopd 'micro-return 0) 
+
           ;; special functions I defined
           ,(microlisp-int:create-ulopd 'tag 1 :tag)
-          ,(microlisp-int:create-ulopd 'fetch-and-test-for-success 4 :register-name :sense-line :tag :tag)
+          ,(microlisp-int:create-ulopd 'fetch-and-test-for-success 4 :register-name :sense-wire :tag :tag)
           ,(microlisp-int:create-ulopd 'fetch-and-test-pred 4 :register-name :predicate-name :tag :tag)
-          ,(microlisp-int:create-ulopd 'simple-branch 3 :sense-line :tag :tag)
+          ,(microlisp-int:create-ulopd 'simple-branch 3 :sense-wire :tag :tag)
           ,(microlisp-int:create-ulopd 'simple-branch-pred 3 :predicate-name :tag :tag)
           ,(microlisp-int:create-ulopd 'compare-registers 5 :predicate-name :register-name :register-name :tag :tag)
           ,(microlisp-int:create-ulopd 'compare-to-type-const 4 :register-name :tag :tag :tag)
@@ -190,13 +203,14 @@
       ,(microlisp-int:create-ulmd &mark-in-use! 1 (t) assign &car &rplaca-and-mark! fetch fetch fetch)
       ,(microlisp-int:create-ulmd &unmark! 1 (t) assign &car &rplaca-and-unmark! fetch fetch fetch)
 
-      ;; these have compile-embedded-expresison so the expansion ucode fns
-      ;; are listed here to get the validation counts right NB:
-      ;; embedded-ucode-operations (in ucode-validator.lisp) expects all
-      ;; entries to only have a single argument type. (TBD)
+      ;; also see comments in microcode file
+      ,(microlisp-int:create-ulmd micro-call 2 (:tag :tag) &set-type go-to)
 
-      ;;(setq *special-ucode-operations-alist*
-      
+      ;; these have compile-embedded-expression so the expansion ucode fns
+      ;; are listed here to get the validation counts right
+
+      ,(microlisp-int:create-ulmd &global-value 1 (t) &car) ; should be car of value cell of the symbol
+
       ;; actual content may vary no specific number of clauses (may
       ;; need to validate separately since each clause is not
       ;; formatted like a progn)

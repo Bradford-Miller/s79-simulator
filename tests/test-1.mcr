@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-01-17 14:34:57 gorbag>
+;; Time-stamp: <2022-02-03 12:29:10 gorbag>
 
 ;; This test builds on the basic stuff (stack manipulation) we did in test-0. Now
 ;; we will play with the type fields of the pointers and implement the chip's GC 
@@ -273,7 +273,7 @@
          (assign *stack* (&car (fetch *nil*))) ;might have been relocated
          (&rplaca (fetch *nil*) (fetch *nil*))
          (assign *val* (fetch *nil*))
-         (dispatch-on-stack))
+         (dispatch-on-stack)) ; [should be to boot-load-return in test-1! BWM]
         (t (&decrement-scan-down)
            (go-to relocate-pointers))))
 
