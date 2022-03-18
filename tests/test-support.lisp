@@ -1,11 +1,19 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Mech Test Support" 0 3 3
-                                      "Time-stamp: <2022-02-25 17:27:00 gorbag>"
-                                      "test: clear-memory")
+(scheme-79:scheme-79-version-reporter "Scheme Mech Test Support" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:44:36 gorbag>"
+                                      "add compare-elements to allow test-2 to check that list returned is right")
 
-;; 0.3.3   2/25/22 add clear-memory call to test so we can more easily see what changes
-;;                     (particularly when we call test multiple times)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.4   3/18/22 compare-elements allows us to check prototype lists against
+;;                     what the machine found without being dependent on the
+;;                     absolute addresses used in the machine
+
+;; 0.3.3   2/25/22 add clear-memory call to test so we can more easily see what
+;;                     changes (particularly when we call test multiple times)
 
 ;; 0.3.2   1/26/22 support *microcode-compiled*
 
@@ -62,17 +70,55 @@
 ;; we use this function to allow us to cons up constants for tests in
 ;; a way that's clear to the reader what the value of the cons is
 ;; (specifically the type).
-(defun make-word (type data)
+(defun make-word (type data-or-displacement &optional frame)
+  "if frame is supplied, then data-or-displacement is considered the displacement, else the whole data field"
   (let* ((temp (make-register)) ; final bit-vector of appropriate size
          (type-field (make-type-field temp))
-         (data-field (make-data-field temp)))
+         (data-field (if frame
+                       (make-displacement-field temp)
+                       (make-data-field temp)))
+         (frame-field (if frame
+                        (make-frame-field temp))))
     (declare (dynamic-extent temp))
 
     ;; we can expect mismatches in the length as source is integer, so
     ;; turn off verbosity
-    (copy-field (integer->bit-vector type) type-field :verbose-p nil) 
-    (copy-field (integer->bit-vector data) data-field :verbose-p nil)
+    (copy-field (integer->bit-vector type) type-field :verbose-p nil)
+    (when frame
+      (copy-field (integer->bit-vector frame) frame-field :verbose-p nil))
+    (copy-field (integer->bit-vector data-or-displacement) data-field :verbose-p nil)
     temp))
+
+(defun compare-elements (source-description target-or-address)
+  "For more complex tests, we don't care so much about the structure of
+memory (gc may modify it), but just that we are pointing to the right thing in
+memory. So given a memory pointer (target address) and a descritption (pattern)
+of what we are looking for, this predicate either returns t for successful
+comparison, or prints out the first error position and returns nil."
+  ;; patterns are either immediate values, immediate-pointers, or lists made up
+  ;; of them (the CDR of a list would be an immediate pointer for instance). We
+  ;; check for EQness of values and equivalence of pointers (i.e. that they
+  ;; point to something the rest of the pattern matches). We will eventually
+  ;; also support symbols here but since we don't yet set up a (user) obtab
+  ;; that isn't practical. For the purposes of, e.g., test-2 which uses
+  ;; immeidate numeric values, this should suffice!
+  (cond
+   ((null source-description)
+    (zerop (bit-vector->integer target-or-address)))
+   ((not (consp source-description)) ; so direct compare, source is NOT a pointer
+    (mlet (mark ptr type disp frame addr) (break-out-bits-as-integers source-description)
+      (declare (ignore mark ptr disp frame))
+      (mlet (tmark tptr ttype tdisp tframe taddr) (break-out-bits-as-integers target-or-address)
+        (declare (ignore tmark tptr tdisp tframe))
+        (and (eql type ttype)
+             (eql addr taddr)))))
+   (t ; cons
+    (and (compare-elements (car source-description) (external-chips:read-address target-or-address nil))
+         (let ((target (external-chips:read-address target-or-address t)))
+           (mlet (tmark tptr ttype tdisp tframe taddr) (break-out-bits-as-integers target)
+             (declare (ignore tmark ttype tdisp tframe taddr))
+             (and (zerop tptr) ; ptr bit is 0 when it's a pointer!
+                  (compare-elements (cdr source-description) target))))))))
 
 ;; to make testing easier - we will redefine this from time to time!
 (defun test (&key (n nil number-p) (validate-only-p nil))

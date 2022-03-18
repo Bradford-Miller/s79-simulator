@@ -1,8 +1,19 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 10
-                                      "Time-stamp: <2022-03-02 15:19:12 gorbag>"
-                                      "add offset and tag to uaddr in ucode state info")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:16:43 gorbag>"
+                                      "when prompting for a new register value, make sure the default is octal")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.12  3/14/22 add a print-function to the prompter for a new register 
+;;                     value so it can be forced to octal
+
+;; 0.3.11  3/11/22 use apply-in-pane-process when modifying the Register
+;;                     Description pane
+;;                 add conditional indicator
 
 ;; 0.3.10  3/ 2/22 add tag and offset to UAddr column in Ucode State Info pane
 
@@ -306,8 +317,9 @@
 
 (defun update-register-description-pane (interface text)
   (let ((editor-pane (slot-value interface 'register-desc-pane)))
-    (capi:modify-editor-pane-buffer
-     editor-pane :contents text)))
+    (capi:apply-in-pane-process editor-pane
+                                'capi:modify-editor-pane-buffer
+                                editor-pane :contents text)))
 
 (defun clear-register-description-pane (interface)
   (update-register-description-pane interface ""))
@@ -364,6 +376,8 @@
                                                                        (values integer (or (not (integerp integer))
                                                                                            (minusp integer)
                                                                                            (> integer #xffffffff)))))
+                                                 :print-function #'(lambda (x)
+                                                                     (format nil "~o" x))
                                                  :initial-value current-value)))
           (when (and new-value ; check if aborted
                      (not (= current-value new-value)))
@@ -670,7 +684,7 @@
                       :bands
                       (list
                        (make-instance 'grid-display-column
-                                      :header-title "Info"
+                                      :header-title "uLisp"
                                       :size *ucode-comment-column-width*
                                       :data-reader #'(lambda (n) (nth n (ucode-comment-array *console*)))
                                       :print-function #'(lambda (x) (format nil "~a" x)))))
@@ -897,7 +911,7 @@ and check if it was successful (if such an evaluation function was declared)"
         (setf (display-breakpoint-p interface) t)
         (redraw-console)))))
 
-;;    :PH1   :PH2 :FRZ :NANO :ALE    :RD :WR :CDR :int-rq :RDI :m-int :GCR :RST :RD-State :LD-State
+;;    :PH1   :PH2 :FRZ :NANO :ALE  :RD :WR :CDR :CND :int-rq :RDI :m-int :GCR :RST :RD-State :LD-State
 ;;    :Step  :Run :Run-until :Stop :Freeze :RD-State :LD-State :INT-RQ
 
 (defun get-breakpoint-input-internal (pane)
@@ -1114,7 +1128,7 @@ and check if it was successful (if such an evaluation function was declared)"
 "EXTERNAL BUS ADDRESS/DATA      EXTERNAL MEMORY                             EXTERNAL MEMORY SPECIAL CELLS
 Current        ---Address---   #o~8,'0o : #o~11,'0o . #o~11,'0o             NIL (0)   : #o~11,'0o . #o~11,'0o  
 mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
-#b~b  #b~b  #o~2,'0o #o~4,'0o #o~4,'0o   #o~8,'0o : #o~11,'0o . #o~11,'0o
+#b~b  #b~b  #o~2,'0o #o~4,'0o #o~4,'0o  #o~8,'0o : #o~11,'0o . #o~11,'0o
                                #o~8,'0o : #o~11,'0o . #o~11,'0o
                                #o~8,'0o : #o~11,'0o . #o~11,'0o"
                            a1 a1-car a1-cdr a-nil-car a-nil-cdr
@@ -1302,6 +1316,12 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
     :print-function 'capitalize-if-symbol
     :enabled nil)
 
+   (cnd
+    capi:check-button
+    :data :cnd
+    :print-function 'capitalize-if-symbol
+    :enabled nil)
+   
    (int-rq
     capi:check-button
     :data :int-rq
@@ -1359,7 +1379,7 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
   (:layouts
    (indicator-panel
     capi:row-layout
-    '(ph1 ph2 frz nano ale rd wr cdr rdi int-rq gcr rst rd-state ld-state))
+    '(ph1 ph2 frz nano ale rd wr cdr cnd rdi int-rq gcr rst rd-state ld-state))
    (internal-status
     capi:row-layout
     '(ucode-general-state ncode-general-state))
@@ -1459,7 +1479,9 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
     ('microlisp-shared:*mask-interrupts*
      :m-int)
     ('microlisp-shared:*gc-needed*
-     :gcr)))
+     :gcr)
+    ('microlisp-shared:*conditional*
+     :cnd)))
 
 (defun check-pad (name)
   ;; don't go through test-pad since we want to see what the current pad is NOW
@@ -1485,6 +1507,7 @@ mark ptr  type displ  frame    #o~8,'0o : #o~11,'0o . #o~11,'0o
     (check-pad 'microlisp-shared:*reset*)
     (check-pad 'microlisp-shared:*read-state*)
     (check-pad 'microlisp-shared:*load-state*)
+    (check-pad 'microlisp-shared:*conditional*)
     ;; force redraw
     (redraw-indicators)))
 

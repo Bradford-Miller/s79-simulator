@@ -1,8 +1,12 @@
 (in-package :scheme-79)
 
-(scheme-79-version-reporter "S79 Project Defs" 0 3 1
-                            "Time-stamp: <2022-02-24 11:35:55 gorbag>"
+(scheme-79-version-reporter "S79 Project Defs" 0 4 0
+                            "Time-stamp: <2022-03-18 15:31:31 gorbag>"
                             "line disambiguation")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;         2/24/22 add some comments about project variables *word-size* and
 ;;                    *register-size*
@@ -32,7 +36,7 @@
 
 ;; development banners
 
-(defparameter *scheme-79-version-number* "0.3")
+(defparameter *scheme-79-version-number* "0.4")
 
 ;; 0.0.3  1/11/21 repatriated much of register support and high level
 ;;                    compiler/assembler to fpga-support. Also made

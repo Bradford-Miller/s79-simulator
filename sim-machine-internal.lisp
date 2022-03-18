@@ -1,8 +1,14 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 3 9
-                                      "Time-stamp: <2022-03-08 18:21:32 gorbag>"
-                                      "redefine eval-exp-popj-to")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Int Ops" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:32:20 gorbag>"
+                                      "frame=0? and displacement=0? from *exp*")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.10  3/14/22 frame=0? and displacement=0? should get *exp* into *bus* before checking.
 
 ;; 0.3.9   3/ 8/22 ok we have enough info to start guessing what eval-exp-popj-to
 ;;                    should look like. Set up to dispatch on the type of exp
@@ -399,6 +405,9 @@
 ;; (setq clink (cdr clink))
 ;; (funcall exp)
 
+;; in other words, the object to be evaluated is popped off the stack and then
+;; called.
+
 ;; here we're presented with a tag to go to (rather than a return) and
 ;; usually that tag is "internal-apply" which presumably is doing the
 ;; work of the evaluation of the next exp from val. So what is this
@@ -408,19 +417,17 @@
 ;; up args. Is there anything left for this fn to do other than the
 ;; goto? Is there something we should be getting from the stack?
 
-;; so looking at the current encoding, (where we put the SYMBOL pointer on the
+;; so looking at the current encoding, (where we put the GLOBAL pointer on the
 ;; stack for the continuation function, may want to do something else in the
-;; future which would require this function to be modified!) at the time we
-;; call this, exp has the symbol pointer to the global cell; val is not
-;; correct; stack is a SEP to (*args* . std-rtn stack-next) which is what
-;; internal-apply seems to expect (other than something useful in val). So we
-;; need to set dispatch on the exp (maybe without allowing interrupts?) which
-;; will set val up to the global (again might be we want the closure there,
-;; we'll see (TBD)). BUT that also means we need to set up a retpc on the stack
-;; register so the exp evaluation has a continuation.
+;; future which could require this function to be modified!) at the time we
+;; call this, exp has the pointer to the global cell; val is not correct; stack
+;; is a SEP to (*args* . std-rtn stack-next) which is what internal-apply seems
+;; to expect (other than something useful in val). So we need to set dispatch
+;; on the exp (maybe without allowing interrupts?) which will set val up to the
+;; global. BUT that also means we need to set up a retpc on the stack register
+;; so the exp evaluation has a continuation.
 
 (defufn eval-exp-popj-to (tag)
- (note-if *debug-compiler* "eval-exp-popj-to turned into dispatch-on-exp,  (for now)")
   ;; `(((go-to ,tag))) ; at least goto the tag?
   (compile-embedded-expression
    `(microlisp:progn

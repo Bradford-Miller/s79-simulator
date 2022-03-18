@@ -1,11 +1,20 @@
 (in-package :cl-user)
 (defvar *scheme-79-version-reporter-initializations* nil)
 
-(cl-lib:detailed-version-reporter "S79 defpackages" 0 3 7
-                                  "Time-stamp: <2022-02-24 12:27:09 gorbag>"
-                                  "export displacement and frame field parameters"
+(cl-lib:detailed-version-reporter "S79 defpackages" 0 4 0
+                                  "Time-stamp: <2022-03-18 15:30:31 gorbag>"
+                                  "import *stack* for external-chips (dump-memory usage)"
                                   :initialization-list-symbol
                                   *scheme-79-version-reporter-initializations*)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.9   3/18/22 make sure we create the *stack* symbol since we haven't loaded the file that does so yet
+
+;; 0.3.8   3/15/22 import *stack* into external-chips so dump-memory can use it to 
+;;                    trace the stack
 
 ;; 0.3.7   2/18/22 export *frame-field-length* and *displacement-field-length*
 
@@ -414,6 +423,11 @@
    #:machine-ready-p
    ))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  ;; this symbol isn't defined when we first load this file, so create it here so we can import it
+  (export (list (intern "*STACK*" (find-package 'microlisp-shared))) (find-package 'microlisp-shared)))
+
+
 ;; while this is mostly specific to the scheme-79 chip, it is
 ;; specifically about external support chips (like memory) that are
 ;; supporting using the chip (decoding the pads, and pretending to act
@@ -430,13 +444,15 @@
   (:import-from :scheme-mach #:*reset* #:*ale*
                 #:*freeze* #:*read* #:*read-state* #:*load-state* #:*interrupt-request*
                 #:*write* #:*cdr* #:*read-interrupt* #:*gc-needed* #:*run-nano*
-                
+
                 #:*input-pad-types* #:*output-pad-types* #:get-address-bits 
 
                 #:*test-ale-to-expect-address* #:*get-address-from-pads* #:*put-memory-content-onto-pads*
                 #:*get-memory-content-from-pads* #:*test-for-read-interrupt*
 
                 #:*address-field-length* #:*address-field-mask* #:data-field-length* #:*type-field-length*)
+  (:import-from :microlisp-shared #:*stack*)
+
   (:export
    ;; some debug-useful functions dealing with "external" memory
    #:*warn-when-beyond-memtop* #:compare-memory

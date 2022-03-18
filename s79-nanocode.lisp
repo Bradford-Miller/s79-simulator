@@ -1,8 +1,12 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "S79 Nanocode" 0 3 3
-                                      "Time-stamp: <2022-02-11 13:41:39 gorbag>"
-                                      "line disambiguation")
+(scheme-79:scheme-79-version-reporter "S79 Nanocode" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:30:57 gorbag>"
+                                      "disambiguate")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.3   2/ 9/22 way too many things (fns, variables) with "line" in their name
 ;;                    and it's ambiguous.  Splitting so "line" refers to,
@@ -377,7 +381,7 @@
     ;; want to use the microcode's FROM register but pull out the type
     ;; field and set our micro-pc to that (which should be a jump
     ;; table)
-  ((from*-type) (to-micro-pc)))
+    ((from*-type) (to-micro-pc)))
 
 ;; that's all the nano definitions - finalize the array in bitvector form
 (eval-when (:load-toplevel)

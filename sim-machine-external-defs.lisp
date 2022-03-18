@@ -1,8 +1,12 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "S79 Sim Ext Defs" 0 3 1
-                                      "Time-stamp: <2022-02-24 11:50:08 gorbag>"
+(scheme-79:scheme-79-version-reporter "S79 Sim Ext Defs" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:31:54 gorbag>"
                                       "*word-size*")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.1   2/24/22 use new constant for *word-size*
 

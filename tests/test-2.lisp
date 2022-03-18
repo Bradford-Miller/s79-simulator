@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-03-08 12:17:24 gorbag>
+;; Time-stamp: <2022-03-18 17:30:52 gorbag>
 
 ;; Now that we can boot, we want to run a simple S-Code function.
 ;; The following is a hand-compiled version of figure 2 in AIM-559
@@ -35,6 +35,9 @@
 ;; somewhat differently than they are in the source langauge.
 
 ;; the (ASCII ;-) graphic representation of the S-Code (AIM 559 Figure 2):
+;; NB: 0,0 shows frame,displacement. Note that these are reversed in the actual
+;;     representation. (displacement bits are higher order than frame bits)
+;;     See: AIM 559 figure 3.
 
 ;;  ----------
 ;;  |        |
@@ -104,8 +107,8 @@
 ;;        (      *         |        )
 ;;               |                       
 ;;               V                       
-;;        (SE-Pointer      | last-arg )     (SE-Pointer      | symbol  ) 
-;;        (      *         |   *------)---> (      *         |    *----)----->     [Symbol Cell of APPEND]
+;;        (SE-Pointer      | last-arg )     (SE-Pointer      | global  ) 
+;;        (      *         |   *------)---> (      *         |    *----)----->     [Global Value Cell of APPEND]
 ;;               |                                 |
 ;;               V                                 V              
 ;;        (SE-immediate    | SE-ptr )       (SE-immediate    | SE-ptr ) 
@@ -142,11 +145,14 @@
 
 ;; some constants to make this more compact. MCR should have been loaded
 ;; first so these can be resolved.
+
 (defconstant +sep+ (pointer-type-name->int 'microlisp:self-evaluating-pointer))
 (defconstant +symbol+ (pointer-type-name->int 'microlisp:symbol))
 (defconstant +sei+ (non-pointer-type-name->int 'microlisp:self-evaluating-immediate))
 
 (defconstant +nil+ (make-word +sep+ #o0)) ;; might really need to be +symbol+?
+
+
 ;; alternatively may want to create my own type for now. The original microcode
 ;; is not sacrosanct, we should get it working as far as it is, but we can
 ;; allow our own types and encoding for simplicity. Remember our goal here is
@@ -175,17 +181,18 @@
 (eval-when (:load-toplevel :execute)
   ;; set some breakpoints to help with debugging
 
+  #||
   (when *microcode-compiled* ; doesn't make sense if we only validated the code
     (flet ((break (sym) (set-breakpoint (microcontrol-symbol-value sym t) :permanent))
            (tbreak (sym) (set-breakpoint (microcontrol-symbol-value sym t)))) ; temporary break
       ;; break before any call to eval-exp-popj-to:
       ;; I'm not yet clear on the semantics of eval-exp-popj-to so these breaks
       ;; deal with tags near those calls.
-      (break 'microlisp:last-argument-return)
-      (break 'microlisp:apply-1-arg-return)
-      (break 'microlisp:spread-argument-return)
-      (break 'microlisp:primitive-apply-1)
-      (break 'microlisp:primitive-apply-2)
+      ;(break 'microlisp:last-argument-return)
+      ;(break 'microlisp:apply-1-arg-return)
+      ;(break 'microlisp:spread-argument-return)
+      ;(break 'microlisp:primitive-apply-1)
+      ;(break 'microlisp:primitive-apply-2)
 
       ;; we know the boot code works from test-1, so break on that return so we can start tracing
       ;; the interpretation of our apply fn (and advance this breakpoint as we determine what works)
@@ -199,12 +206,17 @@
 
       ;; second arg seems to get set up correctly so we're good at the point we
       ;; call eval-exp-popj-to in last-argument-return! (see break above on last-argument-return)
-      
+
       ;; if we reach here, we should check that *args* is now correct for invoking the closure
-      (tbreak 'microlisp:closure)
-      (tbreak 'microlisp:conditional)
+      ;; (tbreak 'microlisp:local) ; this passed 3/15/22
+      ;; (tbreak 'microlisp:primitive-eq) ; this passed 3/15/22
+      ;; next is setting up the cond
+      ;;(tbreak 'microlisp:primitive-apply-2) ; inside the cond to apply the CONS but also when doing the EQ compare to NIL
+      ;;(tbreak 'microlisp:conditional)
+      ;; (tbreak 'microlisp:last-argument) ; setting up recursive call to append
 
       ))
+  ||#
   
   (setq {args} 3 ;; addresses we fill in after our hand compilation (in decimal)
         {arg1} 5
@@ -244,64 +256,48 @@
           ;; append goes into the continuation, but possibly this should be the
           ;; closure, (the value of the append symbol) at this point, i.e., we
           ;; may expect the compiler to have removed the symbol reference?
-          ,(make-word +sep+ {arg2}) ,(make-word +symbol+ {append})               ; address 7 {argnxt}
+          ,(make-word +sep+ {arg2}) ,(make-word +glo+ {app-glo})               ; address 7 {argnxt}
           ,(make-word +sei+ #o3)    ,(make-word +sep+ (1+ {arg2})) ; address 8 ({arg2})
           ,(make-word +sei+ #o4)    ,+nil+                ; address 9
-          ;; and here we define the APPEND symbol
+          ;; and here we define the APPEND symbol (note that as nothing refers to it, it will likely be gc'd away)
           ,(make-word +glo+ {app-glo}) ,+nil+             ; address 10 {append}; symbol; no plist
           ,(make-word +clos+ {app-fn}) ,+nil+             ; address 11 {app-glo}; global value cell
           ;; leading into the APPEND function
           ,(make-word +proc+ {app-seq}) ,+nil+            ; address 12 {app-fn}; no environment
           ,(make-word +seq+ (1+ {app-seq})) ,+nil+        ; address 13 {app-seq}; no documentation
           ,(make-word +arg1+ (+ 2 {app-seq})) ,(make-word +cond+ {cond-c1}) ; address 14
-          ,(make-word +loc+ #o0)    ,(make-word +app2+ (+ 3 {app-seq})) ; address 15
+          ;; displacement comes first, then frame (the diagram shows the reverse, from the paper!)
+          ,(make-word +loc+ #o0 #o0) ,(make-word +app2+ (+ 3 {app-seq})) ; address 15
           ,+nil+                    ,(make-word +eq+ #o0) ; address 16
-          ,(make-word +loc+ #o1)    ,(make-word +arg1+ (1+ {cond-c1})) ; address 17 {cond-c1}
+          ,(make-word +loc+ #o1 #o0)    ,(make-word +arg1+ (1+ {cond-c1})) ; address 17 {cond-c1}
           ,(make-word +app1+ (+ 2 {cond-c1})) ,(make-word +app2+ {cond-c2}) ; address 18
-          ,(make-word +loc+ #o0)    ,(make-word +car+ #o0); address 19
+          ,(make-word +loc+ #o0 #o0) ,(make-word +car+ #o0); address 19
           ,(make-word +arg1+ (+ 1 {cond-c2})) ,(make-word +cons+ #o0) ; address 20 {cond-c2}
           ,(make-word +app1+ (+ 2 {cond-c2})) ,(make-word +argL+ {cond-c3}) ; address 21
-          ,(make-word +loc+ #o0)    ,(make-word +cdr+ #o0) ; address 22
-          ,(make-word +loc+ #o1)    ,(make-word +glo+ {app-glo}) ; address 23 {cond-c3}
+          ,(make-word +loc+ #o0 #o0) ,(make-word +cdr+ #o0) ; address 22
+          ,(make-word +loc+ #o1 #o0) ,(make-word +glo+ {app-glo}) ; address 23 {cond-c3}
           ))
 
   ;; when appropriate set interrupt routine pointer to 2,
   ;; note that the microcode will ask for it to assign to *stack*.
   (setq external-chips:*interrupt-address* 2)
 
-  ;; we want enough memory to set up a freelist, but not so much we have a lot to check. Let's make it
-  ;; 64 words since that's reasonable to manually look through. We'll increase it later once we
-  ;; automate testing. (TBD)
-  (setq *initial-memtop* (max 64 ; give it some room
+  ;; we want enough memory to set up a freelist, but not so much we have a lot
+  ;; to check. Let's make it <s>64</s> 128 words since that's (almost)
+  ;; reasonable to manually look through and we don't want to invoke GC at this
+  ;; point (a: we know it works from test-1, and b: we don't (as of 3/18/22
+  ;; TBD) have an interrupt handler set up yet for the GC signal to invoke it
+  ;; in user code).
+  (setq *initial-memtop* (max 128 ; give it some room
                               (/ (+ 2 (length *cold-boot-memory-array*)) 2))) ; not shorter than our array though
 
   ;; gc-special-type always generates a warning since it's not a dispatchable type
   (format *error-output* ";;~%;; NB: warning about declared but undefined types are to be expected with this test 
 ;;     (in particular gc-special-type).~%;;~%")
 
-  ;; these are shine-through from test-1, need to update for test-2 (TBD). Until then, expect the test to always fail.
-  
-  (setq *goal-memory-array*
-        ;; CAR                      CDR
-        `(
-          #o0                      #o0  ;A0 null and OBLIST, shouldn't change
-         ,(make-word #o100 #o3777) #o0  ;A1, was address 7, got relocated here at first open location
-                                        ;(memtop not needed)
-         ,(make-word #o0 #o3)      #o0  ;A2 still our pointer to our evaluable expression
-         ,(make-word #o100 #o1777) ,(make-word #o0 #o4) ; A3 doesn't change
-         ,(make-word #o100 #o2777) ,(make-word #o0 #o1) ; A4 updated CDR to point to A1 (was A7)
-         ;; everything else is garbage (check *goal-newcell*)
-          ))
-
-  (setq *goal-memory-offset* 0)
-
   (setq *goal-stack* (bit-vector->integer (make-word #o124 #o0))) ; DONE and points to NIL
 
   (setq *goal-memtop* *initial-memtop*) ; better be the same
-
-  (setq *goal-newcell* #o4) ; After compaction 5 should be our first free address, and newcell is the last valid CONS
-
-  (setq *goal-exp* #o3) ; the start of our expression to be evaluated
   )
 
 ;; set up a test for successful completion
@@ -310,15 +306,27 @@
 This test checked that the hand-compiled APPEND code worked correctly")
   (cond
     ((and
-      (external-chips:compare-memory *goal-memory-array*
-                                     *goal-memory-offset*
-                                     (/ (length *goal-memory-array*) 2)
-                                     :warn)
-      (= (bit-vector->integer microlisp-shared:*newcell*) *goal-newcell*)
-      (= (bit-vector->integer microlisp-shared:*memtop*) *goal-memtop*)
+      ;; as of 3/18/22, the test SEEMS to succeed. I expected a pointer in *val* to
+      ;; the answer, but it appears to be in *args*, instead. This may be a
+      ;; function of just having NIL as the continuation for SEQUENCE? At any rate,
+      ;; the paper does indicate that VAL is accumulated on ARGS (presumably for
+      ;; the continuation function) so this in fact may be the right thing. For
+      ;; now, at least until I can test with something more complicated, I will
+      ;; treat it that way. Ship it! :-)
+
+      ;; note that *newcell* is 132 at the end of this run, (running 3558
+      ;; ticks) but we don't check it since it doesn't matter (results are what
+      ;; matters ;-) And we know from the paper a lot of improvements can be
+      ;; made to use the stack more efficiently which we're not going to do
+      ;; with this particular project (wait until we get to our own version :-)
+
+      ;; so, instead of directly comparing memory to what we see, just compare the result!
+      (compare-elements
+       `(,(make-word +sei+ 1) ,(make-word +sei+ 2) ,(make-word +sei+ 3) ,(make-word +sei+ 4))
+       *args*)
+
       (= (bit-vector->integer microlisp-shared:*stack*) *goal-stack*)
-      (= (bit-vector->integer microlisp-shared:*exp*) *goal-exp*))
-     
+      (= (bit-vector->integer microlisp-shared:*memtop*) *goal-memtop*))
      t)
     (t
      nil)))

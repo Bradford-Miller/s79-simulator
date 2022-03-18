@@ -7,9 +7,13 @@
 
 (in-package :s79-regression-tests)
 
-(scheme-79:scheme-79-version-reporter "S79 Regression Tests" 0 3 1
+(scheme-79:scheme-79-version-reporter "S79 Regression Tests" 0 4 0
                                       "Time-stamp: <2022-02-03 17:17:10 gorbag>"
                                       "line disambiguation")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.1   2/ 9/22 way too many things (fns, variables) with "line" in their name
 ;;                    and it's ambiguous.  Splitting so "line" refers to,

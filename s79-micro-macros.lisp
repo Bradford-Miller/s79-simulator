@@ -3,9 +3,13 @@
 ;; for now we put this into :scheme-mach but due to collision with CL we may want a more restricted package in the
 ;; future (so not all :scheme-mach packages have to reference "cl:cond" for instance)
 
-(scheme-79:scheme-79-version-reporter "Scheme Microcode Macros" 0 3 2
-                                      "Time-stamp: <2022-02-03 17:03:25 gorbag>"
+(scheme-79:scheme-79-version-reporter "Scheme Microcode Macros" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:30:45 gorbag>"
                                       "use intentional upla fns")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.2   2/ 2/22 use intentional upla fns
 

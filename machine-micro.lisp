@@ -1,8 +1,12 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 3 6
-                                      "Time-stamp: <2022-02-18 16:24:54 gorbag>"
+(scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:29:20 gorbag>"
                                       "make set-micro-pc generic so we can hook it")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.6   2/18/22 make set-micro-pc generic so we can hook it (e.g.
 ;;                    with an :around method)

@@ -1,8 +1,12 @@
 (in-package :scheme-79-mcr-i)
 
-(scheme-79:scheme-79-version-reporter "S79 upla assembler" 0 3 3
-                                      "Time-stamp: <2022-02-14 12:20:29 gorbag>"
+(scheme-79:scheme-79-version-reporter "S79 upla assembler" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:33:07 gorbag>"
                                       "fix disassembly of from-to uses")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.3   2/14/22 fix disassembly of from-to uses - it didn't return
 ;;                    the additional values beyond the code itself.

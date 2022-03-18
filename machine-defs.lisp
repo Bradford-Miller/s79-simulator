@@ -1,8 +1,15 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 8
-                                      "Time-stamp: <2022-02-24 11:44:00 gorbag>"
-                                      "break out more bit functions")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:29:06 gorbag>"
+                                      "force type field on intermediate-argument for console presentation")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.9   3/15/22 force type field on intermediate-argument for console
+;;                     presentation purposes (debugging)
 
 ;; 0.3.8   2/24/22 add get-type-bits, get-frame-bits, get-displacement-bits,
 ;;                     get-address-bits
@@ -394,7 +401,7 @@ button or the set-breakpoint fn.")
 
 ;; INTERMEDIATE-ARGUMENT used by microcode compiler for storing anonymous temporaries
 (defchip-reg *intermediate-argument*)
-(defureg *intermediate-argument* (to from) ())
+(defureg *intermediate-argument* (to from) () t) ; force type field for debugging (will present in console)
 
 ;; NIL a pointer to nil - it's a dummy register and can't be set (in the hardware, anyway).
 (defchip-reg *nil*)

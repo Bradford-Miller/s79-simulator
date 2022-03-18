@@ -1,8 +1,12 @@
 (in-package :scheme-mach) ; pull into scheme-mach so all the defufn can see them
 
-(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 3 9
-                                      "Time-stamp: <2022-02-25 17:51:59 gorbag>"
+(scheme-79:scheme-79-version-reporter "S79 ucode compiler defs" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:26:47 gorbag>"
                                       "fix status message from defrplacop")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.9   2/24/22 defrplacop status message had typo in operative clause
 

@@ -1,8 +1,12 @@
 (in-package :microlisp-shared) ; instructions are (now) in :microlisp-shared package
 
-(scheme-79:scheme-79-version-reporter "S79 ucode Defs" 0 3 2
-                                      "Time-stamp: <2022-02-09 12:38:41 gorbag>"
+(scheme-79:scheme-79-version-reporter "S79 ucode Defs" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:32:41 gorbag>"
                                       "line disambiguation")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.2   2/ 9/22 way too many things (fns, variables) with "line" in their name
 ;;                    and it's ambiguous.  Splitting so "line" refers to,

@@ -1,8 +1,18 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "S79 ucode support ops" 0 3 3
-                                      "Time-stamp: <2022-02-09 12:40:43 gorbag>"
-                                      "line disambiguation")
+(scheme-79:scheme-79-version-reporter "S79 ucode support ops" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:32:56 gorbag>"
+                                      "special-case for frame=0 and displacement=0 preds")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; 0.3.4   3/11/22 frame=0 and displacement=0 check the fields in the
+;;                    *bus* register but should load *exp* first
+;;                    This should be somehow declared in the
+;;                    upred definition for these, but for now we will
+;;                    special case in simple-branch-pred (TBD)
 
 ;; 0.3.3   2/ 9/22 way too many things (fns, variables) with "line" in their name
 ;;                    and it's ambiguous.  Splitting so "line" refers to,
@@ -165,7 +175,10 @@
      (cl:if *debug-compiler*
             (break "simple-branch: branch instruction ~s does not put anything on bus (check)" sense-wire)
             (warn "simple-branch: branch instruction ~s does not put anything on bus (check)" sense-wire))
-     `((branch ,sense-wire ,fail-tag ,success-tag)))))
+     (simple-branch-noload sense-wire fail-tag success-tag))))
+
+(defufn simple-branch-noload (sense-wire fail-tag success-tag :declarations '(:conditional))
+  `(((branch ,sense-wire ,fail-tag ,success-tag))))
 
 (defufn simple-branch-pred (pred fail-tag success-tag  :declarations '(:conditional))
   (assert (upred-p pred) (pred) "~s was not a declared predicate" pred)
@@ -175,7 +188,9 @@
         ((not (null defining-fn-symbol)) ; if we declared a defining function
          (funcall defining-fn-symbol fail-tag success-tag)) ; use it
         ((and (null pred-type) implied-register)
-         (fetch-and-test-for-success implied-register real-sense-wire fail-tag success-tag))
+         (if (member real-sense-wire '(displacement=0-bus frame=0-bus)) ; hack! Should have something in the upred for this (TBD)
+             (fetch-and-test-for-success '*exp* real-sense-wire fail-tag success-tag)
+             (fetch-and-test-for-success implied-register real-sense-wire fail-tag success-tag)))
         ((null pred-type) ; does not need to look at memory, only register content
          (simple-branch real-sense-wire fail-tag success-tag))
         (t
