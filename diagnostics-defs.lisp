@@ -1,8 +1,12 @@
 (in-package :diagnostics)
 
-(scheme-79:scheme-79-version-reporter "S79 Diagnostics Support" 0 3 0
-                                      "Time-stamp: <2022-01-11 15:12:36 gorbag>"
-                                      "0.3 release!")
+(scheme-79:scheme-79-version-reporter "S79 Diagnostics Support" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:27:02 gorbag>"
+                                      "0.4 release!")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.3.0   1/11/22 snapping a line: 0.3 release of scheme-79 supports  test-0 and test-1. ;;

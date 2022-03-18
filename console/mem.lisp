@@ -1,8 +1,12 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Memory Win" 0 3 5
-                                      "Time-stamp: <2022-03-15 13:50:25 gorbag>"
+(scheme-79:scheme-79-version-reporter "Scheme Machine Memory Win" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:16:17 gorbag>"
                                       "add options checkboxes for dump-memory contents")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.5   3/15/22 add options for the dump memory, preselecting show-registers.
 ;;                     the hope is to make it easier to follow the display stack, 

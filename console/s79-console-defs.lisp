@@ -1,8 +1,12 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 3 5
-                                      "Time-stamp: <2022-03-11 16:39:50 gorbag>"
+(scheme-79:scheme-79-version-reporter "Scheme Mech Console Defs" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:16:29 gorbag>"
                                       "add cnd (conditional) to all-indicators")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.5   3/11/22 add cnd (conditional) to all-indicators
 

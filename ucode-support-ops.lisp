@@ -1,8 +1,12 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "S79 ucode support ops" 0 3 4
-                                      "Time-stamp: <2022-03-15 12:45:31 gorbag>"
+(scheme-79:scheme-79-version-reporter "S79 ucode support ops" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:32:56 gorbag>"
                                       "special-case for frame=0 and displacement=0 preds")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.4   3/11/22 frame=0 and displacement=0 check the fields in the
 ;;                    *bus* register but should load *exp* first

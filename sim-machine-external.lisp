@@ -1,8 +1,12 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 3 3
-                                      "Time-stamp: <2022-03-11 16:29:56 gorbag>"
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:32:07 gorbag>"
                                       "force conditional flag off when resetting")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.3   3/11/22 if we are doing a reset, force the *conditional* flag to 0.
 

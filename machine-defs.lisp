@@ -1,8 +1,12 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 3 9
-                                      "Time-stamp: <2022-03-15 13:17:09 gorbag>"
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:29:06 gorbag>"
                                       "force type field on intermediate-argument for console presentation")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.9   3/15/22 force type field on intermediate-argument for console
 ;;                     presentation purposes (debugging)

@@ -1,6 +1,6 @@
 # Scheme-79 Chip Reimplimentation in Simulation and FPGA
 
-Time-stamp: <2022-03-08 12:27:39 gorbag>
+Time-stamp: <2022-03-18 12:13:54 gorbag>
 
 This is a "first cut" at a software simulation/emulation of the
 SCHEME-79 chip (by GLS, also Jack Holloway, Jerry Sussman and Alan
@@ -103,8 +103,8 @@ later.
 ### Instructions
 
 While the microcode is well documented, not all of the specific
-instructions are. I'm particularly confused about eval-exp-popj-to (also
-see S-Code, below), and currently expand it into:
+instructions are. I'm postulating eval-exp-popj-to (also
+see S-Code, below), means the following, and currently expand it into:
 
 ``` 
 (progn
@@ -112,15 +112,12 @@ see S-Code, below), and currently expand it into:
     (dispatch (fetch *exp*)))
 ```
 
-The first statement sets up the continuation from the dispatch on EXP
-which is pointing to the symbol-cell for our function, and the second
-interprets it (so it should get the GLOBAL value for the symbol) and
-then continues into internal-apply (typically). That's going to do
-another dispatch-on-exp-allowing-interrupts so we should get the CLOSURE
-at that point but we may not have the correct continuation set up for
-that to be interpreted (TBD). Which means we might really have been
-better off by starting out with slamming the CLOSURE there in the first
-place?
+The first statement sets up the continuation from the dispatch on EXP which is
+pointing to the GLOBAL cell for our function, and the second interprets it (so
+it should get the GLOBAL value for the symbol) and then continues into
+internal-apply (typically). That's going to do another
+dispatch-on-exp-allowing-interrupts so we should get the CLOSURE at that
+point.
 
 ## Test Sets:
 
@@ -145,45 +142,38 @@ test-2 | hand-compiled APPEND function run on a couple list structures (from the
 ## S-Code Notes
 
 So neither AIM directly documents S-Code (compiled scheme code directly
-executed by the machine) but does give a (partial) example for APPEND
-(which appears in test-2). Additionaly, while the representation for
-the APPEND function itself is sketched out, only AIM 514 shows the
-representation of how it might be invoked. Needless to say, the tags
-used for AIM 514 don't directly map to AIM 559, and further the
-specific representation doesn't work if we try to copy it. So the
-following are some notes on what I've discovered through trial and
-error and some analysis.
+executed by the machine) but does give a (mostly complete) example for APPEND
+(which appears in test-2). Additionaly, while the representation for the
+APPEND function itself is sketched out, only AIM 514 shows the representation
+of how it might be invoked. Needless to say, the tags used for AIM 514 don't
+directly map to AIM 559, and further the specific representation doesn't work
+if we try to copy it. So the following are some notes on what I've discovered
+through trial and error and some analysis of the APPEND code that is provided.
 
 ### Invoking the top-level function
-After BOOT-LOAD runs, we have *stack* pointing to the top of the stack
-(the function to be evaluated) with a type of BOOT-LOAD-RETURN, which
-is entered after the initial GC completes.  We then assign *EXP* to the
-car of the stack (the car of the cons cell the stack points to) and
-evaluate that as our top-level function. Since the CDR of that cell
-will be ignored, we have to make sure it's something valid if it only
-has a valid CAR, which means it can't be type FIRST-ARGUMENT (which
-would start collecting arguments for a function call) because the CDR
-is the continuation after the first argument is set. So I beleive we
-are required to use SEQUENCE here as a NIL rest of sequence can be
-successfully ignored (we will see DONE, presumably as set up by
-BOOT-LOAD-RETURN when we've finished evaluating the first sequence
+After BOOT-LOAD runs, we have *stack* pointing to the top of the stack (the
+function to be evaluated) with a type of BOOT-LOAD-RETURN, which is entered
+after the initial GC completes.  We then assign *EXP* to the car of the stack
+(the car of the cons cell the stack points to) and evaluate that as our
+top-level function. Since the CDR of that cell will be ignored, we have to
+make sure it's something valid if it only has a valid CAR, which means it
+can't be type FIRST-ARGUMENT (which would start collecting arguments for a
+function call) because the CDR is the continuation after the first argument is
+set. So I beleive we are required to use SEQUENCE here as a NIL rest of
+sequence can be successfully ignored (we will see DONE, presumably as set up
+by BOOT-LOAD-RETURN when we've finished evaluating the first sequence
 element).
 
 ### The general form of a function call
-Test-2 shows a general invocation of a function; the initial SEQUENCE
-points to a CONS cell whose CAR is of type FIRST-ARGUMENT which points
-to a single element list of our first argument. The CDR of the SEQUENCE
-target cell is NIL (or in this case could be DONE since we won't have
-anything else to do). The cell 1st-arg points to has a CAR that points
-to the list struction that is our first argument, while the CDR is of
-type LAST-ARG and points to another CONS whose CAR is a pointer to the
-actual list that is our second argument to append and whose CDR points
-to our APPEND function itself as the continuation. [At this point I'm
-not yet certain if it should point to the symbol for the append function
-or to the global value cell, or to the closure; I'm betting on the
-latter but will try the former first as that gives us more flexibility,
-but thinking that this is already compiled code it's probably the latter
-:-)]
+Test-2 shows a general invocation of a function; the initial SEQUENCE points
+to a CONS cell whose CAR is of type FIRST-ARGUMENT which points to a single
+element list of our first argument. The CDR of the SEQUENCE target cell is NIL
+(or in this case could be DONE since we won't have anything else to do). The
+cell 1st-arg points to has a CAR that points to the list struction that is our
+first argument, while the CDR is of type LAST-ARG and points to another CONS
+whose CAR is a pointer to the actual list that is our second argument to
+append and whose CDR points to to the global value cell for our APPEND
+function itself as the continuation.
 
 Anyway, the key insight is to understand the processor will do recursive
 descent on the EXP (expression to be evaluated), expecting the arguments
@@ -193,20 +183,42 @@ you might expect from a standard lisp interpreter.
 
 [Insert picture here]
 
-What I'm not sure yet is how the continuation into a (user) function
-should be represented. For the moment, I'm putting in a SYMBOL pointer
-to the GLOBAL cell (car is a pointer to the closure in the case of a
-function, while cdr is the property list for the symbol) and seeing if
-that's what makes sense (since the authors didn't precisely define
-eval-exp-popj-to I seem to have some flexibility). At any rate, if not
-the SYMBOL, I can then try the GLOBAL and last the CLOSURE. I suspect
-the latter is correct but the indirects have some advantage in case of
-redefinitions. 
+Of additional note, the TR presented LOCAL links as <frame>, <offset> which
+makes intuitive sense (the frame is so we can move up the stack and talk about
+the context of the caller for the purposes of finding local variable
+definitions. However, the representation within a register or memory is <type>
+<offset> <frame>, so I've added an optional argument to the make-word helper
+function such that if the frame is specified (a third value) it creates the
+right word, and otherwise just expects <type> <data> as is usual for most
+cases (see, e.g., test-2.lisp).
 
 ## Status:
 
 Note the TODO.txt file documents specific tasks that are planned (in
 some sense ;-) or previous TODO items that have been completed.
+
+#### 3-18-22 BWM
+Still working on test-2. It mostly seems to be working correctly (single
+stepping through the microcode to be sure everything is copasetic). Last bug
+found today was the frame/displacement issue mentioned above; I had just
+slammed the displacement directly into the low order bits of the data field,
+based on the provided diagram for APPEND, which is intuitive but wrong!
+Anyway, test-2 is fixed so hopefully we can get a clean run soon and I can
+increment the dot release before starting to work on the VHDL generator for
+this (which, presumably, will require some recoding of the simulator as well
+as the paradigm is better elaborated). Also clear that 64 words isn't enough
+to even run this append example, so doubling the size of memory to handle the
+recursive call without invoking GC which will require setting up an interrupt
+generator/handler. Test-1 already demonstrated GC works, but for GC's
+triggered by consing, a pin is set and the user (hardware) is expected to
+generate an interrupt and vector to a handler. In our case we will want to
+call the GC in the microcode as we don't need anything more elaborate, but I
+was going to wait until at least test-3 to set all that up. Plus as we get
+more complexity in the user-level code we will want a scheme->s-code compiler
+as well, but all this seems to be a distraction over our goal of getting an
+FPGA generator. So that will wait at least until we have some version (that
+can pass test-2) built on an FPGA! (after which we may focus on scheme-86
+anyway and build an s-code compiler that works with both).
 
 #### 1-11-22 BWM
 test-1 works and have repatriated more code into

@@ -1,8 +1,12 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 3 12
-                                      "Time-stamp: <2022-03-16 18:33:03 gorbag>"
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:16:43 gorbag>"
                                       "when prompting for a new register value, make sure the default is octal")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.12  3/14/22 add a print-function to the prompter for a new register 
 ;;                     value so it can be forced to octal

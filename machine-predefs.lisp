@@ -1,8 +1,12 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 3 6
-                                      "Time-stamp: <2022-03-15 13:18:13 gorbag>"
+(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 4 0
+                                      "Time-stamp: <2022-03-18 15:29:40 gorbag>"
                                       "defureg: optional argument to force type field")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.6   3/15/22 add optional argument to defureg to force the creation of a
 ;;                    type field for presentation purposes by the console.

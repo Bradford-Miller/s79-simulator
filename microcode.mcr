@@ -4,9 +4,13 @@
 ;; (thought it might make sense to have some kind of version number
 ;; that can be accessed from the machine!)
 
-;;(scheme-79:scheme-79-version-reporter "S79 Microcode" 0 3 1
-;;                                      "Time-stamp: <2022-02-18 16:52:34 gorbag>"
+;;(scheme-79:scheme-79-version-reporter "S79 Microcode" 0 4 0
+;;                                      "Time-stamp: <2022-03-18 15:30:18 gorbag>"
 ;;                                      "*stack* from-type")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; 0.3.1 1/17/22 added from-type for type dispatch (new code paying
 ;;                   more attention to declarations!
