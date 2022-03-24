@@ -1,8 +1,11 @@
 (in-package :s79-console)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 4 0
-                                      "Time-stamp: <2022-03-18 15:16:43 gorbag>"
-                                      "when prompting for a new register value, make sure the default is octal")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Console" 0 4 1
+                                      "Time-stamp: <2022-03-23 17:38:53 gorbag>"
+                                      "note-banner sig change"
+                                      )
+
+;; 0.4.1   3/23/22 note-banner no longer needs 2nd arg
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
@@ -875,7 +878,7 @@ and check if it was successful (if such an evaluation function was declared)"
       (when (test-result-interpreter *test-suite*)
         (let* ((result (funcall (test-result-interpreter *test-suite*)))
                (result-msg (if result " Success! " "Failure...")))
-          (note-banner (list "Test Suite Result:" " " result-msg) 3)
+          (note-banner (list "Test Suite Result:" " " result-msg))
           ;; also report in the register description pane (clear focused register)
           (setf (focused-register interface) nil)
           (update-register-description-pane interface (format nil "***** TEST SUITE RESULT: ~a *****" result-msg))

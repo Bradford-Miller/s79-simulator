@@ -1,8 +1,10 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Clock" 0 4 0
-                                      "Time-stamp: <2022-03-18 15:26:36 gorbag>"
-                                      "0.4 release!")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Clock" 0 4 1
+                                      "Time-stamp: <2022-03-23 17:38:01 gorbag>"
+                                      "note-banner sig change")
+
+;; 0.4.1   3/23/22 note-banner no longer needs 2nd arg
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
@@ -131,7 +133,7 @@
       (0 ; assert ph1 and call *ph1-rising-list*
        (when *debug-timing*
          (terpri *note-output*)
-         (note-banner (list (format nil "Start of tick ~d" *tick*)) 4)
+         (note-banner (list (format nil "Start of tick ~d" *tick*)))
          (terpri *note-output*))
        (setq *ph1-clock-state* t) ; internal version
        (set-pad '*ph1*)           ; external version

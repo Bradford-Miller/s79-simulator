@@ -1,8 +1,10 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 4 0
-                                      "Time-stamp: <2022-03-18 15:29:20 gorbag>"
-                                      "make set-micro-pc generic so we can hook it")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 4 1
+                                      "Time-stamp: <2022-03-23 17:39:19 gorbag>"
+                                      "note-banner sig change")
+
+;; 0.4.1   3/23/22 note-banner no longer needs 2nd arg
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
@@ -447,7 +449,7 @@ a given offset. Currently does not directly handle conditionals (TBD)"
                               ; for a loop (typical halt address is a loop on
                               ; that address)
                (= new-pc-integer *halt-address*))
-      (note-banner '("HALT ADDRESS REACHED!") 3)
+      (note-banner '("HALT ADDRESS REACHED!"))
       (stop))
 
     (flet ((set-new-pc (bits)
@@ -488,7 +490,7 @@ a given offset. Currently does not directly handle conditionals (TBD)"
 
     ;; check for breakpoint
     (when (member (bit-vector->integer *micro-pc*) *breakpoints* :test #'=)
-      (note-banner '("BREAKPOINT REACHED!") 3)
+      (note-banner '("BREAKPOINT REACHED!"))
       (set-running-p nil)
       #+capi (s79-console:note-breakpoint-reached)) ; let the console know about it
 
