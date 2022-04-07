@@ -1,8 +1,11 @@
 (in-package :scheme-79)
 
-(scheme-79-version-reporter "S79 Dev Support" 0 4 0
-                            "Time-stamp: <2022-03-18 15:31:14 gorbag>"
-                            "0.4 release!")
+(scheme-79-version-reporter "S79 Dev Support" 0 4 1
+                            "Time-stamp: <2022-04-07 12:53:45 gorbag>"
+                            "change default microcode location")
+
+;; 0.4.1   4/ 7/22 with introduction of plas directory, move microcode there
+;;                    and change default location here
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
@@ -102,7 +105,7 @@
 
 (in-package :scheme-79)
 
-(defparameter *default-microcode* "src:scheme-79;simulator;microcode.mcr"
+(defparameter *default-microcode* "src:scheme-79;simulator;plas;microcode.mcr"
   "Where (test) looks for the standard microcode (this can be
   overridden by parameters on (test))")
 

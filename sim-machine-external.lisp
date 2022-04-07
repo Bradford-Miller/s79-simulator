@@ -1,8 +1,11 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 4 0
-                                      "Time-stamp: <2022-03-18 15:32:07 gorbag>"
-                                      "force conditional flag off when resetting")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 4 1
+                                      "Time-stamp: <2022-04-07 11:55:15 gorbag>"
+                                      "repatriating")
+
+;; 0.4.1 4/ 7/22 repatriating defufns, etc. that are used to build the PLA from
+;;                  code used for the simulator or define the machine itself.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
@@ -146,20 +149,6 @@
   
   (note "*micro-pc* set to boot-load: good luck!"))
 
-;; related uinstructions:
-
-;; &get-interrupt-routine-pointer
-(defufn &get-interrupt-routine-pointer (:constituent t)
-
-  (ecase *enclosing-opcode*
-    (assign ; better have a *to-register*...
-     (write-generated-code *upla-stream* nil
-                           `(((to ,*to-register*) microlisp-shared::do-simple-get-interrupt-pointer))
-                           "&get-interrupt-routine-pointer"))))
-
-;; &read-from-pads
-
-;; &write-to-pads
 
 ;; MEMORY:
 
