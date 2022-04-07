@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Microfunctions" 0 4 0
-                                      "Time-stamp: <2022-04-07 12:33:20 gorbag>"
+(scheme-79:scheme-79-version-reporter "Scheme Machine ufunctions" 0 4 0
+                                      "Time-stamp: <2022-04-07 14:24:55 gorbag>"
                                       "repartriated code")
 
 ;; 0.4.0   4/ 7/22 repatriating code from sim-machine-external,

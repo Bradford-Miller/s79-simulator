@@ -1,10 +1,10 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Microcode Assembler " 0 4 1
-                                      "Time-stamp: <2022-04-07 12:32:36 gorbag>"
+(scheme-79:scheme-79-version-reporter "S79 ucode Assembler" 0 4 0
+                                      "Time-stamp: <2022-04-07 14:25:24 gorbag>"
                                       "repatriated")
 
-;; 0.4.1   4/ 7/22 split off from machine-micro - stuff use to build the PLA
+;; 0.4.0   4/ 7/22 split off from machine-micro - stuff use to build the PLA
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
