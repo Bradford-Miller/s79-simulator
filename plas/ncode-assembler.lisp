@@ -1,10 +1,10 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Nano Assembler" 0 4 0
-                                      "Time-stamp: <2022-04-07 12:26:46 gorbag>"
+(scheme-79:scheme-79-version-reporter "S79 Nano Assembler" 0 4 0
+                                      "Time-stamp: <2022-04-07 14:25:40 gorbag>"
                                       "repatriated")
 
-;; repatriate code used to build PLAs from machine-nano.lisp
+;; 0.4.0   4/ 7/22 repatriate code used to build PLAs from machine-nano.lisp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;

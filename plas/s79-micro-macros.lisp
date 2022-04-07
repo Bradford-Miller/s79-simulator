@@ -1,10 +1,11 @@
 (in-package :scheme-mach)
 
-;; for now we put this into :scheme-mach but due to collision with CL we may want a more restricted package in the
-;; future (so not all :scheme-mach packages have to reference "cl:cond" for instance)
+;; for now we put this into :scheme-mach but due to collision with CL we may
+;; want a more restricted package in the future (so not all :scheme-mach
+;; packages have to reference "cl:cond" for instance)
 
 (scheme-79:scheme-79-version-reporter "Scheme Microcode Macros" 0 4 0
-                                      "Time-stamp: <2022-03-18 15:30:45 gorbag>"
+                                      "Time-stamp: <2022-04-07 14:25:56 gorbag>"
                                       "use intentional upla fns")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
