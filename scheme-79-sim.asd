@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-02-18 16:18:26 gorbag>
+;; Time-stamp: <2022-04-07 12:33:20 gorbag>
 
 ;;  2/18/21: add memory window
 ;; 10/ 8/21: flip order of core-support and ucode-defs as we introduce a dependency
@@ -19,7 +19,7 @@
    (:file "packages")
    (:file "scheme-79-project-defs")     
    (:file "scheme-79-defs") 
-   (:file "diagnostics-defs")
+   (:file "console/diagnostics-defs")
 
    (:file "ucode-defs")                 ; here to get the symbols
                                         ; defined (exports them):
@@ -31,7 +31,7 @@
                                         ; core-support for defufn
                                         ; variables
 
-   (:file "compiler-defs")
+   (:file "plas/compiler-defs")
 
    (:file "clock")                      ; clock related functions
    (:file "clock-triggers")             ; where we relate various
@@ -41,25 +41,31 @@
                              ; lower level of the machine, i.e. the
                              ; registers and control lines.
    (:file "machine-defs")
+   (:file "machine-wires")
+
    (:file "machine")
-   (:file "storage-manager") ;; memory/gc related part of the machine
+   (:file "plas/storage-manager") ;; memory/gc related microcode defs
 
    (:file "sim-machine-external-defs")
 
    (:file "sim-machine-external") ; pad definitions and support
    (:file "sim-machine-internal") ; depends on ucode-defs
-   (:file "s79-micro-macros")     ; defines macros used in the microcode like progn and cond
-   (:file "machine-nano")    ; defines the nano instructions, need to
-                             ; read this before the microcode gets
+
+   (:file "plas/mcode-assembler")
+   (:file "plas/s79-microfunctions")
+   (:file "plas/s79-micro-macros")      ; defines macros used in the microcode like progn and cond
+   (:file "plas/ncode-assembler")       ; defines the nano instructions, need to
+                                        ; read this before the microcode gets
                                         ; compiled.
 
-   (:file "s79-nanocode")    ; load after machine-nano at least...
+   (:file "plas/s79-nanocode")    ; load after machine-nano at least...
 
-   (:file "machine-micro")   ; lower level support for compiled microcode.
+   (:file "machine-nano")    ; simulator support for compiled nanocode.
+   (:file "machine-micro")   ; simulator support for compiled microcode.
    
-   (:file "ucode-support-ops")  ; microcode ops that are used in the expansion of MIT's ops
+   (:file "plas/ucode-support-ops")  ; microcode ops that are used in the expansion of MIT's ops
    
-   (:file "upla-assembler")  ; lower level imlementation for compiling microcode
+   (:file "plas/upla-assembler")  ; lower level imlementation for compiling microcode
 
    ;;   (:file "microcode") ; this gets loaded manually (at this
    ;;   point) using fn read-microcode-for-interpreter or
@@ -80,9 +86,8 @@
      ;; similarly for diagnostics panel: a generalized simple grid for
      ;; presenting test results (or just tracking them if manually
      ;; operated):
-     (:file "diagnostics-panel") ))
-   #+capi
-   (:file "diagnostics-support")
+     (:file "diagnostics-panel")
+     (:file "diagnostics-support")))
 
    ;; scheme->s-code compiler
    (:module "s-code" :serial t

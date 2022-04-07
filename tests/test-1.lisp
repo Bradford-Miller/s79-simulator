@@ -1,4 +1,4 @@
-;; Time-stamp: <2021-12-15 16:41:43 gorbag>
+;; Time-stamp: <2022-04-07 12:44:16 gorbag>
 
 ;; implement a test function that checks GC correctly sets up a free list
 
@@ -90,7 +90,7 @@ This test checked that the GC code is working correctly by consolodating
 free space and setting up pointers to the initial free CONS")
   (cond
     ((and
-      (external-chips:compare-memory *goal-memory-array*
+      (s79-console:compare-memory *goal-memory-array*
                                      *goal-memory-offset*
                                      (/ (length *goal-memory-array*) 2)
                                      :warn)

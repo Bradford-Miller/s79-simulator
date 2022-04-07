@@ -1,11 +1,14 @@
 (in-package :cl-user)
 (defvar *scheme-79-version-reporter-initializations* nil)
 
-(cl-lib:detailed-version-reporter "S79 defpackages" 0 4 0
-                                  "Time-stamp: <2022-03-18 15:30:31 gorbag>"
-                                  "import *stack* for external-chips (dump-memory usage)"
+(cl-lib:detailed-version-reporter "S79 defpackages" 0 4 1
+                                  "Time-stamp: <2022-04-07 12:38:55 gorbag>"
+                                  "move memory dump to s79-console"
                                   :initialization-list-symbol
                                   *scheme-79-version-reporter-initializations*)
+
+;; 0.4.1   4/ 7/22 moving memory dump routines to console/mem.lisp as they are
+;;                    implemented for simulation only
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
@@ -454,15 +457,15 @@
   (:import-from :microlisp-shared #:*stack*)
 
   (:export
-   ;; some debug-useful functions dealing with "external" memory
-   #:*warn-when-beyond-memtop* #:compare-memory
-
+   #:*warn-when-beyond-memtop* 
+   
    ;; used to set up an interrupt address for the external simulator to respond with, typically
    ;; in test-n.lisp see external-support.lisp
    #:*interrupt-address* 
    
-   #:init-memory-for-cold-boot #:dump-memory #:clear-memory #:dump-memory-with-types
+   #:init-memory-for-cold-boot 
    #:read-address #:write-address #:invalid-address-p
+   #:*memory-vector* ;; the actual memory array, used by mem.lisp
    ))
 
 ;; this is intended to be the interpreter for the microcode, but not
@@ -515,7 +518,11 @@
    #:update-diagnostics #:reset-uinstruction-metrics
    #:update-predicates #:update-test-suites
    #:update-microtests #:update-nanotests
-   #:dw1-tests #:dw2-tests #:dw3-tests #:dw4-tests))
+   #:dw1-tests #:dw2-tests #:dw3-tests #:dw4-tests
+
+   ;; moved here as not part of machine
+   ;; some debug-useful functions dealing with "external" memory
+   #:dump-memory #:clear-memory #:dump-memory-with-types #:compare-memory))
 
 ;; while i'm not curently using this package yet, the intent is this
 ;; is where the scheme langage and ->s-code functions would go,

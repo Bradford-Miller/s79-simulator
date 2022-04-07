@@ -1,4 +1,4 @@
-;; Time-stamp: <2022-02-04 17:58:33 gorbag>
+;; Time-stamp: <2022-04-07 12:43:32 gorbag>
 
 ;; implement a test function that checks memory and some registers for correct values
 ;; set up *cold-boot-memory-array* so reset will setup external memory correctly for the test
@@ -80,7 +80,7 @@
 This test checked that basic operations needed to boot and stack save/restore 
 operations are functioning correctly. If this works, test-1 should be run.")
   (cl:cond
-    ((and (external-chips:compare-memory *goal-memory-array*
+    ((and (s79-console:compare-memory *goal-memory-array*
                                          *goal-memory-offset*
                                          (/ (length *goal-memory-array*) 2)
                                          :warn))
