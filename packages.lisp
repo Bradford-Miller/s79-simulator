@@ -1,11 +1,13 @@
 (in-package :cl-user)
 (defvar *scheme-79-version-reporter-initializations* nil)
 
-(cl-lib:detailed-version-reporter "S79 defpackages" 0 4 1
-                                  "Time-stamp: <2022-04-07 12:38:55 gorbag>"
-                                  "move memory dump to s79-console"
+(cl-lib:detailed-version-reporter "S79 defpackages" 0 4 2
+                                  "Time-stamp: <2022-04-12 18:01:31 gorbag>"
+                                  "export processor control functions"
                                   :initialization-list-symbol
                                   *scheme-79-version-reporter-initializations*)
+
+;; 0.4.2   4/12/22 export processor control functions (like reset) from :scheme-79
 
 ;; 0.4.1   4/ 7/22 moving memory dump routines to console/mem.lisp as they are
 ;;                    implemented for simulation only
@@ -244,7 +246,10 @@
            #:*scheme-mach*
            #:*default-microcode*
 
-           ;; for debugging
+           ;; control functions (these may be common to all processors?)
+           #:reset #:power-on-reset
+
+           ;; for debugging (also may be generally common to most/all processors?)
            #:disassemble-microcontrol-array
            #:debug-compile-expression
            #:dump-memory #:dump-memory-with-types #:clear-memory
@@ -328,7 +333,7 @@
    ;; and stuff that is for the simulator
    :fpga-plas :fpga-registers :fpga-pads :fpga-clocked :fpga-combinatorics
    :fpga-diagnostics :debug-support :fpga-support :fpga-project-defs :common
-   :scheme-79 :scheme-shared :diagnostics :common-lisp :cl-lib)
+   :scheme-79 :scheme-shared :common-lisp :cl-lib)
 
   (:export
    #:*address-field-length* #:*address-field-mask* #:data-field-length* #:*type-field-length*
@@ -356,7 +361,7 @@
 
    ;; lookup functions (used after loading microcode!)
    #:get-microcode #:get-nanocode
-   #:collect-ncode #:get-sense-wire-encoding
+   #:collect-ncode 
    #:collect-ucode #:sense-wire-encoding-to-symbol #:sense-wire-real-name
 
    ;; all the registers pads & &forms should be automatically

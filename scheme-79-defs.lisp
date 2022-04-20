@@ -1,8 +1,10 @@
 (in-package :scheme-79)
 
-(scheme-79-version-reporter "S79 Dev Support" 0 4 1
-                            "Time-stamp: <2022-04-07 12:53:45 gorbag>"
-                            "change default microcode location")
+(scheme-79-version-reporter "S79 Dev Support" 0 4 2
+                            "Time-stamp: <2022-04-12 16:53:12 gorbag>"
+                            "move (reset) to console directory")
+
+;; 0.4.2   4/12/22 move reset, power-on-reset to console directory
 
 ;; 0.4.1   4/ 7/22 with introduction of plas directory, move microcode there
 ;;                    and change default location here
@@ -121,13 +123,14 @@ he *memtop* register (for debugging).  Note that occasionally this
 will be ok (e.g. during boot when memtop has not been established)")
 
 (defparameter *dump-values-per-row* 2
-  "When dumping memory, the number of addresses to print per row")
+  "When dumping memory, the number of addresses to print per row. For lisp,
+  this is typically 2 to print the CAR and CDR on one line.")
 
 (defparameter *debug-microcontroller* t
   "log microcontroller info when the u-pc is updated")
 
 (defparameter *debug-defnano* nil
-  "Turn on extra debugging while expanding defnano forms")
+  "Turn on extra debugging comments while expanding defnano forms")
 
 (defparameter *debug-nanocontroller* t
   "log verbosely nanocontroller updates")
@@ -146,12 +149,4 @@ will be ok (e.g. during boot when memtop has not been established)")
   (setq *ulang-shared-pkg* (find-package :microlisp-shared)) ; ditto
   (setq *project-machine-pkg* (find-package :scheme-mach))) ; we have to have our own project machine package though.
 
-(defun reset ()
-  "Same as setting the reset-line on the chip for a clock cycle"
-  (note-if (or *debug-microcontroller* *debug-external-pads*) "Setting *reset* pad")
-  (set-pad 'scheme-mach:*reset*))
 
-(defun power-on-reset ()
-  (scheme-mach:single-step t) ; prep UI
-  (reset) ; send reset signal
-  (scheme-mach:single-step t)) ; allow it to be processed
