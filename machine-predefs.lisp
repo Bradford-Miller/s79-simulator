@@ -1,8 +1,10 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 4 0
-                                      "Time-stamp: <2022-03-18 15:29:40 gorbag>"
-                                      "defureg: optional argument to force type field")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 4 1
+                                      "Time-stamp: <2022-04-12 18:01:27 gorbag>"
+                                      "move get-sense-wire-encoding to fpga-support..registers.lisp")
+
+;; 0.4.1   4/12/22 move get-sense-wire-encoding to fpga-support library
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
@@ -339,11 +341,6 @@ data manipulations")
 
 (defvar *sense-wire-encoding* #o1)
 (defvar *sense-wire-encoding-alist* nil)
-
-(defun get-sense-wire-encoding (sense-wire)
-  (let ((result (sense-wire-encoding sense-wire)))
-    (assert result (sense-wire) "Sense wire has no encoding") ; doing it this way to catch bugs
-    result))
 
 (defun reset-sense-wire-encoding ()
   (setq *sense-wire-encoding-alist* nil)

@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 4 2
-                                      "Time-stamp: <2022-04-07 12:32:34 gorbag>"
+                                      "Time-stamp: <2022-04-12 17:03:04 gorbag>"
                                       "repatriate")
 
 ;; 0.4.2   4/ 7/22 code used to analyze microlisp and build PLA split off to
@@ -177,7 +177,7 @@
          (condition-holds-p (when conditional-p (funcall (get-condition *micro-pc*)))))
     
     (when conditional-p
-      (setq *last-conditional-result* condition-holds-p)) ; so we can update diagnostics later
+      (setq diagnostics:*last-conditional-result* condition-holds-p)) ; so we can update diagnostics later
     
     (when *debug-microcontroller*
       (let ((u-instruction (elt *microcontrol-array* new-pc-integer)))
