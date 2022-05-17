@@ -1,8 +1,11 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 4 1
-                                      "Time-stamp: <2022-04-12 18:01:27 gorbag>"
-                                      "move get-sense-wire-encoding to fpga-support..registers.lisp")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Predefs" 0 4 2
+                                      "Time-stamp: <2022-05-02 16:43:04 gorbag>"
+                                      "define defubus since vhdl is different than register")
+
+;; 0.4.2   5/ 2/22 define defubus (currently just alias for defureg) since vhdl for bus is
+;;                    different than register!
 
 ;; 0.4.1   4/12/22 move get-sense-wire-encoding to fpga-support library
 
@@ -604,3 +607,7 @@ data manipulations")
               ()
               '*sense-controls*)))))
 
+(defmacro defubus (register-name control-wires sense-wires)
+  "special version of defureg for defining a bus"
+  ;; at the moment, it's just like defureg
+  `(defureg ,register-name ,control-wires ,sense-wires))

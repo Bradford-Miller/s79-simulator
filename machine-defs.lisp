@@ -1,8 +1,10 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 4 0
-                                      "Time-stamp: <2022-03-18 15:29:06 gorbag>"
-                                      "force type field on intermediate-argument for console presentation")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 4 1
+                                      "Time-stamp: <2022-05-02 16:45:30 gorbag>"
+                                      "defubus and defchip-bus")
+
+;; 0.4.1   5/ 2/22 change bus related defs to special bus defining macros
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
@@ -307,12 +309,12 @@ button or the set-breakpoint fn.")
   (setq *nanocontrol-wire-next* *nanocontrol-wire-next-initial-value*)
   (reset-sense-wire-encoding))
 
-(defchip-reg *bus*)
+(defchip-bus *bus*)
 ;; added control wires for setting/unsetting special bits on the bus
 ;; also add not-mark-bit (presumably we'd have an inverter in the fpga
 ;; so wouldn't need another sense wire, but this is closer than using
 ;; logic)
-(defureg *bus*
+(defubus *bus*
     (mark! unmark! type! pointer!)
   (mark-bit not-mark-bit type=pointer type=type frame=0 displacement=0 address=0))
 

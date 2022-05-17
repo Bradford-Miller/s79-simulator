@@ -1,11 +1,13 @@
 (in-package :cl-user)
 (defvar *scheme-79-version-reporter-initializations* nil)
 
-(cl-lib:detailed-version-reporter "S79 defpackages" 0 4 2
-                                  "Time-stamp: <2022-04-12 18:01:31 gorbag>"
+(cl-lib:detailed-version-reporter "S79 defpackages" 0 4 3
+                                  "Time-stamp: <2022-05-02 16:43:00 gorbag>"
                                   "export processor control functions"
                                   :initialization-list-symbol
                                   *scheme-79-version-reporter-initializations*)
+
+;; 0.4.3   5/ 2/22 add defubus
 
 ;; 0.4.2   4/12/22 export processor control functions (like reset) from :scheme-79
 
@@ -354,6 +356,9 @@
 
    ;; register definitions
    #:defureg
+
+   ;; bus definitions
+   #:defubus
 
    ;; simulator itself
    #:set-micro-pc #:*micro-pc-size* #:*micro-pc-max-address*

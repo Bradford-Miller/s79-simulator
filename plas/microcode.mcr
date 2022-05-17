@@ -5,7 +5,7 @@
 ;; that can be accessed from the machine!)
 
 ;;(scheme-79:scheme-79-version-reporter "S79 Microcode" 0 4 0
-;;                                      "Time-stamp: <2022-03-18 15:30:18 gorbag>"
+;;                                      "Time-stamp: <2022-05-02 16:44:51 gorbag>"
 ;;                                      "*stack* from-type")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -286,12 +286,10 @@
 ;;  and type-not-pointer as controls as well which allows us to force
 ;;  them on or off on the bus prior to writing them to memory. This
 ;;  version appears in machine-defs.lisp and I'm showing it here for
-;;  completeness]. Also the negated versions for sense so we don't use
-;;  programmed logic to calculate on the fly but depend on our
-;;  "software inverter" which would mimic the fpga.]
+;;  completeness]. 
 
 ;(defreg bus
-;    (mark! unmark! type! pointer!) (mark-bit not-mark-bit type-not-pointer frame=0 displacement=0 address=0))
+;    (mark! unmark! type! pointer!) (mark-bit type-not-pointer frame=0 displacement=0 address=0))
 
 ;; A register has two basic operations which can be done to it. Its contents
 ;; can be fetched, and its contents can be assigned from some source. In
