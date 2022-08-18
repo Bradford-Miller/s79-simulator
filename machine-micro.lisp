@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Micro" 0 4 2
-                                      "Time-stamp: <2022-04-12 17:03:04 gorbag>"
+                                      "Time-stamp: <2022-06-16 17:31:08 Bradford W. Miller(on Boromir)>"
                                       "repatriate")
 
 ;; 0.4.2   4/ 7/22 code used to analyze microlisp and build PLA split off to
@@ -299,6 +299,7 @@ permanent breakpoint (will not be cleared by (clear-breakpoints) though
        ;; if the instruction involves moving a constant value to the bus, we do
        ;; that here, though it really should happen as a result of executing
        ;; the nanocode (TBD)
+       ;; see +rr-from-type-const*+, +rr-from-const*+
 
        ;; nanocode will handle the TO expression and then the shift from the
        ;; bus into the destination happens during *run-register-controls* (next

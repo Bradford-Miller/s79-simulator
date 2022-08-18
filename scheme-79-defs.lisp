@@ -1,7 +1,7 @@
 (in-package :scheme-79)
 
 (scheme-79-version-reporter "S79 Dev Support" 0 4 2
-                            "Time-stamp: <2022-04-12 16:53:12 gorbag>"
+                            "Time-stamp: <2022-06-02 14:33:16 Bradford W. Miller(on Boromir)>"
                             "move (reset) to console directory")
 
 ;; 0.4.2   4/12/22 move reset, power-on-reset to console directory
@@ -10,7 +10,7 @@
 ;;                    and change default location here
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-3. ;;
+;; 0.4.0   3/18/22 snapping a line: 0.4 release of scheme-79 supports test-0 thru test-2. ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

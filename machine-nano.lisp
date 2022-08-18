@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Nano" 0 4 1
-                                      "Time-stamp: <2022-04-07 12:27:12 gorbag>"
+                                      "Time-stamp: <2022-05-26 11:26:18 Bradford W. Miller(on Boromir)>"
                                       "repatriation")
 
 ;; 0.4.1   4/ 7/22 move PLA support code (building the nanoPLA) to plas/ncode-assembler.
@@ -220,13 +220,14 @@ registers and update to the next nanoinstruction if needed"
 
   ;; now set up next nano-instruction
 
-   (destructuring-bind (pad-controls register-controls next-state) (elt *nanocontrol-array* (bit-vector->integer *nano-pc*))
-     (declare (ignore pad-controls register-controls))
-     (note-if *debug-nanocontroller*
-              "debug-nanocontroller-p2: setting nano-pc for next cycle to: #o~o"
-              next-state)
+  (destructuring-bind (pad-controls register-controls next-state)
+      (elt *nanocontrol-array* (bit-vector->integer *nano-pc*))
+    (declare (ignore pad-controls register-controls))
+    (note-if *debug-nanocontroller*
+             "debug-nanocontroller-p2: setting nano-pc for next cycle to: #o~o"
+             next-state)
   
-     (copy-field (integer->bit-vector next-state) *nano-pc*))) ; (tbd) should be stored as a bit vector
+    (copy-field (integer->bit-vector next-state) *nano-pc*))) ; (tbd) should be stored as a bit vector
 
 (defvar *memoization-fns* nil)
 (defvar *cmemoization-fns* nil)

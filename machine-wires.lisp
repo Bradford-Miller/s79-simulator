@@ -1,8 +1,14 @@
 (in-package :scheme-mach)
 
-(scheme-79:scheme-79-version-reporter "Scheme Machine Wire Defs" 0 4 1
-                                      "Time-stamp: <2022-04-07 12:24:59 gorbag>"
-                                      "repatriated from machine-nano")
+(scheme-79:scheme-79-version-reporter "Scheme Machine Wire Defs" 0 4 2
+                                      "Time-stamp: <2022-06-01 11:40:03 Bradford W. Miller(on Boromir)>"
+                                      "add clear-run-nano bit")
+
+;; 0.4.2   6/ 1/22 add clear-run-nano bit as run-nano should be latched.
+;;                 Add set and get on the external bus pad bits too,
+;;                     following where the VHDL is heading (though we don't
+;;                     connect them up to a register yet as that requires
+;;                     more info??)
 
 ;; 0.4.1   4/ 7/22 separating defintions that have a machine-implementation
 ;;                    impact (such as wires) from those that are only about the
@@ -31,6 +37,11 @@
 ;; field in the microcode (thus a language feature, not generated
 ;; based on defining control wires and so a manual process at this
 ;; point)
+;;
+;; note that some of these are mutex and thus could be condensed into binary
+;; codes (i.e., you can't use from-to and eitehr from or to, so doesn't need
+;; to be a distinguished bit). BUT we're not as concerned as the authors
+;; about efficient use of space so ignoring for the time being.
 
 (defconstant +rr-from*+ #o1) ; anaphor - from in microcode represents
                              ; the from register
@@ -44,9 +55,10 @@
                                          ; as a type constant
 (defconstant +rr-from-const*+ #o20) ; use the from field in microcode
                                     ; as a reguslar constant
-(defconstant +rr-from*-type+ #o40) ; anaphor from in microcode
-                                   ; represents a register from which
-                                   ; we want the type field
+(defconstant +rr-from*-type+ #o40) ; anaphor from in microcode represents a
+                                   ; register from which we want the type
+                                   ; field (which should be placed on the low
+                                   ; order bits of the bus as a value).
 
 ;; in addition (different field) we need to specify pads. Unlike the
 ;; control wires on the registers, we haven't defined a bit level
@@ -57,32 +69,37 @@
 ;; these inputs are tied to the microcontroller state instead, so
 ;; we'll deal with them there.
 
-;; note that these could (should?) be created in a similar manner to
-;; register controls via the defchip-pad macro, but since there aren't
-;; that many of them I'm doing it manually for now (TBD)
+;; note that these could (should?) be created in a similar manner to register
+;; controls via the defchip-pad macro, but since there aren't that many of
+;; them I'm doing it manually for now; once we need to also generate VHDL
+;; we'll have to make it automatic (TBD)
 
 ;; also while the particular bit vectors are project specific, we
 ;; should make tools to generate/interpret them generic and move to
 ;; fpga-support! (TBD)
 
 (defconstant +pad-run-nano+ #o1) ; this is *run-nano* a :latched-IO pseudo pad
-(defconstant +pad-ale+ #o2) ; output is content of *address*
-(defconstant +pad-read+ #o4) ; input is sent to *memory* and *bus*
-(defconstant +pad-write+ #o10) ; output is content of *memory*
-(defconstant +pad-cdr+ #o20) ; which half of a memory cons to read or write. (Is our word length 32 or 64? ;-)
-(defconstant +pad-read-interrupt+ #o40) ; input is sent to *interrupt* 
-(defconstant +pad-gc-needed+ #o100) ; should latch on until cleared
-(defconstant +pad-clear-gc+ #o200) ; pseudo-pad to clear the latched gc-needed pad
+(defconstant +pad-clear-run-nano+ #o2) ; clear latch
+(defconstant +pad-ale+ #o4) ; output is content of *address*
+(defconstant +pad-read+ #o10) ; input is sent to *memory* and *bus*
+(defconstant +pad-write+ #o20) ; output is content of *memory*
+(defconstant +pad-cdr+ #o40) ; which half of a memory cons to read or write. (Is our word length 32 or 64? ;-)
+(defconstant +pad-read-interrupt+ #o100) ; input is sent to *interrupt* 
+(defconstant +pad-gc-needed+ #o200) ; should latch on until cleared
+(defconstant +pad-clear-gc+ #o400) ; pseudo-pad to clear the latched gc-needed pad
 
-(defconstant +pad-conditional+ #o400) ; pseudo-pad to deal with conditionals
-(defconstant +pad-mask-interrupts+ #o1000) ; pseudo-pad to prevent responding to additional interrupts
-(defconstant +pad-clear-mask-interrupts+ #o2000) ;clear above pad
+(defconstant +pad-conditional+ #o1000) ; pseudo-pad to deal with conditionals
+(defconstant +pad-mask-interrupts+ #o2000) ; pseudo-pad to prevent responding to additional interrupts
+(defconstant +pad-clear-mask-interrupts+ #o4000) ;clear above pad
 
+(defconstant +pad-set-memory-pads+ #o10000) ; connect FROM internal TO external bus
+(defconstant +pad-get-memory-pads+ #o20000) ; connect FROM external TO internal bus
 
 ;; set up an alist to allow us to associate the pad control wire with
 ;; the appropriate (symbolic) functions
 (defvar *nanocontrol-pad-spec*
   `((,+pad-run-nano+ (:name *run-nano*))
+    (,+pad-clear-run-nano+ (:name *run-nano*) (:clear-latch t))
     (,+pad-ale+ (:name *ale*))
     (,+pad-read+ (:name *read*))
     (,+pad-write+ (:name *write*))
@@ -92,7 +109,10 @@
     (,+pad-clear-gc+ (:name *gc-needed*) (:clear-latch t))
     (,+pad-conditional+ (:name *conditional*))
     (,+pad-mask-interrupts+ (:name *mask-interrupts*))
-    (,+pad-clear-mask-interrupts+ (:name *mask-interrupts*) (:clear-latch t))))
+    (,+pad-clear-mask-interrupts+ (:name *mask-interrupts*) (:clear-latch t))
+    ;; not yet sure how to encode connecting *bus* as it will have to specify direction! (TBD)
+    ))
+
 
 (defun rr-value (sym)
   (symbol-value (intern (format nil "+RR-~a+" (string sym)))))

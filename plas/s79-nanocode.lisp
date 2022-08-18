@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "S79 Nanocode" 0 4 0
-                                      "Time-stamp: <2022-03-18 15:30:57 gorbag>"
+                                      "Time-stamp: <2022-06-01 18:02:31 Bradford W. Miller(on Boromir)>"
                                       "disambiguate")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -270,8 +270,9 @@
    ((to*) (read))
   (() (read cdr to-address-stack to-type-stack)))
 
-;; note these are destination specific; we probably should add
-;; mechanism to allow them to be handled via to* destination. (TBD)
+;; note these are destination specific; we definitely should add mechanism to
+;; allow them to be handled via to* destination, which will also make the
+;; hardware simpler! (TBD)
 
 (defnano (microlisp-shared::do-set-type-exp)
     ((from*) (to-type-exp)))

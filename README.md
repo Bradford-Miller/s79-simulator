@@ -87,8 +87,8 @@ Control Wire | Description
 ------------ | -----------
 from-displacement | added to *val* to support their &val-displacement-to-exp-displacement u-op
 from-frame | added to *val* to support their &val-frame-to-exp-frame u-op
-from-type | added to *exp* to support dispatch-on-exp-allowing-interrupts. Note that from-type will shift the bits into the low order bits suitable for loading directly into the micro-pc; this may change to something more distinguished in the future so the library knows to specify a multiplexor.
-not-mark-bit | added to *bus* to allow direct detection of this state. I'm sure inverters are cheap even on an FPGA, but I need some way to actually force the issue (so this may change in the future).
+from-type | added to *exp* to support dispatch-on-exp-allowing-interrupts. Note that from-type will shift the bits into the low order bits suitable for loading directly into the micro-pc; this may change to something more distinguished in the future so the library knows to specify a multiplexer or equivalent constructs int he VHDL.
+not-mark-bit | added to *bus* to allow direct detection of this state. I'm sure inverters are cheap even on an FPGA, but I need some way to actually force the issue in the lisp code (so this may change in the future).
 mark! unmark! | controls added to bus to set the appropriate bits (set/unset the mark-bit)
 type! pointer! | controls added to bus to set the appropriate bits (set/unset the type-not-pointer bit)
 
@@ -102,7 +102,7 @@ later.
 
 ### Instructions
 
-While the microcode is well documented, not all of the specific
+While the microcode is reasonably well documented, not all of the specific
 instructions are. I'm postulating eval-exp-popj-to (also
 see S-Code, below), means the following, and currently expand it into:
 
@@ -118,6 +118,14 @@ it should get the GLOBAL value for the symbol) and then continues into
 internal-apply (typically). That's going to do another
 dispatch-on-exp-allowing-interrupts so we should get the CLOSURE at that
 point.
+
+### MicroLisp
+
+I believe the microlisp compiler accepts a language congruent with what is presented in the AIM. The lower level PLA representation does have some variation (for example there is not, yet, a (PADS) construct for outputting or inputting information to the address/memory pads, though that may change as we get closer to supporting VHDL production) however I hope such variations will not be material, and if they are they will be fixed in a future version.
+
+### General sloppiness
+
+Some instructions are implemented in the lisp simulation as special cases in the microcode execution engine rather than having appropriate control lines, etc with performance by the microcode. These will be repaired (iteratively if needed ;-) in future versions as we get closer to constructing a pure VHDL version.
 
 ## Test Sets:
 
@@ -196,6 +204,9 @@ cases (see, e.g., test-2.lisp).
 
 Note the TODO.txt file documents specific tasks that are planned (in
 some sense ;-) or previous TODO items that have been completed.
+
+#### 3-18-22 BWM Update
+Test-2 is working correctly, so I'm "releasing" v0.4 of the simulator and 0.2 of the support library. Now on to VHDL production, which will mostly be documented under the library!
 
 #### 3-18-22 BWM
 Still working on test-2. It mostly seems to be working correctly (single
