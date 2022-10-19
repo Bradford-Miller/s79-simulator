@@ -5,7 +5,7 @@
 ;; that can be accessed from the machine!)
 
 ;;(scheme-79:scheme-79-version-reporter "S79 Microcode" 0 4 0
-;;                                      "Time-stamp: <2022-05-02 16:44:51 gorbag>"
+;;                                      "Time-stamp: <2022-10-17 13:15:24 Bradford W. Miller(on Boromir)>"
 ;;                                      "*stack* from-type")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -52,7 +52,7 @@
 ;; is followed by a 7 bit type field. The remainder of the 32 bits (24 bits)
 ;; is an address or in the case of EXP the address is split into 2 12 bit
 ;; fields, the displacement and frame.  This allows some microcode to enable
-;; TO-DISPLAEMENT-EXP and FROM-RETPC-COUNT-MARK which transfers the
+;; TO-DISPLACEMENT-EXP and FROM-RETPC-COUNT-MARK which transfers the
 ;; DISPLACEMENT part of the data field of the the RETPC-COUNT-MARK register
 ;; or the DISPLACEMENT part of the EXP register.
 
@@ -102,9 +102,9 @@
 ;; are automatically enabled, multiple-word nano-routines are predefined and
 ;; specify when to enable the decodings.
 
-;; microcode branches are devloped where the condition beting tested is a
+;; microcode branches are devloped where the condition being tested is a
 ;; boolean bit merged into the low bit of the next state value, therefore
-;; the two targets of the brnch must be allocated in an even/odd pair of
+;; the two targets of the branch must be allocated in an even/odd pair of
 ;; states. If a given micro-word is the target of more than one branch, then
 ;; several copies may have to be made (e.g, one in an odd location, the
 ;; other in an even). Additionally, addignment of states has to be
