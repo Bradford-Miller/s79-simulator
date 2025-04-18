@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "S79 Nano Assembler" 0 4 0
-                                      "Time-stamp: <2022-05-20 17:24:43 Bradford W. Miller(on Boromir)>"
+                                      "Time-stamp: <2025-03-26 16:50:23 Bradford W. Miller(on Boromir)>"
                                       "repatriated")
 
 ;; 0.4.0   4/ 7/22 repatriate code used to build PLAs from machine-nano.lisp
@@ -298,7 +298,7 @@ components (e.g., for printing)"
     (cl:if (plusp (logand line +pad-clear-gc+))
            (push 'clear-gc result))
     (cl:if (plusp (logand line +pad-conditional+))
-           (push 'set-conditional result))
+           (push 'set-condition result))
     (cl:if (plusp (logand line +pad-mask-interrupts+))
            (push 'mask-interrupts result))
     (cl:if (plusp (logand line +pad-clear-mask-interrupts+))

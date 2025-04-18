@@ -1,6 +1,6 @@
 # Scheme-79 Chip Reimplimentation in Simulation and FPGA
 
-Time-stamp: <2022-03-18 12:13:54 gorbag>
+Time-stamp: <2024-11-06 14:51:10 gorbag>
 
 This is a "first cut" at a software simulation/emulation of the
 SCHEME-79 chip (by GLS, also Jack Holloway, Jerry Sussman and Alan
@@ -50,17 +50,17 @@ tag the registers and memory are correct per the test's specification,
 it will indicate the test was successful. (You can see clock-by-clock
 tracing of the microcode in the output pane of the listener).
 
-You can also use the console to start the DSO and a diagnostics panel.
-The DSO will indicate pad and internal register control timing for the
-simulated run; the diagnostics panel lists micro and nanoinstructions
-and how many times they have been executed since the system was
-loaded. (They should be started before running the simulation). When a
-test is successfully completed (or gets to the DONE tag but does not
-pass the test) the instructions executed during the cycle are marked as
-failed or successful in the diagnostics panel to help target
-debugging. Predicates are marked up separately so the success and
-failure arms can both be checked. (Consider this a primitive code
-coverage tool).
+You can also use the console to start the DSO (simulated Digital
+Storage Oscilloscope) and a diagnostics panel.  The DSO will indicate
+pad and internal register control timing for the simulated run; the
+diagnostics panel lists micro and nanoinstructions and how many times
+they have been executed since the system was loaded. (They should be
+started before running the simulation). When a test is successfully
+completed (or gets to the DONE tag but does not pass the test) the
+instructions executed during the cycle are marked as failed or
+successful in the diagnostics panel to help target debugging.
+Predicates are marked up separately so the success and failure arms
+can both be checked. (Consider this a primitive code coverage tool).
 
 Additional tests may also be run, however, after the first test (with
 the console exposed) the sequence to run them is to press "step" to
@@ -205,8 +205,10 @@ cases (see, e.g., test-2.lisp).
 Note the TODO.txt file documents specific tasks that are planned (in
 some sense ;-) or previous TODO items that have been completed.
 
-#### 3-18-22 BWM Update
-Test-2 is working correctly, so I'm "releasing" v0.4 of the simulator and 0.2 of the support library. Now on to VHDL production, which will mostly be documented under the library!
+#### 3-18-22 BWM 
+Update Test-2 is working correctly, so I'm "releasing" v0.4 of the simulator 
+and 0.2 of the support library. Now on to VHDL production, which will mostly
+be documented under the library!
 
 #### 3-18-22 BWM
 Still working on test-2. It mostly seems to be working correctly (single
