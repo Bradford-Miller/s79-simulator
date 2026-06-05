@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Sim Defs" 0 4 1
-                                      "Time-stamp: <2022-05-02 16:45:30 gorbag>"
+                                      "Time-stamp: <2025-08-21 17:34:51 Bradford W. Miller(on Finwe.local)>"
                                       "defubus and defchip-bus")
 
 ;; 0.4.1   5/ 2/22 change bus related defs to special bus defining macros
@@ -392,7 +392,7 @@ button or the set-breakpoint fn.")
 ;; maintains a pointer to the stack of pending returns and associated
 ;; state in STACK
 (defchip-reg *stack*)
-;; 10/21/2021: add from-type to handle dispatch-on-stack
+;; 10/21/2021: add from-type to support dispatch-on-stack
 (defureg *stack* (to-type to-address from from-type) ())
 
 ;; DISPLAY - used by EVAL

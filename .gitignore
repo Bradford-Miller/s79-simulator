@@ -1,5 +1,6 @@
 *.FASL
 *.fasl
+*.64xfasl
 *.lisp-temp
 *.dfsl
 *.pfsl
