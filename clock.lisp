@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Clock" 0 4 1
-                                      "Time-stamp: <2022-03-23 17:38:01 gorbag>"
+                                      "Time-stamp: <2026-06-12 11:08:47 Bradford W. Miller (on finwe.lan)>"
                                       "note-banner sig change")
 
 ;; 0.4.1   3/23/22 note-banner no longer needs 2nd arg
@@ -205,7 +205,7 @@ at the beginning of a cycle. To do that set finish-cycle-p"
   (defun set-running-p (val)
     (setq running val))
   
-  (defun stop ()
+  (defun stop () ; why not halt? Well, it's stop on the PDP-10... (halt on the PDP-11 but that's just a 16 bit machine :-)
     (set-running-p nil)))
 
 

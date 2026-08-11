@@ -1,7 +1,7 @@
 (in-package :scheme-mach)
 
 (scheme-79:scheme-79-version-reporter "Scheme Machine Sim Ext Ops" 0 4 1
-                                      "Time-stamp: <2022-04-07 11:55:15 gorbag>"
+                                      "Time-stamp: <2026-06-12 16:15:09 Bradford W. Miller (on finwe.lan)>"
                                       "repatriating")
 
 ;; 0.4.1 4/ 7/22 repatriating defufns, etc. that are used to build the PLA from
